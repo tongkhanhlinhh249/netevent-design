@@ -1,0 +1,422 @@
+Create a high-fidelity public event landing page for NetEvent.
+
+Use Vietnamese for all UI copy, labels, buttons, helper text, status badges, form labels, ticket labels, validation messages, and empty states.
+
+Product context:
+NetEvent is a self-service event management platform. Each event can have a public Landing Page, registration form, ticket inventory, multiple ticket tiers, QR ticket issuing, and check-in flow.
+
+Design goal:
+Create a clean, modern, public-facing event landing page inspired by Luma’s layout, but adapted for NetEvent’s ticket and registration logic.
+
+Important direction:
+
+* Use Layout 2 as the main structure: large event poster/key visual on the left, event title/date/location and registration card on the right.
+* Use Layout 1’s registration logic: support multiple ticket tiers, ticket selection, registration form, QR ticket success state.
+* Do not make the page look like an admin dashboard.
+* Make it feel like a public event page that is beautiful, trustworthy, and easy to register.
+
+Design style:
+
+* Modern event landing page
+* Clean white / light gray background
+* Strong event poster or key visual
+* Rounded cards
+* Subtle shadows
+* Good whitespace
+* Minimal but premium
+* Primary color: #FF8644
+* Use blue or purple gradient only as fallback theme if no poster is uploaded
+* Font: Inter or Be Vietnam Pro
+* Desktop width: 1440px
+* Main container max-width: 1080–1160px
+
+==================================================
+PAGE STRUCTURE
+==============
+
+Create a public event landing page with this layout:
+
+Desktop layout:
+
+* Left column: 360–420px
+* Right column: 600–680px
+* Two-column layout on desktop
+* Single-column stacked layout on mobile
+
+Main sections:
+
+1. Event poster / key visual
+2. Event information
+3. Registration / ticket selection card
+4. Host / organizer
+5. About event
+6. Location / map
+7. Footer
+
+==================================================
+HERO / FIRST FOLD
+=================
+
+Left column:
+
+Show event poster card.
+
+Poster:
+
+* Use a bold event poster placeholder
+* Ratio: 1:1 or 4:5
+* Rounded corners: 24px
+* Large visual impact
+* Example text on poster:
+  “NETEVENT DEMO CONFERENCE 2026”
+  “BUILD BETTER EVENTS”
+
+If no poster is uploaded, show fallback theme:
+
+* Gradient background
+* Event title initials
+* Decorative abstract shapes
+* Text: “Ảnh sự kiện”
+
+Below poster, show Host card:
+
+Title:
+“Đơn vị tổ chức”
+
+Host info:
+“NetSpace”
+“Công ty Công nghệ & Truyền thông”
+
+Link:
+“Liên hệ ban tổ chức”
+
+Optional share card:
+“Chia sẻ sự kiện”
+
+If current user is Admin or Account Owner:
+Show a small subtle button:
+“Quản lý sự kiện”
+
+Important:
+Do not show “Manage access” block for public attendees.
+
+==================================================
+RIGHT COLUMN — EVENT INFO
+=========================
+
+At top of right column, show status badge:
+
+Badge:
+“Đang mở đăng ký”
+
+Event title:
+“NetEvent Demo Conference 2026”
+
+Event subtitle / short description:
+“Sự kiện kết nối cộng đồng làm sản phẩm, marketing và công nghệ sự kiện.”
+
+Event meta rows with icons:
+
+1. Date/time:
+   “Thứ Sáu, 01 Tháng 8, 2026”
+   “08:00 – 17:00”
+
+2. Location:
+   “NetSpace — Tòa nhà MIPEC, Hà Nội”
+   “Offline”
+
+3. Organizer:
+   “NetSpace — Công ty Công nghệ & Truyền thông”
+
+4. Registration status:
+   “Còn nhận đăng ký”
+
+==================================================
+REGISTRATION CARD — MULTIPLE TICKET TIERS
+=========================================
+
+Create a registration card on the right column, above the fold.
+
+Card title:
+“Đăng ký tham gia”
+
+Subtitle:
+“Chọn hạng vé phù hợp với bạn.”
+
+Ticket tier selection list:
+
+Ticket option 1:
+Name:
+“Standard”
+
+Price:
+“Miễn phí”
+
+Description:
+“Vé tham dự cơ bản. Bao gồm tài liệu sự kiện và tea-break.”
+
+Availability:
+“Còn 120 vé”
+
+Radio selector:
+Unselected by default
+
+Ticket option 2:
+Name:
+“VIP”
+
+Price:
+“499.000đ”
+
+Description:
+“Ưu tiên chỗ ngồi, networking riêng và quà tặng đặc biệt.”
+
+Availability:
+“Còn 28 vé”
+
+Radio selector:
+Selected state example
+
+Ticket option 3:
+Name:
+“Early Bird”
+
+Price:
+“299.000đ”
+
+Description:
+“Vé ưu đãi dành cho người đăng ký sớm.”
+
+Availability:
+“Hết vé”
+
+State:
+Disabled / Sold out
+
+Show CTA button:
+“Tiếp tục đăng ký”
+
+Button state:
+
+* Disabled until one available ticket tier is selected
+* Active after selecting a valid ticket
+
+Helper text:
+“Bạn sẽ điền thông tin đăng ký ở bước tiếp theo.”
+
+==================================================
+REGISTRATION FORM STATE
+=======================
+
+Create another state/frame showing after user clicks “Tiếp tục đăng ký”.
+
+Card title:
+“Thông tin đăng ký”
+
+Subtitle:
+“Điền thông tin để nhận vé QR tham dự sự kiện.”
+
+Show selected ticket summary:
+“Vé đã chọn: VIP — 499.000đ”
+
+Form fields:
+
+1. “Họ và tên”
+   Placeholder: “Nhập họ và tên”
+
+2. “Email”
+   Placeholder: “Nhập email”
+
+3. “Số điện thoại”
+   Placeholder: “Nhập số điện thoại”
+
+4. “Công ty / Tổ chức”
+   Placeholder: “Nhập tên công ty hoặc tổ chức”
+
+5. “Chức danh”
+   Placeholder: “Nhập chức danh”
+
+Checkbox:
+“Tôi đồng ý nhận email xác nhận và thông tin từ ban tổ chức.”
+
+Buttons:
+
+* Secondary: “Quay lại chọn vé”
+* Primary: “Hoàn tất đăng ký”
+
+Validation messages:
+
+* “Vui lòng nhập họ và tên.”
+* “Vui lòng nhập email hợp lệ.”
+* “Vui lòng nhập số điện thoại.”
+
+==================================================
+SUCCESS STATE — QR TICKET ISSUED
+================================
+
+Create success state after registration is completed.
+
+Card title:
+“Đăng ký thành công!”
+
+Description:
+“Vé QR đã được gửi tới email của bạn. Vui lòng xuất trình mã QR khi check-in tại sự kiện.”
+
+Show QR placeholder.
+
+Ticket info:
+
+* “Hạng vé: VIP”
+* “Mã vé: VIP-000124”
+* “Người tham dự: Nguyễn Văn A”
+* “Email: [nguyenvana@gmail.com](mailto:nguyenvana@gmail.com)”
+
+Buttons:
+
+* “Tải vé QR”
+* “Thêm vào lịch”
+* “Gửi lại email vé”
+
+==================================================
+OTHER REGISTRATION STATES
+=========================
+
+Create visual states for:
+
+1. Event only has registration form, no ticket tiers.
+
+Card title:
+“Đăng ký tham gia”
+
+Subtitle:
+“Điền thông tin để nhận vé QR.”
+
+Primary CTA:
+“Đăng ký tham gia”
+
+2. Registration closed.
+
+Title:
+“Đăng ký đã đóng”
+
+Description:
+“Sự kiện hiện không còn nhận đăng ký mới.”
+
+Disabled CTA:
+“Đã đóng đăng ký”
+
+3. Sold out.
+
+Title:
+“Sự kiện đã hết vé”
+
+Description:
+“Tất cả hạng vé hiện đã được đăng ký hết.”
+
+CTA:
+“Tham gia danh sách chờ”
+
+==================================================
+ABOUT EVENT SECTION
+===================
+
+Below hero, create section:
+
+Title:
+“Giới thiệu sự kiện”
+
+Content:
+“NetEvent Demo Conference 2026 là sự kiện dành cho các đội ngũ tổ chức sự kiện, marketing, vận hành và công nghệ. Chương trình tập trung vào cách xây dựng trải nghiệm sự kiện hiệu quả, quản lý đăng ký, phát hành vé QR và tối ưu quy trình check-in.”
+
+Use clean text block with good line-height.
+
+Optional bullets:
+
+* “Xu hướng tổ chức sự kiện hiện đại”
+* “Tối ưu quy trình đăng ký và check-in”
+* “Kết nối cộng đồng làm sản phẩm và marketing”
+* “Ứng dụng công nghệ trong vận hành sự kiện”
+
+==================================================
+LOCATION SECTION
+================
+
+Create location section.
+
+Title:
+“Địa điểm”
+
+Location name:
+“NetSpace — Công ty Công nghệ & Truyền thông”
+
+Address:
+“Tầng 3, Tòa nhà MIPEC, 229 P. Tây Sơn, Kim Liên, Hà Nội”
+
+Show map placeholder:
+
+* Rounded rectangle
+* Map preview style
+* Pin marker
+
+Button:
+“Xem chỉ đường”
+
+==================================================
+FOOTER
+======
+
+Footer content:
+“Powered by NetEvent”
+
+Links:
+
+* “Điều khoản”
+* “Chính sách bảo mật”
+* “Liên hệ”
+
+==================================================
+MOBILE RESPONSIVE
+=================
+
+Create mobile layout version.
+
+Mobile order:
+
+1. Poster
+2. Event title
+3. Date/time/location
+4. Registration card
+5. Host
+6. About event
+7. Location map
+8. Footer
+
+Important mobile rules:
+
+* CTA should be easy to tap
+* Ticket cards should be full width
+* Registration card should appear early
+* Avoid too much empty space
+* Keep text readable
+
+==================================================
+IMPORTANT UX RULES
+==================
+
+* Layout should feel like a public event landing page, not an admin dashboard.
+* Poster/key visual should create event identity.
+* Registration card must be above the fold.
+* Ticket selection must be clear and easy to scan.
+* Support multiple ticket tiers.
+* Support free and paid ticket display.
+* Support sold out and closed registration states.
+* Hide admin controls from public attendees.
+* Show “Quản lý sự kiện” only for users with Admin/Account Owner access.
+* Do not show fake data if ticket inventory is not configured.
+* If no ticket tiers exist, show simple registration form mode.
+* Keep the visual system clean, trustworthy, and conversion-focused.
+
+Final layout direction:
+Left side: poster, host, share
+Right side: title, event info, registration/ticket card
+Below: about event, location/map, footer

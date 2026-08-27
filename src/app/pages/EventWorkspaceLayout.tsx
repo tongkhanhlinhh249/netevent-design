@@ -1,0 +1,275 @@
+import * as React from "react";
+import { NavLink, Outlet, useNavigate } from "react-router";
+import { ChevronDown, Gamepad2, ExternalLink, Pencil } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Textarea } from "../components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "../components/ui/dialog";
+import { Upload } from "lucide-react";
+import { DEMO_EVENT } from "../data/mockEvent";
+import { THEMES } from "../components/dashboard/EventsPage";
+
+const T = {
+  background:    "var(--background)",
+  foreground:    "var(--foreground)",
+  border:        "var(--border)",
+  primary:       "var(--primary)",
+  secondary:     "var(--secondary)",
+  mutedFg:       "var(--muted-foreground)",
+  warningSubtle: "var(--warning-subtle)",
+  warningText:   "var(--warning-text)",
+  fw_normal: "var(--font-weight-normal)",
+  fw_medium: "var(--font-weight-medium)",
+  fw_semi:   "var(--font-weight-semibold)",
+  fw_bold:   "var(--font-weight-bold)",
+  xs:   "var(--text-xs)",
+  sm:   "var(--text-sm)",
+  base: "var(--text-base)",
+  lg:   "var(--text-lg)",
+  xl:   "var(--text-xl)",
+  "2xl":"var(--text-2xl)",
+};
+
+export type WorkspaceOutletContext = {
+  onEditDrawer: () => void;
+};
+
+const TABS = [
+  { label: "Thông tin chung",    to: "/event",                      end: true  },
+  { label: "Người tham dự",      to: "/event/nguoi-tham-du",        end: false },
+  { label: "Vé & Đăng ký",       to: "/event/kho-ve",               end: false },
+  { label: "Thông tin chi tiết", to: "/event/thong-tin-chi-tiet",   end: false },
+];
+
+const MORE_ITEMS = [
+  { label: "Trang sự kiện",  to: "/event/trang-su-kien", icon: ExternalLink },
+  { label: "Mini Game",      to: "/event/mini-game",     icon: Gamepad2 },
+];
+
+export function EventWorkspaceLayout() {
+  const navigate = useNavigate();
+  const event = DEMO_EVENT;
+  const theme = THEMES.find((t) => t.id === event.theme) ?? THEMES[1];
+
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [moreOpen, setMoreOpen] = React.useState(false);
+  const moreRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+  const [editForm, setEditForm] = React.useState({
+    name: event.name,
+    description: event.description,
+    location: event.location,
+  });
+
+  const context: WorkspaceOutletContext = { onEditDrawer: () => setEditOpen(true) };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div style={{
+        borderBottom: `1px solid ${T.border}`,
+        backgroundColor: T.background,
+      }}>
+        <div className="mx-auto w-full px-4 sm:px-6 lg:px-8" style={{ maxWidth: 1280 }}>
+          {/* Title row */}
+          <div className="flex items-center justify-between gap-2 sm:gap-4" style={{ padding: "16px 0" }}>
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="truncate" style={{
+                    color: T.foreground, fontSize: T.lg,
+                    fontWeight: T.fw_semi, margin: 0,
+                  }}>
+                    {event.name}
+                  </h2>
+                  <span style={{
+                    fontSize: T.xs, fontWeight: T.fw_semi, padding: "2px 8px", borderRadius: 999,
+                    backgroundColor: T.warningSubtle, color: T.warningText, border: `1px solid ${T.warningText}`,
+                    whiteSpace: "nowrap", flexShrink: 0,
+                  }}>Bản nháp</span>
+                </div>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" style={{ fontSize: T.xs, flexShrink: 0 }}>
+              Trang sự kiện <Pencil className="size-3" />
+            </Button>
+          </div>
+
+          {/* Tab nav */}
+          <div className="flex gap-4 sm:gap-6 overflow-x-auto items-center" style={{ scrollbarWidth: "none" }}>
+            {TABS.map((tab) => (
+              <NavLink
+                key={tab.to}
+                to={tab.to}
+                end={tab.end}
+                style={{ textDecoration: "none", display: "block", flexShrink: 0 }}
+              >
+                {({ isActive }) => (
+                  <span style={{
+                    display: "block",
+                    fontSize: T.sm,
+                    fontWeight: isActive ? T.fw_semi : T.fw_normal,
+                    color: isActive ? T.primary : T.mutedFg,
+                    padding: "10px 0",
+                    borderBottom: `2px solid ${isActive ? T.primary : "transparent"}`,
+                    whiteSpace: "nowrap",
+                    transition: "color 0.15s, border-color 0.15s",
+                  }}>
+                    {tab.label}
+                  </span>
+                )}
+              </NavLink>
+            ))}
+
+            {/* Thêm dropdown */}
+            <div ref={moreRef} style={{ position: "relative", flexShrink: 0 }}>
+              <button
+                onClick={() => setMoreOpen(o => !o)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 4,
+                  background: "none", border: "none", cursor: "pointer",
+                  fontSize: T.sm, color: moreOpen ? T.primary : T.mutedFg,
+                  padding: "10px 0",
+                  borderBottom: `2px solid ${moreOpen ? T.primary : "transparent"}`,
+                  whiteSpace: "nowrap", transition: "color 0.15s",
+                }}>
+                Thêm <ChevronDown style={{ width: 14, height: 14, transition: "transform 0.15s", transform: moreOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
+              </button>
+              {moreOpen && (
+                <div style={{
+                  position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 50,
+                  backgroundColor: T.background, border: `1px solid ${T.border}`,
+                  borderRadius: 12, padding: "6px", minWidth: 180,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+                }}>
+                  {MORE_ITEMS.map((item) => (
+                    <NavLink key={item.to} to={item.to}
+                      onClick={() => setMoreOpen(false)}
+                      style={{ textDecoration: "none" }}>
+                      {({ isActive }) => (
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: 8,
+                          padding: "8px 10px", borderRadius: 8, cursor: "pointer",
+                          fontSize: T.sm,
+                          color: isActive ? T.primary : T.foreground,
+                          backgroundColor: isActive ? `color-mix(in srgb, ${T.primary} 8%, transparent)` : "transparent",
+                          transition: "background 0.1s",
+                        }}
+                        onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLDivElement).style.backgroundColor = T.secondary; }}
+                        onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent"; }}>
+                          <item.icon style={{ width: 14, height: 14, flexShrink: 0 }} />
+                          {item.label}
+                        </div>
+                      )}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Page content ───────────────────────────────────────────────────── */}
+      <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8" style={{ maxWidth: 1280 }}>
+        <Outlet context={context} />
+      </div>
+
+      {/* ── Edit dialog ────────────────────────────────────────────────────── */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>Chỉnh sửa sự kiện</DialogTitle>
+          </DialogHeader>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 24, padding: "24px 0" }}>
+            {/* Thông tin cơ bản */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground, margin: 0 }}>Thông tin cơ bản</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <Label>Tên sự kiện</Label>
+                <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <Label>Mô tả</Label>
+                <Textarea rows={3} value={editForm.description}
+                  onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                  placeholder="Mô tả ngắn về sự kiện" />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <Label>Đơn vị tổ chức</Label>
+                <Input defaultValue="NetEvent Demo" />
+              </div>
+            </div>
+
+            <div style={{ borderTop: `1px solid ${T.border}` }} />
+
+            {/* Thời gian & Địa điểm */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground, margin: 0 }}>Thời gian & Địa điểm</p>
+              {([
+                { label: "Ngày bắt đầu", type: "date", val: event.startDate },
+                { label: "Giờ bắt đầu",  type: "time", val: event.startTime },
+                { label: "Ngày kết thúc", type: "date", val: event.endDate },
+                { label: "Giờ kết thúc",  type: "time", val: event.endTime },
+              ] as const).map((f) => (
+                <div key={f.label} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <Label>{f.label}</Label>
+                  <Input type={f.type} defaultValue={f.val} />
+                </div>
+              ))}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <Label>Múi giờ</Label>
+                <Select defaultValue="gmt7">
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="gmt7">GMT+07:00 — Việt Nam</SelectItem></SelectContent>
+                </Select>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <Label>Địa điểm / Link online</Label>
+                <Input value={editForm.location} onChange={(e) => setEditForm((f) => ({ ...f, location: e.target.value }))}
+                  placeholder="Nhập địa điểm hoặc link online" />
+              </div>
+            </div>
+
+            <div style={{ borderTop: `1px solid ${T.border}` }} />
+
+            {/* Giao diện */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground, margin: 0 }}>Giao diện</p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {THEMES.map((th) => (
+                  <button key={th.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer" }}>
+                    <div style={{ width: 48, height: 32, borderRadius: 8, background: th.gradient,
+                      outline: th.id === event.theme ? `2px solid ${T.primary}` : "2px solid transparent", outlineOffset: 2 }} />
+                    <span style={{ fontSize: T.xs, color: T.mutedFg }}>{th.label}</span>
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <Label>Ảnh cover</Label>
+                <div style={{ border: `2px dashed ${T.border}`, borderRadius: 12, padding: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <Upload style={{ width: 22, height: 22, color: T.mutedFg }} />
+                  <p style={{ fontSize: T.xs, color: T.mutedFg, margin: 0 }}>Kéo thả hoặc click để tải ảnh</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Hủy</Button></DialogClose>
+            <Button onClick={() => setEditOpen(false)}>Cập nhật sự kiện</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
