@@ -331,6 +331,7 @@ function LocationPicker({
       {/* Collapsed trigger (Luma-style) when empty and not focused */}
       {!value && !inputFocused && !isOnline ? (
         <button
+          data-pill="off"
           onClick={() => { setOpen(true); setInputFocused(true); }}
           className="flex items-start gap-3 w-full text-left rounded-xl px-4 py-3 transition-colors hover:opacity-90"
           style={{ backgroundColor: T.secondary, border: `1px solid ${T.border}` }}
@@ -392,6 +393,7 @@ function LocationPicker({
               </p>
               {filtered.map((loc) => (
                 <button
+                  data-pill="off"
                   key={loc.name}
                   onMouseDown={(e) => { e.preventDefault(); handleSelect(loc); }}
                   className="w-full text-left flex items-start gap-3 px-4 py-2.5 transition-colors hover:opacity-80"
@@ -417,6 +419,7 @@ function LocationPicker({
             </p>
             {VIRTUAL_OPTIONS.map((opt) => (
               <button
+                data-pill="off"
                 key={opt.id}
                 onMouseDown={(e) => { e.preventDefault(); handleVirtual(opt.label); }}
                 className="w-full text-left flex items-center gap-3 px-4 py-2.5 transition-colors"
@@ -1129,6 +1132,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
 function WorkspaceTabButton({ tab, active, onClick }: { tab: typeof WORKSPACE_TABS[0]; active: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick}
+      data-pill="off"
       className="flex items-center gap-1.5 pb-3 border-b-2 whitespace-nowrap transition-colors cursor-pointer"
       style={{
         fontSize: T.sm,
@@ -1766,7 +1770,7 @@ function EventWorkspaceScreen({
               <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>Giao diện</p>
               <div className="flex gap-2 flex-wrap">
                 {THEMES.map((th) => (
-                  <button key={th.id} className="flex flex-col items-center gap-1.5">
+                  <button key={th.id} data-pill="off" className="flex flex-col items-center gap-1.5">
                     <div className="w-12 h-8 rounded-lg"
                       style={{ background: th.gradient, outline: th.id === event.theme ? `2px solid ${T.primary}` : "2px solid transparent", outlineOffset: "2px" }} />
                     <span style={{ fontSize: T.xs, color: T.mutedFg }}>{th.label}</span>

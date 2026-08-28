@@ -295,6 +295,7 @@ function EventSelector({ onSelect }: { onSelect: (e: EventItem) => void }) {
           const notIn = ev.totalTickets - ev.checkedIn - ev.checkedOut;
           return (
             <button key={ev.id} onClick={() => onSelect(ev)}
+              data-pill="off"
               className="w-full text-left rounded-2xl p-4 transition-all hover:shadow-md"
               style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
               <div className="flex items-start justify-between gap-3 mb-3">
@@ -392,6 +393,7 @@ function CheckinWorkspace({ event, onBack }: { event: EventItem; onBack: () => v
           { id: "manual" as const, label: "Tìm thủ công", icon: Search },
         ]).map((t) => (
           <button key={t.id}
+            data-pill="off"
             onClick={() => { setTab(t.id); setScannedAttendee(null); }}
             className="flex-1 flex items-center justify-center gap-2 py-3 border-b-2 transition-colors"
             style={{

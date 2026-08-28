@@ -254,6 +254,7 @@ function RadioCard({ selected, onClick, label, sub }: {
 }) {
   return (
     <button onClick={onClick} className="w-full text-left p-3 rounded-xl cursor-pointer"
+      data-pill="off"
       style={{ border: selected ? `2px solid ${T.primary}` : `1px solid ${T.border}`,
         backgroundColor: selected ? `rgba(30,170,255,0.04)` : T.background }}>
       <div className="flex items-center gap-2">
@@ -1725,6 +1726,7 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                       const selected = selectedTier === t.id;
                       return (
                         <button key={t.id} disabled={t.soldOut}
+                          data-pill="off"
                           onClick={() => !t.soldOut && setTier(t.id)}
                           className="w-full text-left rounded-xl p-4 transition-all"
                           style={{

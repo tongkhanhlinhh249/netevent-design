@@ -117,6 +117,7 @@ function KVStatusBadge({ status }: { status: KhoVeStatus }) {
 function RadioCard({ selected, onClick, label, sub }: { selected: boolean; onClick: () => void; label: string; sub: string }) {
   return (
     <button onClick={onClick}
+      data-pill="off"
       className="w-full text-left p-3 rounded-xl transition-all cursor-pointer"
       style={{
         border: selected ? `2px solid ${T.primary}` : `1px solid ${T.border}`,
@@ -822,6 +823,7 @@ function CreateKhoVeInline({
               <div className="flex items-center gap-3 px-4 py-3"
                 style={{ backgroundColor: isExp ? `rgba(30,170,255,0.04)` : T.secondary }}>
                 <button className="flex items-center gap-3 flex-1 text-left cursor-pointer"
+                  data-pill="off"
                   onClick={() => setExpId(isExp ? null : tier.id)}>
                   <div className="size-6 rounded-full flex items-center justify-center shrink-0"
                     style={{ backgroundColor: T.primary, color: "white", fontSize: T.xs, fontWeight: T.fw_bold }}>

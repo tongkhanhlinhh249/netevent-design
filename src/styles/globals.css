@@ -1,0 +1,25 @@
+/* ─── Pill buttons ────────────────────────────────────────────────────────
+   Every action button uses a full capsule radius — rounded on the left and
+   right ends.
+
+   `!important` is required here: this bundle sets `borderRadius` via inline
+   style on ~120 raw <button> elements, and an inline style beats any normal
+   stylesheet rule.
+
+   Excluded below are controls that are <button> in markup but are not action
+   buttons. A capsule radius there changes what the control reads as — a
+   circular checkbox looks like a radio — or stretches a full-width row into
+   a stadium. Use `data-pill="off"` to opt an individual button out.
+   ────────────────────────────────────────────────────────────────────── */
+button:not(
+  [data-slot="checkbox"],
+  [data-slot="radio-group-item"],
+  [data-slot="select-trigger"],
+  [data-slot="accordion-trigger"],
+  [data-slot="sidebar-menu-button"],
+  [data-slot="sidebar-rail"],
+  [data-pill="off"]
+),
+a[data-slot="button"] {
+  border-radius: 9999px !important;
+}
