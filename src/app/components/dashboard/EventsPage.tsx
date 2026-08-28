@@ -255,6 +255,7 @@ function Card({ children, className, style }: { children: React.ReactNode; class
 function EventListTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick}
+      data-pill="off"
       className="pb-3 transition-colors cursor-pointer"
       style={{
         fontSize: T.sm, fontWeight: active ? T.fw_semi : T.fw_normal,

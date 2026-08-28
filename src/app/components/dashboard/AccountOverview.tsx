@@ -248,6 +248,7 @@ export function AccountOverview() {
           <div className="flex gap-0">
             {TABS.map((t) => (
               <button key={t.key} onClick={() => setTab(t.key)}
+                data-pill="off"
                 style={{
                   background: "none", border: "none", cursor: "pointer",
                   display: "flex", alignItems: "center", gap: 6,
