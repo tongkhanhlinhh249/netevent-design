@@ -15,6 +15,7 @@ export const DEMO_EVENT: EventDraft = {
   requireApproval: false,
   limitAttendees: false,
   maxAttendees: "",
+  ticketPrice: "",
   status: "ended",
   cover: "linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)",
 };

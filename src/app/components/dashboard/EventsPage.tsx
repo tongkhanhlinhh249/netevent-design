@@ -16,6 +16,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
+import { THEMES } from "../../data/themes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose } from "../ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "../ui/dialog";
@@ -200,21 +201,17 @@ export interface EventDraft {
   requireApproval: boolean;
   limitAttendees: boolean;
   maxAttendees: string;
+  /** Giá vé cơ bản; chuỗi rỗng nghĩa là miễn phí. Hạng vé chi tiết nằm ở Kho vé. */
+  ticketPrice: string;
   status: "draft" | "published";
   cover: string;
 }
 
 // ── Theme gradient covers ─────────────────────────────────────────────────────
 
-// `gradient` is the cover artwork; `page` is the background of the public
-// event page — it stays light so page text keeps its contrast.
-export const THEMES = [
-  { id: "minimal",  label: "Minimal",       gradient: "linear-gradient(135deg, #f8faff 0%, #e8f0fe 100%)", page: "#f7f9ff" },
-  { id: "gradient", label: "Gradient",      gradient: "linear-gradient(135deg, #1eaaff 0%, #7c3aed 100%)", page: "#eff3ff" },
-  { id: "conference",label:"Conference",    gradient: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)", page: "#eef2f7" },
-  { id: "workshop", label: "Workshop",      gradient: "linear-gradient(135deg, #064e3b 0%, #10b981 100%)", page: "#edfaf3" },
-  { id: "launch",   label: "Product Launch",gradient: "linear-gradient(135deg, #1c1917 0%, #7c2d12 100%)", page: "#fdf3ed" },
-];
+// Định nghĩa nằm ở data/themes.ts (LandingPage cũng dùng); re-export để các
+// import sẵn có từ EventsPage không phải đổi.
+export { THEMES } from "../../data/themes";
 
 // ── Múi giờ hiển thị (lấy theo trình duyệt) ───────────────────────────────────
 
@@ -953,6 +950,8 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   const [requireApproval, setRequireApproval] = useState(false);
   const [limitAttendees, setLimitAttendees] = useState(false);
   const [maxAttendees, setMaxAttendees] = useState("");
+  const [isPaid, setIsPaid] = useState(false);
+  const [ticketPrice, setTicketPrice] = useState("");
   const [form, setForm] = useState(() => {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
@@ -988,6 +987,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         format, location: needsLocation ? form.location : (needsOnlineLink ? form.onlineLink : ""),
         theme, visibility,
         requireApproval, limitAttendees, maxAttendees: limitAttendees ? maxAttendees : "",
+        ticketPrice: isPaid ? ticketPrice : "",
         status: "draft",
         cover: THEMES.find((t) => t.id === theme)?.gradient ?? THEMES[1].gradient,
       };
@@ -999,12 +999,33 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
     <div className="w-full flex flex-col" style={{ minHeight: "min(calc(100vh - 180px), 100%)" }}>
       {/* Back */}
 
-      <div className="flex items-baseline justify-between mb-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
         <h2 style={{ color: T.foreground, fontSize: T["2xl"], fontWeight: T.fw_semi }}>Tạo sự kiện</h2>
-        <span style={{ fontSize: T.xs, padding: "2px 10px", borderRadius: "999px",
-          backgroundColor: T.warningSubtle, color: T.warningText, border: `1px solid ${T.warningText}` }}>
-          Bản nháp
-        </span>
+        <div className="flex items-center gap-3">
+          {/* Quyền riêng tư */}
+          <div className="flex gap-0.5 p-0.5 rounded-full shrink-0" style={{ backgroundColor: T.secondary }}>
+            {([
+              { id: "public",  label: "Công khai", icon: Globe },
+              { id: "private", label: "Riêng tư",  icon: Eye },
+            ]).map((v) => {
+              const on = visibility === v.id;
+              return (
+                <button key={v.id} type="button" onClick={() => setVisibility(v.id)}
+                  aria-pressed={on}
+                  className="flex items-center gap-1.5 px-3 py-1 whitespace-nowrap transition-colors cursor-pointer"
+                  style={{
+                    fontSize: T.xs,
+                    fontWeight: on ? T.fw_semi : T.fw_normal,
+                    backgroundColor: on ? T.background : "transparent",
+                    color: on ? T.primary : T.mutedFg,
+                    boxShadow: on ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                  }}>
+                  <v.icon className="size-3.5" /> {v.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 flex-1">
@@ -1022,33 +1043,6 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
             </div>
 
             <div className="px-6 py-5 flex flex-col gap-5 overflow-y-auto" style={{ maxHeight: "min(calc(100vh - 320px), 60vh)" }}>
-
-              {/* 0. Quyền riêng tư — label và control nằm chung một dòng cho gọn */}
-              <div className="flex items-center justify-between gap-3">
-                <Label>Quyền riêng tư</Label>
-                <div className="flex gap-0.5 p-0.5 rounded-full shrink-0" style={{ backgroundColor: T.secondary }}>
-                  {([
-                    { id: "public",  label: "Công khai", icon: Globe },
-                    { id: "private", label: "Riêng tư",  icon: Eye },
-                  ]).map((v) => {
-                    const on = visibility === v.id;
-                    return (
-                      <button key={v.id} type="button" onClick={() => setVisibility(v.id)}
-                        aria-pressed={on}
-                        className="flex items-center gap-1.5 px-3 py-1 whitespace-nowrap transition-colors cursor-pointer"
-                        style={{
-                          fontSize: T.xs,
-                          fontWeight: on ? T.fw_semi : T.fw_normal,
-                          backgroundColor: on ? T.background : "transparent",
-                          color: on ? T.primary : T.mutedFg,
-                          boxShadow: on ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-                        }}>
-                        <v.icon className="size-3.5" /> {v.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
 
               {/* 1. Tên sự kiện */}
               <div className="flex flex-col gap-1.5">
@@ -1194,8 +1188,24 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                   <div className="flex items-center px-4 gap-3" style={{ height: 52, borderBottom: `1px dashed ${T.border}` }}>
                     <Ticket className="size-4 shrink-0" style={{ color: T.mutedFg }} />
                     <span style={{ fontSize: T.sm, color: T.foreground }}>Giá vé</span>
-                    <div className="flex-1 flex items-center justify-end">
-                      <span style={{ fontSize: T.sm, color: T.mutedFg }}>Miễn phí</span>
+                    <div className="flex-1 flex items-center justify-end gap-2">
+                      {isPaid ? (
+                        <>
+                          <Input type="number" min={0} step={1000} placeholder="499000"
+                            value={ticketPrice} onChange={(e) => setTicketPrice(e.target.value)}
+                            className="h-8 w-28 text-right" style={{ fontSize: T.sm }} />
+                          <span style={{ fontSize: T.sm, color: T.mutedFg }}>đ</span>
+                          <button type="button" onClick={() => { setIsPaid(false); setTicketPrice(""); }}
+                            className="cursor-pointer transition-opacity hover:opacity-70"
+                            style={{ fontSize: T.xs, color: T.mutedFg }}>Miễn phí</button>
+                        </>
+                      ) : (
+                        <button type="button" onClick={() => setIsPaid(true)}
+                          className="flex items-center gap-1.5 cursor-pointer transition-opacity hover:opacity-70"
+                          style={{ fontSize: T.sm, color: T.mutedFg }}>
+                          Miễn phí <Pencil className="size-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -1234,7 +1244,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
 
                 </div>
                 <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6 }}>
-                  Hạng vé và giá vé chi tiết được thiết lập ở <strong>Kho vé</strong> sau khi tạo bản nháp.
+                  Hạng vé và giá vé chi tiết được thiết lập ở <strong>Kho vé</strong> sau khi tạo sự kiện.
                 </p>
               </div>
 

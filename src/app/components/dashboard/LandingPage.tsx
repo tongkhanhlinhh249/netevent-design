@@ -14,6 +14,7 @@ import { Checkbox } from "../ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "../ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { cn } from "../ui/utils";
+import { themePageBg } from "../../data/themes";
 
 // ── CSS tokens ─────────────────────────────────────────────────────────────────
 
@@ -1285,7 +1286,7 @@ function LandingPageEditor({ event, settings, onSettingsChange }: {
 
       {/* ── Right canvas ── */}
       <div className="flex-1 min-w-0 overflow-auto">
-        <DemoPublicLandingPage bgStyle={settings.bgStyle} bgColor={settings.bgColor} regMode={settings.regMode} ticketsConfigured={settings.ticketsConfigured} coverUrl={coverUrl} />
+        <DemoPublicLandingPage bgStyle={settings.bgStyle} bgColor={settings.bgColor} regMode={settings.regMode} ticketsConfigured={settings.ticketsConfigured} coverUrl={coverUrl} themeBg={themePageBg(event.theme)} />
       </div>
 
       {/* ── Popup: Chỉnh sửa giới thiệu sự kiện ── */}
@@ -1501,7 +1502,7 @@ const DEMO_TIERS = [
 // Event brand accent color (separate from platform primary)
 const OG = "#FF8644";
 
-export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfigured = true, coverUrl }: { bgStyle?: "light" | "white" | "brand"; bgColor?: string; regMode?: RegMode; ticketsConfigured?: boolean; coverUrl?: string | null } = {}) {
+export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfigured = true, coverUrl, themeBg }: { bgStyle?: "light" | "white" | "brand"; bgColor?: string; regMode?: RegMode; ticketsConfigured?: boolean; coverUrl?: string | null; themeBg?: string } = {}) {
   const showTiers = regMode === "tickets" || regMode === undefined; // default to showing tiers in /demo
   const [step, setStep]         = useState<"select" | "form" | "payment" | "success">("select");
   const [selectedTier, setTier] = useState<string | null>(null);
@@ -1555,7 +1556,14 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
   const eventName = "NetEvent Demo Conference 2026";
 
   return (
-    <div className="min-h-full" style={{ backgroundColor: bgStyle === "white" ? "#ffffff" : bgStyle === "brand" && bgColor ? bgColor + "18" : "#f6f8fb" }}>
+    <div className="min-h-full" style={{
+      // "Trắng" và "Màu thương hiệu" là lựa chọn tường minh nên vẫn thắng;
+      // còn lại nền trang lấy theo giao diện (theme) của sự kiện.
+      backgroundColor: bgStyle === "white" ? "#ffffff"
+        : bgStyle === "brand" && bgColor ? bgColor + "18"
+        : (themeBg ?? "#f6f8fb"),
+      transition: "background-color 0.2s",
+    }}>
 
       {/* ── Main two-column layout ── */}
       <div className="mx-auto px-4 lg:px-6 py-8 lg:py-12" style={{ maxWidth: "1160px" }}>
