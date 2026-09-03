@@ -712,7 +712,6 @@ function EventsListScreen({ events, onCreateEvent, onManage }: {
   const [listTab, setListTab]         = useState<ListTab>("active");
   const [search, setSearch]           = useState("");
   const [filterFormat, setFormat]     = useState("all-format");
-  const [filterPublish, setPublish]   = useState("all-publish");
 
   // Hai trạng thái: "Đang diễn ra" gộp sự kiện đang chạy, sắp diễn ra và bản
   // nháp đang chuẩn bị; "Đã kết thúc" gộp sự kiện đã xong, đã lưu trữ và đã
@@ -724,12 +723,6 @@ function EventsListScreen({ events, onCreateEvent, onManage }: {
     ended:  (ev) => CLOSED.includes(ev.status),
   };
 
-  const publishFilter = (ev: TimelineEvent) => {
-    if (filterPublish === "published")   return ev.status !== "draft";
-    if (filterPublish === "unpublished") return ev.status === "draft";
-    return true;
-  };
-
   const formatFilter = (ev: TimelineEvent) => {
     if (filterFormat === "offline") return ev.format === "offline";
     if (filterFormat === "online")  return ev.format === "online";
@@ -738,7 +731,6 @@ function EventsListScreen({ events, onCreateEvent, onManage }: {
 
   const filtered = events.filter((ev) =>
     tabFilter[listTab](ev) &&
-    publishFilter(ev) &&
     formatFilter(ev) &&
     (search === "" || ev.name.toLowerCase().includes(search.toLowerCase()) || ev.location.toLowerCase().includes(search.toLowerCase()))
   );
@@ -750,51 +742,43 @@ function EventsListScreen({ events, onCreateEvent, onManage }: {
 
       {/* ── Package banner ── */}
 
-      {/* ── Tabs ── */}
-      <div className="flex gap-5 overflow-x-auto" style={{ borderBottom: `1px solid ${T.border}`, marginBottom: "24px" }}>
-        {([
-          { id: "active" as ListTab, label: "Đang diễn ra" },
-          { id: "ended"  as ListTab, label: "Đã kết thúc" },
-        ]).map((t) => (
-          <EventListTab key={t.id} label={t.label} active={listTab === t.id} onClick={() => setListTab(t.id)} />
-        ))}
-      </div>
-
-      {/* ── Search + filter row (only when events exist) ── */}
-      {hasEvents && (
-        <div className="flex items-center gap-2 flex-wrap" style={{ marginBottom: "32px" }}>
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none" style={{ color: T.mutedFg }} />
-            <Input
-              placeholder="Tìm sự kiện..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-9"
-              style={{ fontSize: T.sm }}
-            />
-          </div>
-          <Select value={filterFormat} onValueChange={setFormat}>
-            <SelectTrigger className="h-9 w-[152px] cursor-pointer" style={{ fontSize: T.sm }}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all-format">Tất cả hình thức</SelectItem>
-              <SelectItem value="offline">Offline</SelectItem>
-              <SelectItem value="online">Online</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterPublish} onValueChange={setPublish}>
-            <SelectTrigger className="h-9 w-[180px] cursor-pointer" style={{ fontSize: T.sm }}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all-publish">Trạng thái xuất bản</SelectItem>
-              <SelectItem value="unpublished">Chưa xuất bản</SelectItem>
-              <SelectItem value="published">Đã xuất bản</SelectItem>
-            </SelectContent>
-          </Select>
+      {/* ── Tabs + tìm kiếm + lọc, cùng một hàng ── */}
+      <div className="flex items-end justify-between gap-4 flex-wrap"
+        style={{ borderBottom: `1px solid ${T.border}`, marginBottom: "32px" }}>
+        <div className="flex gap-5 overflow-x-auto">
+          {([
+            { id: "active" as ListTab, label: "Đang diễn ra" },
+            { id: "ended"  as ListTab, label: "Đã kết thúc" },
+          ]).map((t) => (
+            <EventListTab key={t.id} label={t.label} active={listTab === t.id} onClick={() => setListTab(t.id)} />
+          ))}
         </div>
-      )}
+
+        {hasEvents && (
+          <div className="flex items-center gap-2 flex-wrap" style={{ paddingBottom: "8px" }}>
+            <div className="relative w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none" style={{ color: T.mutedFg }} />
+              <Input
+                placeholder="Tìm sự kiện..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-9"
+                style={{ fontSize: T.sm }}
+              />
+            </div>
+            <Select value={filterFormat} onValueChange={setFormat}>
+              <SelectTrigger className="h-9 w-[152px] cursor-pointer" style={{ fontSize: T.sm }}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all-format">Tất cả hình thức</SelectItem>
+                <SelectItem value="offline">Offline</SelectItem>
+                <SelectItem value="online">Online</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
 
       {/* ── Timeline or empty state ── */}
       {hasEvents && filtered.length > 0 ? (
