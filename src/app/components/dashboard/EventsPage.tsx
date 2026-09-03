@@ -996,25 +996,30 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
 
             <div className="px-6 py-5 flex flex-col gap-5 overflow-y-auto" style={{ maxHeight: "min(calc(100vh - 320px), 60vh)" }}>
 
-              {/* 0. Quyền riêng tư */}
-              <div className="flex flex-col gap-1.5">
+              {/* 0. Quyền riêng tư — label và control nằm chung một dòng cho gọn */}
+              <div className="flex items-center justify-between gap-3">
                 <Label>Quyền riêng tư</Label>
-                <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${T.border}` }}>
+                <div className="flex gap-0.5 p-0.5 rounded-full shrink-0" style={{ backgroundColor: T.secondary }}>
                   {([
                     { id: "public",  label: "Công khai", icon: Globe },
                     { id: "private", label: "Riêng tư",  icon: Eye },
-                  ]).map((v, i) => (
-                    <button key={v.id} type="button" onClick={() => setVisibility(v.id)}
-                      className="flex-1 py-2 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                      style={{
-                        fontSize: T.sm, fontWeight: visibility === v.id ? T.fw_semi : T.fw_normal,
-                        backgroundColor: visibility === v.id ? T.primary : T.background,
-                        color: visibility === v.id ? T.primaryFg : T.mutedFg,
-                        borderRight: i < 1 ? `1px solid ${T.border}` : "none",
-                      }}>
-                      <v.icon className="size-3.5" /> {v.label}
-                    </button>
-                  ))}
+                  ]).map((v) => {
+                    const on = visibility === v.id;
+                    return (
+                      <button key={v.id} type="button" onClick={() => setVisibility(v.id)}
+                        aria-pressed={on}
+                        className="flex items-center gap-1.5 px-3 py-1 whitespace-nowrap transition-colors cursor-pointer"
+                        style={{
+                          fontSize: T.xs,
+                          fontWeight: on ? T.fw_semi : T.fw_normal,
+                          backgroundColor: on ? T.background : "transparent",
+                          color: on ? T.primary : T.mutedFg,
+                          boxShadow: on ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                        }}>
+                        <v.icon className="size-3.5" /> {v.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1028,7 +1033,9 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
               {/* 2. Thời gian bắt đầu / kết thúc */}
               <div className="flex flex-col gap-1.5">
                 <Label>Thời gian <span style={{ color: T.destructive }}>*</span></Label>
-                <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${T.border}`, backgroundColor: `color-mix(in srgb, ${T.primary} 5%, ${T.background})` }}>
+                <div className="flex items-stretch gap-2">
+                  {/* Cột trái — bắt đầu / kết thúc */}
+                  <div className="flex-1 min-w-0 rounded-2xl overflow-hidden" style={{ border: `1px solid ${T.border}`, backgroundColor: `color-mix(in srgb, ${T.primary} 5%, ${T.background})` }}>
                   {/* Bắt đầu */}
                   <div className="flex items-center px-4 gap-4" style={{ height: 52, borderBottom: `1px dashed ${T.border}` }}>
                     <div className="flex flex-col items-center shrink-0" style={{ width: 10, gap: 0 }}>
@@ -1061,7 +1068,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                     </div>
                   </div>
                   {/* Kết thúc */}
-                  <div className="flex items-center px-4 gap-4" style={{ height: 52, borderBottom: `1px dashed ${T.border}` }}>
+                  <div className="flex items-center px-4 gap-4" style={{ height: 52 }}>
                     <div className="flex flex-col items-center shrink-0" style={{ width: 10 }}>
                       <div style={{ width: 9, height: 9, borderRadius: "50%", border: `1.5px solid ${T.mutedFg}`, backgroundColor: "transparent" }} />
                     </div>
@@ -1089,15 +1096,15 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                       </div>
                     </div>
                   </div>
-                  {/* Múi giờ */}
-                  <div className="flex items-center px-4 gap-4" style={{ height: 44 }}>
-                    <div className="flex items-center justify-center shrink-0" style={{ width: 10 }}>
-                      <Globe className="size-3.5" style={{ color: T.mutedFg }} />
-                    </div>
-                    <span style={{ fontSize: T.sm, color: T.mutedFg, minWidth: 64 }}>Múi giờ</span>
-                    <div className="flex-1 flex items-baseline justify-end gap-2">
-                      <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{TIMEZONE.label}</span>
-                      <span style={{ fontSize: T.xs, color: T.mutedFg }}>{TIMEZONE.city}</span>
+                  </div>
+
+                  {/* Cột phải — múi giờ */}
+                  <div className="rounded-2xl shrink-0 flex flex-col justify-center gap-1.5 px-4 py-3"
+                    style={{ width: 136, border: `1px solid ${T.border}`, backgroundColor: `color-mix(in srgb, ${T.primary} 5%, ${T.background})` }}>
+                    <Globe className="size-4 shrink-0" style={{ color: T.mutedFg }} />
+                    <div className="flex flex-col min-w-0">
+                      <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground, whiteSpace: "nowrap" }}>{TIMEZONE.label}</span>
+                      <span className="truncate" style={{ fontSize: T.xs, color: T.mutedFg }}>{TIMEZONE.city}</span>
                     </div>
                   </div>
                 </div>
@@ -1218,7 +1225,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         <div className="flex items-center gap-3">
           <Button variant="outline" onClick={onCancel}>Hủy</Button>
           <Button disabled={!isValid || loading} onClick={handleCreate}>
-            {loading ? "Đang tạo..." : "Tạo bản nháp"}
+            {loading ? "Đang tạo..." : "Tạo sự kiện"}
           </Button>
         </div>
       </div>
