@@ -288,6 +288,11 @@ export function AttendeesTab({ event }: { event: EventDraft }) {
     return matchSearch && matchTier && matchStatus && matchCheckin && matchQuick;
   });
 
+  // Lấy từ TIER_BREAKDOWN để khớp với các thẻ hạng vé ngay bên dưới.
+  const totalRegistered = TIER_BREAKDOWN.reduce((n, t) => n + t.registered, 0);
+  const totalCapacity   = TIER_BREAKDOWN.reduce((n, t) => n + t.registered + t.remaining, 0);
+  const registrationOpen = event.status !== "ended" && event.status !== "cancelled";
+
   const stats = {
     total: attendees.length,
     issued: attendees.length,
@@ -395,6 +400,57 @@ export function AttendeesTab({ event }: { event: EventDraft }) {
 
   return (
     <div className="flex flex-col gap-6">
+
+      {/* ── Tổng quan nhanh ── */}
+      <div className="flex flex-col gap-4">
+        <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Tổng quan nhanh</h3>
+
+        <div className="flex flex-col gap-2">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="flex items-baseline gap-1.5">
+              <span className="inline-block size-2 rounded-full self-center shrink-0"
+                style={{ backgroundColor: registrationOpen ? T.successText : T.mutedFg }} />
+              <span style={{ fontSize: T.xl, fontWeight: T.fw_bold, lineHeight: 1,
+                color: registrationOpen ? T.successText : T.foreground }}>{totalRegistered}</span>
+              <span style={{ fontSize: T.sm, color: registrationOpen ? T.successText : T.mutedFg }}>đã đăng ký</span>
+            </span>
+            <span style={{ fontSize: T.sm, color: T.mutedFg }}>
+              sức chứa <span style={{ fontWeight: T.fw_semi, color: T.foreground }}>{totalCapacity}</span>
+            </span>
+          </div>
+          <div className="rounded-full overflow-hidden" style={{ height: 6, backgroundColor: T.border }}>
+            <div className="h-full rounded-full transition-all"
+              style={{ width: `${Math.round(totalRegistered / totalCapacity * 100)}%`,
+                backgroundColor: registrationOpen ? T.successText : T.mutedFg }} />
+          </div>
+          <p className="text-right" style={{ fontSize: T.xs,
+            color: registrationOpen ? T.mutedFg : T.destructive }}>
+            {registrationOpen ? "Đang mở đăng ký" : "Đã đóng đăng ký"}
+          </p>
+        </div>
+
+        {/* Ba thao tác nhanh */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {([
+            { label: "Mời khách",           sub: undefined,              icon: Mail,     color: T.primary,     bg: `color-mix(in srgb, ${T.primary} 12%, transparent)` },
+            { label: "Check-in khách",      sub: undefined,              icon: QrCode,   color: T.successText, bg: T.successSubtle },
+            { label: "Danh sách công khai", sub: "Hiển thị cho khách",   icon: Eye,      color: T.warningText, bg: T.warningSubtle },
+          ]).map((a) => (
+            <button key={a.label} data-pill="off"
+              className="flex items-center gap-3 rounded-xl p-4 text-left transition-all cursor-pointer hover:opacity-90"
+              style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+              <span className="size-9 rounded-lg shrink-0 flex items-center justify-center"
+                style={{ backgroundColor: a.bg }}>
+                <a.icon className="size-4" style={{ color: a.color }} />
+              </span>
+              <span className="flex flex-col min-w-0">
+                <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{a.label}</span>
+                {a.sub && <span style={{ fontSize: T.xs, color: T.mutedFg }}>{a.sub}</span>}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Tier breakdown */}
       <div>
