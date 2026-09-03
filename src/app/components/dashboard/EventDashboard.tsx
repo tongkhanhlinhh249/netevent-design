@@ -73,7 +73,18 @@ const RECENT_ATTENDEES = [
   { name: "Hoàng Quốc Bảo",  email: "bao.hoa***@firm.vn",    ticket: "Vé VIP",         status: "checkin",    time: "35 phút trước" },
 ];
 
+const HOSTS = [
+  { name: "Nguyễn Thị Lan", email: "owner@netevent.vn", role: "Người tạo" },
+  { name: "Trần Văn Minh",  email: "admin@netevent.vn", role: "Quản lý"   },
+];
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Hai chữ cái đầu của tên, dùng cho avatar tròn. */
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase();
+}
 
 function fmtCurrency(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(0)}M ₫`;
@@ -203,6 +214,10 @@ export function EventDashboard() {
   const isLive       = status === "live";
   const isEnded      = status === "ended";
   const hasData      = !isDraft;
+
+  // Lấy từ TICKET_TIERS để số ở cột phải khớp với phần "Vé và doanh thu".
+  const totalRegistered = TICKET_TIERS.reduce((n, t) => n + t.sold, 0);
+  const totalCapacity   = TICKET_TIERS.reduce((n, t) => n + t.total, 0);
   const totalReg     = hasData ? 328 : 0;
   const totalCheckin = (isLive || isEnded) ? 142 : 0;
   const totalRevenue = 45_000_000;
@@ -222,7 +237,8 @@ export function EventDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 items-start">
+      {/* Lưới 2 cột: trái = nội dung chính, phải = lời mời / người tham dự / ban tổ chức */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6 items-start">
 
         {/* LEFT column */}
         <div className="flex flex-col gap-5">
@@ -471,6 +487,124 @@ export function EventDashboard() {
             )}
           </div>
         </div>{/* end LEFT column */}
+
+        {/* RIGHT column */}
+        <div className="flex flex-col gap-5">
+
+          {/* ── Lời mời ── */}
+          <div className="rounded-2xl p-5" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+            <div className="flex items-start justify-between gap-3">
+              <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Lời mời</h3>
+              <Button size="sm" variant="outline" className="shrink-0" style={{ fontSize: T.xs }}>
+                <Plus className="size-3.5" /> Mời khách
+              </Button>
+            </div>
+            <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6, marginTop: 4, marginBottom: 14 }}>
+              Mời người đăng ký, danh bạ và khách cũ qua email hoặc SMS.
+            </p>
+            <div className="flex items-start gap-3 rounded-xl p-4" style={{ border: `1px solid ${T.border}` }}>
+              <Mail className="size-5 shrink-0 mt-0.5" style={{ color: T.mutedFg, opacity: 0.45 }} />
+              <div className="min-w-0">
+                <p style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.mutedFg }}>Chưa gửi lời mời nào</p>
+                <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2, lineHeight: 1.5 }}>
+                  Bạn có thể mời người đăng ký, danh bạ và khách cũ tới sự kiện.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Người tham dự ── */}
+          <div className="rounded-2xl p-5" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+            <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Người tham dự</h3>
+            <div className="flex items-baseline justify-between gap-3 mt-3 mb-2">
+              <span className="flex items-baseline gap-1.5">
+                <span className="inline-block size-2 rounded-full self-center shrink-0" style={{ backgroundColor: T.successText }} />
+                <span style={{ fontSize: T.xl, fontWeight: T.fw_bold, color: T.successText, lineHeight: 1 }}>{totalRegistered}</span>
+                <span style={{ fontSize: T.sm, color: T.successText }}>đã đăng ký</span>
+              </span>
+              <span style={{ fontSize: T.sm, color: T.mutedFg }}>
+                sức chứa <span style={{ fontWeight: T.fw_semi, color: T.foreground }}>{totalCapacity}</span>
+              </span>
+            </div>
+            <div className="rounded-full overflow-hidden" style={{ height: 6, backgroundColor: T.border }}>
+              <div className="h-full rounded-full transition-all"
+                style={{ width: `${Math.round(totalRegistered / totalCapacity * 100)}%`, backgroundColor: T.successText }} />
+            </div>
+          </div>
+
+          {/* ── Đăng ký gần đây ── */}
+          <div className="rounded-2xl p-5" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Đăng ký gần đây</h3>
+              <Button size="sm" variant="outline" className="shrink-0" style={{ fontSize: T.xs }}>
+                Tất cả <ChevronRight className="size-3.5" />
+              </Button>
+            </div>
+            <div className="flex flex-col">
+              {RECENT_ATTENDEES.slice(0, 3).map((a, i) => (
+                <div key={a.email} className="flex items-center gap-3 py-2.5"
+                  style={{ borderTop: i === 0 ? "none" : `1px solid ${T.border}` }}>
+                  <span className="size-8 rounded-full shrink-0 flex items-center justify-center"
+                    style={{ backgroundColor: T.secondary, color: T.mutedFg, fontSize: "10px", fontWeight: T.fw_semi }}>
+                    {initials(a.name)}
+                  </span>
+                  {/* Cột chỉ rộng 340px nên hạng vé và thời gian xuống dòng dưới,
+                      chỉ giữ một nhãn trạng thái bên phải. */}
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{a.name}</p>
+                    <p className="truncate" style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 1 }}>
+                      {a.ticket} · {a.time}
+                    </p>
+                  </div>
+                  <span className="shrink-0" style={{ fontSize: "10px", padding: "1px 7px", borderRadius: 999,
+                    whiteSpace: "nowrap",
+                    backgroundColor: a.status === "checkin" ? T.successSubtle : T.secondary,
+                    color: a.status === "checkin" ? T.successText : T.mutedFg }}>
+                    {a.status === "checkin" ? "Đã check-in" : "Sẽ tham dự"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Ban tổ chức ── */}
+          <div className="rounded-2xl p-5" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Ban tổ chức</h3>
+              <Button size="sm" variant="outline" className="shrink-0" style={{ fontSize: T.xs }}>
+                <Plus className="size-3.5" /> Thêm
+              </Button>
+            </div>
+            <div className="flex flex-col">
+              {HOSTS.map((h, i) => (
+                <div key={h.email} className="flex items-center gap-3 py-2.5"
+                  style={{ borderTop: i === 0 ? "none" : `1px solid ${T.border}` }}>
+                  <span className="size-8 rounded-full shrink-0 flex items-center justify-center"
+                    style={{ backgroundColor: T.secondary, color: T.mutedFg, fontSize: "10px", fontWeight: T.fw_semi }}>
+                    {initials(h.name)}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{h.name}</p>
+                    <p className="truncate" style={{ fontSize: T.xs, color: T.mutedFg }}>{h.email}</p>
+                  </div>
+                  <span className="shrink-0" style={{ fontSize: "10px", padding: "1px 7px", borderRadius: 999,
+                    whiteSpace: "nowrap",
+                    backgroundColor: i === 0 ? T.successSubtle : T.warningSubtle,
+                    color: i === 0 ? T.successText : T.warningText }}>{h.role}</span>
+                  <button className="shrink-0 cursor-pointer transition-opacity hover:opacity-70"
+                    style={{ background: "none", border: "none", padding: 2, color: T.mutedFg }}>
+                    <Pencil className="size-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button className="flex items-center gap-2 mt-3 cursor-pointer transition-opacity hover:opacity-70"
+              style={{ background: "none", border: "none", padding: 0, fontSize: T.xs, color: T.mutedFg }}>
+              <Settings className="size-3.5" /> Quản lý nhân sự check-in và tuỳ chọn
+            </button>
+          </div>
+
+        </div>{/* end RIGHT column */}
 
       </div>
     </div>
