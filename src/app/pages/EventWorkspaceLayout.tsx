@@ -1,6 +1,6 @@
 import * as React from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
-import { ChevronDown, Gamepad2, ExternalLink, Pencil } from "lucide-react";
+import { ChevronDown, Gamepad2, ExternalLink } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -93,8 +93,12 @@ export function EventWorkspaceLayout() {
                 </div>
               </div>
             </div>
-            <Button variant="outline" size="sm" style={{ fontSize: T.xs, flexShrink: 0 }}>
-              Trang sự kiện <Pencil className="size-3" />
+            {/* Mở trang sự kiện công khai ở tab riêng. Dùng thẻ <a> thay cho
+                navigate() để giữ được middle-click / ctrl+click. */}
+            <Button asChild variant="outline" size="sm" style={{ fontSize: T.xs, flexShrink: 0 }}>
+              <a href="/demo" target="_blank" rel="noreferrer">
+                Trang sự kiện <ExternalLink className="size-3" />
+              </a>
             </Button>
           </div>
 

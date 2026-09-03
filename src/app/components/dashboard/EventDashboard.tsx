@@ -7,6 +7,7 @@ import {
   Download, Eye, Settings, Copy, Facebook, Twitter, Linkedin, MessageCircle, Image
 } from "lucide-react";
 import { Button } from "../ui/button";
+import { Switch } from "../ui/switch";
 
 // ── Tokens ───────────────────────────────────────────────────────────────────
 
@@ -214,6 +215,9 @@ export function EventDashboard() {
   const isLive       = status === "live";
   const isEnded      = status === "ended";
   const hasData      = !isDraft;
+
+  const [emails, setEmails] = useState({ confirm: true, remind: false, thanks: false });
+  const setEmail = (k: keyof typeof emails) => (v: boolean) => setEmails((e) => ({ ...e, [k]: v }));
 
   // Lấy từ TICKET_TIERS để số ở cột phải khớp với phần "Vé và doanh thu".
   const totalRegistered = TICKET_TIERS.reduce((n, t) => n + t.sold, 0);
@@ -526,36 +530,31 @@ export function EventDashboard() {
             </div>
           </div>
 
-          {/* ── Đăng ký gần đây ── */}
+          {/* ── Cấu hình email ── */}
           <div className="rounded-2xl p-5" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Đăng ký gần đây</h3>
+            <div className="flex items-center justify-between gap-3">
+              <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Cấu hình email</h3>
               <Button size="sm" variant="outline" className="shrink-0" style={{ fontSize: T.xs }}>
-                Tất cả <ChevronRight className="size-3.5" />
+                <Pencil className="size-3.5" /> Nội dung
               </Button>
             </div>
+            <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6, marginTop: 4, marginBottom: 6 }}>
+              Email tự động gửi cho người tham dự.
+            </p>
             <div className="flex flex-col">
-              {RECENT_ATTENDEES.slice(0, 3).map((a, i) => (
-                <div key={a.email} className="flex items-center gap-3 py-2.5"
+              {([
+                { key: "confirm" as const, label: "Xác nhận đăng ký",       desc: "Gửi ngay sau khi đăng ký thành công." },
+                { key: "remind"  as const, label: "Nhắc lịch trước sự kiện", desc: "Gửi trước giờ bắt đầu 24 tiếng." },
+                { key: "thanks"  as const, label: "Cảm ơn sau sự kiện",      desc: "Gửi sau khi sự kiện kết thúc." },
+              ]).map((row, i) => (
+                <div key={row.key} className="flex items-start gap-3 py-3"
                   style={{ borderTop: i === 0 ? "none" : `1px solid ${T.border}` }}>
-                  <span className="size-8 rounded-full shrink-0 flex items-center justify-center"
-                    style={{ backgroundColor: T.secondary, color: T.mutedFg, fontSize: "10px", fontWeight: T.fw_semi }}>
-                    {initials(a.name)}
-                  </span>
-                  {/* Cột chỉ rộng 340px nên hạng vé và thời gian xuống dòng dưới,
-                      chỉ giữ một nhãn trạng thái bên phải. */}
                   <div className="flex-1 min-w-0">
-                    <p className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{a.name}</p>
-                    <p className="truncate" style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 1 }}>
-                      {a.ticket} · {a.time}
-                    </p>
+                    <p style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{row.label}</p>
+                    <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2, lineHeight: 1.5 }}>{row.desc}</p>
                   </div>
-                  <span className="shrink-0" style={{ fontSize: "10px", padding: "1px 7px", borderRadius: 999,
-                    whiteSpace: "nowrap",
-                    backgroundColor: a.status === "checkin" ? T.successSubtle : T.secondary,
-                    color: a.status === "checkin" ? T.successText : T.mutedFg }}>
-                    {a.status === "checkin" ? "Đã check-in" : "Sẽ tham dự"}
-                  </span>
+                  <Switch className="shrink-0 mt-0.5"
+                    checked={emails[row.key]} onCheckedChange={setEmail(row.key)} />
                 </div>
               ))}
             </div>
