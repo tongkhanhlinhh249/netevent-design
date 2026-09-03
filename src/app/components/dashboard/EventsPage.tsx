@@ -17,6 +17,7 @@ import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
 import { THEMES } from "../../data/themes";
+import { useCurrentEvent } from "../../data/currentEvent";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose } from "../ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "../ui/dialog";
@@ -456,13 +457,20 @@ function LocationPicker({
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
+// Sự kiện đang hoạt động chỉ có hai trạng thái: "Đang diễn ra" và "Chờ diễn ra"
+// (bản nháp gộp vào "Chờ diễn ra"). Sự kiện đã khép lại vẫn cần nhãn riêng —
+// gắn "Chờ diễn ra" cho một sự kiện đã xong thì sai sự thật — nên archived và
+// cancelled gộp chung thành "Đã kết thúc".
+const UPCOMING = { bg: "rgba(21,128,61,0.10)",   color: "var(--success-text)",     border: "rgba(21,128,61,0.25)" };
+const CLOSED   = { bg: "rgba(100,116,139,0.08)", color: "var(--muted-foreground)", border: "rgba(100,116,139,0.2)" };
+
 const STATUS_CFG: Record<EventStatus, { label: string; bg: string; color: string; border: string; dot?: boolean }> = {
-  live:      { label: "Đang diễn ra",  bg: "rgba(248,104,128,0.10)", color: "#f86880",             border: "rgba(248,104,128,0.30)", dot: true },
-  published: { label: "Chờ diễn ra",   bg: "rgba(21,128,61,0.10)",   color: "var(--success-text)", border: "rgba(21,128,61,0.25)" },
-  draft:     { label: "Bản nháp",      bg: "var(--secondary)",        color: "var(--muted-foreground)", border: "var(--border)" },
-  ended:     { label: "Đã kết thúc",   bg: "rgba(100,116,139,0.08)", color: "var(--muted-foreground)", border: "rgba(100,116,139,0.2)" },
-  archived:  { label: "Đã lưu trữ",   bg: "var(--secondary)",        color: "var(--muted-foreground)", border: "var(--border)" },
-  cancelled: { label: "Đã hủy",        bg: "rgba(239,68,68,0.08)",   color: "#ef4444",             border: "rgba(239,68,68,0.25)" },
+  live:      { label: "Đang diễn ra", bg: "rgba(248,104,128,0.10)", color: "#f86880", border: "rgba(248,104,128,0.30)", dot: true },
+  published: { label: "Chờ diễn ra",  ...UPCOMING },
+  draft:     { label: "Chờ diễn ra",  ...UPCOMING },
+  ended:     { label: "Đã kết thúc",  ...CLOSED },
+  archived:  { label: "Đã kết thúc",  ...CLOSED },
+  cancelled: { label: "Đã kết thúc",  ...CLOSED },
 };
 
 function StatusPill({ status }: { status: EventStatus }) {
@@ -872,7 +880,7 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange }: {
       />
 
       {/* Section 2: Theme trigger — opens the picker drawer on the right */}
-      <div className="px-4 pt-4">
+      <div className="p-4">
         <button type="button" data-pill="off"
           onClick={() => setThemeOpen(true)}
           className="flex items-center gap-3 p-2.5 rounded-xl w-full text-left cursor-pointer transition-opacity hover:opacity-90"
@@ -925,14 +933,6 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange }: {
         </SheetContent>
       </Sheet>
 
-      {/* Section 3: Helper note */}
-      <div className="px-4 pb-4">
-        <div className="rounded-xl p-3" style={{ backgroundColor: T.secondary, border: `1px solid ${T.border}` }}>
-          <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.7 }}>
-            Tạo bản nháp trước. Bạn sẽ cấu hình <strong>Trang sự kiện</strong>, <strong>Form đăng ký</strong>, <strong>Kho vé</strong> và <strong>Email</strong> trong không gian làm việc sự kiện.
-          </p>
-        </div>
-      </div>
     </div>
   );
 }
@@ -2053,6 +2053,7 @@ function EventWorkspaceScreen({
 
 export function EventsPage({ screen: externalScreen, onScreenChange }: { screen?: EventScreen; onScreenChange?: (s: EventScreen) => void } = {}) {
   const navigate = useNavigate();
+  const { setEvent: setCurrentEvent } = useCurrentEvent();
   const [localScreen, setLocalScreen] = useState<EventScreen>("list");
   const screen = externalScreen ?? localScreen;
   const setScreen = (s: EventScreen) => { setLocalScreen(s); onScreenChange?.(s); };
@@ -2060,6 +2061,9 @@ export function EventsPage({ screen: externalScreen, onScreenChange }: { screen?
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>(MOCK_TIMELINE_EVENTS);
 
   const handleCreated = (ev: EventDraft) => {
+    // Sự kiện vừa tạo trở thành sự kiện đang xem, để workspace và trang sự
+    // kiện dùng đúng theme / quyền riêng tư / giá vé người dùng vừa chọn.
+    setCurrentEvent(ev);
     const newTimelineEvent: TimelineEvent = {
       id: ev.id,
       name: ev.name,

@@ -1,11 +1,12 @@
 import { WorkspaceTabContent } from "../../components/dashboard/EventsPage";
-import { DEMO_EVENT } from "../../data/mockEvent";
+import { useCurrentEvent } from "../../data/currentEvent";
 
 export function CheckInRoute() {
+  const { event } = useCurrentEvent();
   return (
     <WorkspaceTabContent
       tab="checkin"
-      event={DEMO_EVENT}
+      event={event}
       onEditDrawer={() => {}}
     />
   );

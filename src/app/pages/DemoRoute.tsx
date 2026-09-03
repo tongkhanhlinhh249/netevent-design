@@ -1,7 +1,8 @@
 import { DemoPublicLandingPage } from "../components/dashboard/LandingPage";
 import { themePageBg } from "../data/themes";
-import { DEMO_EVENT } from "../data/mockEvent";
+import { useCurrentEvent } from "../data/currentEvent";
 
 export function DemoRoute() {
-  return <DemoPublicLandingPage themeBg={themePageBg(DEMO_EVENT.theme)} />;
+  const { event } = useCurrentEvent();
+  return <DemoPublicLandingPage themeBg={themePageBg(event.theme)} />;
 }

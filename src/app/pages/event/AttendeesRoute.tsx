@@ -1,6 +1,7 @@
 import { AttendeesTab } from "../../components/dashboard/AttendeesTab";
-import { DEMO_EVENT } from "../../data/mockEvent";
+import { useCurrentEvent } from "../../data/currentEvent";
 
 export function AttendeesRoute() {
-  return <AttendeesTab event={DEMO_EVENT as any} />;
+  const { event } = useCurrentEvent();
+  return <AttendeesTab event={event as any} />;
 }

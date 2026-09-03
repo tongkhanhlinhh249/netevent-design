@@ -8,7 +8,7 @@ import { Textarea } from "../components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "../components/ui/dialog";
 import { Upload } from "lucide-react";
-import { DEMO_EVENT } from "../data/mockEvent";
+import { useCurrentEvent } from "../data/currentEvent";
 import { THEMES } from "../components/dashboard/EventsPage";
 
 const T = {
@@ -50,7 +50,7 @@ const MORE_ITEMS = [
 
 export function EventWorkspaceLayout() {
   const navigate = useNavigate();
-  const event = DEMO_EVENT;
+  const { event } = useCurrentEvent();
   const theme = THEMES.find((t) => t.id === event.theme) ?? THEMES[1];
 
   const [editOpen, setEditOpen] = React.useState(false);

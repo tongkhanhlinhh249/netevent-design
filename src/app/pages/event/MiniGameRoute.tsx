@@ -1,6 +1,7 @@
 import { MiniGameTab } from "../../components/dashboard/MiniGameTab";
-import { DEMO_EVENT } from "../../data/mockEvent";
+import { useCurrentEvent } from "../../data/currentEvent";
 
 export function MiniGameRoute() {
-  return <MiniGameTab event={DEMO_EVENT as any} />;
+  const { event } = useCurrentEvent();
+  return <MiniGameTab event={event as any} />;
 }
