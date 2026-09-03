@@ -90,11 +90,6 @@ export function EventWorkspaceLayout() {
                   }}>
                     {event.name}
                   </h2>
-                  <span style={{
-                    fontSize: T.xs, fontWeight: T.fw_semi, padding: "2px 8px", borderRadius: 999,
-                    backgroundColor: T.warningSubtle, color: T.warningText, border: `1px solid ${T.warningText}`,
-                    whiteSpace: "nowrap", flexShrink: 0,
-                  }}>Bản nháp</span>
                 </div>
               </div>
             </div>

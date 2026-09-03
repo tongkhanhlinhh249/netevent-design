@@ -352,19 +352,13 @@ export function EventDashboard() {
                   </p>
                 </div>
 
-                {/* Check-in và Chỉnh sửa nằm chung một hàng */}
-                <div className="flex items-center gap-2 mt-auto">
-                  <button style={{ flex: 1, minWidth: 0, padding: "10px 16px", borderRadius: 999,
-                    border: `1px solid ${T.border}`, backgroundColor: "transparent", cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                    fontSize: T.sm, color: T.foreground, fontWeight: T.fw_medium,
-                    whiteSpace: "nowrap", transition: "background 0.15s" }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = T.secondary; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}>
-                    <QrCode className="size-4" /> Check-in người tham dự
-                  </button>
-                  <Button variant="outline" size="sm" className="shrink-0" style={{ fontSize: T.xs }}>
-                    <Pencil className="size-3.5" /> Chỉnh sửa
+                {/* Hai nút đồng cấp, chia đôi hàng: Chỉnh sửa trái, Check-in phải */}
+                <div className="grid grid-cols-2 gap-2 mt-auto">
+                  <Button variant="outline" className="w-full min-w-0" style={{ fontSize: T.sm }}>
+                    <Pencil className="size-4" /> Chỉnh sửa
+                  </Button>
+                  <Button variant="outline" className="w-full min-w-0" style={{ fontSize: T.sm }}>
+                    <QrCode className="size-4" /> Check-in
                   </Button>
                 </div>
               </div>
