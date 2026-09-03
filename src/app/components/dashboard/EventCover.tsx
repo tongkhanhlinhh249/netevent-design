@@ -169,11 +169,9 @@ export interface EventCoverUploadProps {
   eventName?: string;
   /** Called after crop modal is confirmed */
   onCropSave?: (url: string) => void;
-  /** Background shown behind the placeholder, so the cover reflects the picked theme */
-  placeholderBackground?: string;
 }
 
-export function EventCoverUpload({ previewUrl, onPreviewChange, eventName, onCropSave, placeholderBackground }: EventCoverUploadProps) {
+export function EventCoverUpload({ previewUrl, onPreviewChange, eventName, onCropSave }: EventCoverUploadProps) {
   const [dragging, setDragging] = React.useState(false);
   const [cropSrc, setCropSrc] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -219,7 +217,7 @@ export function EventCoverUpload({ previewUrl, onPreviewChange, eventName, onCro
           overflow: "hidden",
           position: "relative",
           cursor: "pointer",
-          background: previewUrl ? "transparent" : (placeholderBackground ?? "linear-gradient(135deg, var(--secondary) 0%, var(--muted) 100%)"),
+          background: previewUrl ? "transparent" : "linear-gradient(135deg, var(--secondary) 0%, var(--muted) 100%)",
           border: dragging ? `2px dashed ${T.primary}` : `2px dashed ${T.border}`,
         }}
         onClick={() => inputRef.current?.click()}

@@ -206,12 +206,14 @@ export interface EventDraft {
 
 // ── Theme gradient covers ─────────────────────────────────────────────────────
 
+// `gradient` is the cover artwork; `page` is the background of the public
+// event page — it stays light so page text keeps its contrast.
 export const THEMES = [
-  { id: "minimal",  label: "Minimal",       gradient: "linear-gradient(135deg, #f8faff 0%, #e8f0fe 100%)" },
-  { id: "gradient", label: "Gradient",      gradient: "linear-gradient(135deg, #1eaaff 0%, #7c3aed 100%)" },
-  { id: "conference",label:"Conference",    gradient: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)" },
-  { id: "workshop", label: "Workshop",      gradient: "linear-gradient(135deg, #064e3b 0%, #10b981 100%)" },
-  { id: "launch",   label: "Product Launch",gradient: "linear-gradient(135deg, #1c1917 0%, #7c2d12 100%)" },
+  { id: "minimal",  label: "Minimal",       gradient: "linear-gradient(135deg, #f8faff 0%, #e8f0fe 100%)", page: "#f7f9ff" },
+  { id: "gradient", label: "Gradient",      gradient: "linear-gradient(135deg, #1eaaff 0%, #7c3aed 100%)", page: "#eff3ff" },
+  { id: "conference",label:"Conference",    gradient: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)", page: "#eef2f7" },
+  { id: "workshop", label: "Workshop",      gradient: "linear-gradient(135deg, #064e3b 0%, #10b981 100%)", page: "#edfaf3" },
+  { id: "launch",   label: "Product Launch",gradient: "linear-gradient(135deg, #1c1917 0%, #7c2d12 100%)", page: "#fdf3ed" },
 ];
 
 // ── Múi giờ hiển thị (lấy theo trình duyệt) ───────────────────────────────────
@@ -861,48 +863,73 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange }: {
   onThemeChange: (id: string) => void;
 }) {
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+  const [themeOpen, setThemeOpen] = React.useState(false);
   const activeTheme = THEMES.find((t) => t.id === theme);
 
   return (
-    <div className="rounded-2xl overflow-hidden flex flex-col" style={{ border: `1px solid ${T.border}`, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+    <div className="rounded-2xl overflow-hidden flex flex-col"
+      style={{ border: `1px solid ${T.border}`, boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+        backgroundColor: activeTheme?.page ?? T.background, transition: "background-color 0.2s" }}>
       {/* Section 1: Cover 16:9 */}
       <EventCoverUpload
         previewUrl={previewUrl}
         onPreviewChange={setPreviewUrl}
         eventName={form.name || undefined}
-        placeholderBackground={activeTheme?.gradient}
       />
 
-      {/* Section 2: Theme picker for the public event page */}
-      <div className="p-4 flex flex-col gap-3" style={{ backgroundColor: T.background }}>
-        <div className="flex items-baseline justify-between gap-2">
-          <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>Giao diện trang sự kiện</p>
-          <span style={{ fontSize: T.xs, color: T.mutedFg }}>{activeTheme?.label}</span>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {THEMES.map((th) => {
-            const active = th.id === theme;
-            return (
-              <button key={th.id} type="button" data-pill="off"
-                onClick={() => onThemeChange(th.id)}
-                aria-pressed={active}
-                className="flex flex-col items-center gap-1.5 cursor-pointer transition-opacity hover:opacity-80"
-                style={{ width: 56 }}>
-                <div className="w-12 h-8 rounded-lg"
-                  style={{ background: th.gradient,
-                    outline: active ? `2px solid ${T.primary}` : "2px solid transparent",
-                    outlineOffset: "2px" }} />
-                <span style={{ fontSize: T.xs, lineHeight: 1.3, textAlign: "center",
-                  color: active ? T.primary : T.mutedFg,
-                  fontWeight: active ? T.fw_medium : T.fw_normal }}>{th.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6 }}>
-          Giao diện được dùng làm ảnh nền mặc định cho trang sự kiện khi bạn chưa tải ảnh cover.
-        </p>
+      {/* Section 2: Theme trigger — opens the picker drawer on the right */}
+      <div className="px-4 pt-4">
+        <button type="button" data-pill="off"
+          onClick={() => setThemeOpen(true)}
+          className="flex items-center gap-3 p-2.5 rounded-xl w-full text-left cursor-pointer transition-opacity hover:opacity-90"
+          style={{ border: `1px solid ${T.border}`, backgroundColor: T.background }}>
+          <div className="w-10 h-7 rounded-md shrink-0" style={{ background: activeTheme?.gradient }} />
+          <div className="flex flex-col min-w-0 flex-1">
+            <span style={{ fontSize: T.xs, color: T.mutedFg }}>Giao diện trang sự kiện</span>
+            <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{activeTheme?.label}</span>
+          </div>
+          <ChevronDown className="size-4 shrink-0" style={{ color: T.mutedFg }} />
+        </button>
       </div>
+
+      <Sheet open={themeOpen} onOpenChange={setThemeOpen}>
+        <SheetContent className="p-0 flex flex-col gap-0">
+          <SheetHeader className="px-6 py-4" style={{ borderBottom: `1px solid ${T.border}` }}>
+            <SheetTitle>Giao diện trang sự kiện</SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-3">
+            {THEMES.map((th) => {
+              const on = th.id === theme;
+              return (
+                <button key={th.id} type="button" data-pill="off"
+                  onClick={() => { onThemeChange(th.id); setThemeOpen(false); }}
+                  aria-pressed={on}
+                  className="flex items-center gap-3 p-3 rounded-xl w-full text-left cursor-pointer transition-colors"
+                  style={{
+                    border: on ? `2px solid ${T.primary}` : `1px solid ${T.border}`,
+                    backgroundColor: on ? `color-mix(in srgb, ${T.primary} 6%, ${T.background})` : T.background,
+                  }}>
+                  <div className="w-16 h-11 rounded-lg shrink-0" style={{ background: th.gradient }} />
+                  <div className="flex flex-col gap-1 min-w-0 flex-1">
+                    <span style={{ fontSize: T.sm, fontWeight: on ? T.fw_semi : T.fw_medium, color: T.foreground }}>{th.label}</span>
+                    <span className="flex items-center gap-1.5" style={{ fontSize: T.xs, color: T.mutedFg }}>
+                      <span className="inline-block size-3 rounded-full shrink-0"
+                        style={{ backgroundColor: th.page, border: `1px solid ${T.border}` }} />
+                      Nền trang sự kiện
+                    </span>
+                  </div>
+                  {on && <CheckCircle2 className="size-4 shrink-0" style={{ color: T.primary }} />}
+                </button>
+              );
+            })}
+          </div>
+          <div className="px-6 py-4" style={{ borderTop: `1px solid ${T.border}` }}>
+            <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6 }}>
+              Giao diện quyết định màu nền của trang sự kiện công khai. Ảnh cover được tải lên riêng.
+            </p>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Section 3: Helper note */}
       <div className="px-4 pb-4">
