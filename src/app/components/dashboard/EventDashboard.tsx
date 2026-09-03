@@ -2,7 +2,7 @@ import * as React from "react";
 import { useState } from "react";
 import {
   Users, Ticket, DollarSign, UserCheck, Globe,
-  CheckCircle2, AlertCircle, Circle, ChevronRight, ExternalLink,
+  AlertCircle, ChevronRight, ExternalLink,
   Calendar, MapPin, Pencil, BarChart3, Mail, QrCode, Plus,
   Download, Eye, Settings, Copy, Facebook, Twitter, Linkedin, MessageCircle, Image
 } from "lucide-react";
@@ -42,7 +42,6 @@ const T = {
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type EventStatus = "draft" | "published" | "live" | "ended";
-type CheckState  = "done" | "pending" | "warning";
 
 // ── Mock data ─────────────────────────────────────────────────────────────────
 
@@ -113,39 +112,6 @@ export function StatCard({ icon, label, value, sub, iconBg, iconColor, isEmpty }
 }
 
 // ── Checklist Item ────────────────────────────────────────────────────────────
-
-function ChecklistItem({ state, title, desc, cta, onCta, rightSlot }: {
-  state: CheckState; title: string; desc: string;
-  cta?: string; onCta?: () => void; rightSlot?: React.ReactNode;
-}) {
-  const icon =
-    state === "done"    ? <CheckCircle2 className="size-4" style={{ color: T.successText }} /> :
-    state === "warning" ? <AlertCircle  className="size-4" style={{ color: T.warningText }} /> :
-                          <Circle       className="size-4" style={{ color: T.mutedFg      }} />;
-  return (
-    <div className="flex items-start gap-3 py-3" style={{ borderBottom: `1px solid ${T.border}` }}>
-      <div className="mt-0.5 shrink-0">{icon}</div>
-      <div className="flex-1 min-w-0">
-        <p style={{ fontSize: T.sm, fontWeight: T.fw_medium,
-          color: state === "done" ? T.mutedFg : T.foreground,
-          textDecoration: state === "done" ? "line-through" : "none" }}>
-          {title}
-        </p>
-        {state !== "done" && (
-          <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2, lineHeight: 1.5 }}>{desc}</p>
-        )}
-      </div>
-      {rightSlot && state !== "done" && rightSlot}
-      {cta && !rightSlot && state !== "done" && (
-        <button onClick={onCta}
-          style={{ fontSize: T.xs, fontWeight: T.fw_medium, color: T.primary,
-            background: "none", border: "none", cursor: "pointer", whiteSpace: "nowrap", padding: "2px 0" }}>
-          {cta} →
-        </button>
-      )}
-    </div>
-  );
-}
 
 // ── Module Card ───────────────────────────────────────────────────────────────
 
@@ -231,7 +197,6 @@ const STATUS_CFG: Record<EventStatus, {
 export function EventDashboard() {
   const [status, setStatus] = useState<EventStatus>("published");
   const [chartTab, setChartTab] = useState<"reg" | "checkin">("reg");
-  const [emailEnabled, setEmailEnabled] = useState(false);
 
   const cfg          = STATUS_CFG[status];
   const isDraft      = status === "draft";
@@ -241,33 +206,6 @@ export function EventDashboard() {
   const totalReg     = hasData ? 328 : 0;
   const totalCheckin = (isLive || isEnded) ? 142 : 0;
   const totalRevenue = 45_000_000;
-
-  const CHECKLIST: { state: CheckState; title: string; desc: string; cta?: string; isEmail?: boolean }[] = [
-    {
-      state: (isDraft ? "pending" : "done") as CheckState,
-      title: "Xuất bản trang sự kiện",
-      desc: "Hoàn thiện trang sự kiện để người tham dự có thể đăng ký.",
-      cta: "Chỉnh sửa",
-    },
-    {
-      state: (isDraft ? "pending" : "done") as CheckState,
-      title: "Cấu hình form đăng ký / kho vé",
-      desc: "Chưa có hình thức đăng ký — người tham dự không thể hoàn tất đăng ký.",
-      cta: "Cấu hình",
-    },
-    {
-      state: (emailEnabled ? "done" : "pending") as CheckState,
-      title: "Bật email nhắc lịch",
-      desc: "Nhắc người tham dự trước khi sự kiện diễn ra để tăng tỷ lệ tham dự.",
-      isEmail: true,
-    },
-    {
-      state: "pending" as CheckState,
-      title: "Nội dung giới thiệu sự kiện",
-      desc: "Thêm mô tả, lịch trình và thông tin diễn giả để tăng chuyển đổi.",
-      cta: "Chỉnh sửa",
-    },
-  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -284,8 +222,7 @@ export function EventDashboard() {
         </div>
       )}
 
-      {/* Outer 2-col grid: left=main content, right=checklist */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6 items-start">
+      <div className="grid grid-cols-1 gap-6 items-start">
 
         {/* LEFT column */}
         <div className="flex flex-col gap-5">
@@ -399,22 +336,18 @@ export function EventDashboard() {
                   </p>
                 </div>
 
-                {/* Check-in button */}
-                <button style={{ width: "100%", padding: "10px 16px", borderRadius: 10,
-                  border: `1px solid ${T.border}`, backgroundColor: "transparent", cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  fontSize: T.sm, color: T.foreground, fontWeight: T.fw_medium, transition: "background 0.15s" }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = T.secondary; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}>
-                  <QrCode className="size-4" /> Check-in người tham dự
-                </button>
-
-                {/* Action buttons */}
-                <div className="grid grid-cols-2 gap-2 mt-auto">
-                  <Button size="sm" style={{ fontSize: T.xs, backgroundColor: T.primary, color: T.primaryFg }}>
-                    <Globe className="size-3.5" /> Xuất bản
-                  </Button>
-                  <Button variant="outline" size="sm" style={{ fontSize: T.xs }}>
+                {/* Check-in và Chỉnh sửa nằm chung một hàng */}
+                <div className="flex items-center gap-2 mt-auto">
+                  <button style={{ flex: 1, minWidth: 0, padding: "10px 16px", borderRadius: 999,
+                    border: `1px solid ${T.border}`, backgroundColor: "transparent", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    fontSize: T.sm, color: T.foreground, fontWeight: T.fw_medium,
+                    whiteSpace: "nowrap", transition: "background 0.15s" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = T.secondary; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}>
+                    <QrCode className="size-4" /> Check-in người tham dự
+                  </button>
+                  <Button variant="outline" size="sm" className="shrink-0" style={{ fontSize: T.xs }}>
                     <Pencil className="size-3.5" /> Chỉnh sửa
                   </Button>
                 </div>
@@ -539,52 +472,6 @@ export function EventDashboard() {
           </div>
         </div>{/* end LEFT column */}
 
-        {/* RIGHT column */}
-        <div className="flex flex-col gap-5">
-
-          {/* Checklist */}
-          <div className="rounded-2xl p-5" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-            <div className="flex items-center justify-between mb-1">
-              <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Việc cần xử lý</h3>
-              <span style={{ fontSize: T.xs, color: T.mutedFg }}>
-                {CHECKLIST.filter(c => c.state === "done").length}/{CHECKLIST.length}
-              </span>
-            </div>
-            <p style={{ fontSize: T.xs, color: T.mutedFg, marginBottom: 4 }}>Hoàn thiện các bước để sự kiện sẵn sàng.</p>
-            <div className="rounded-full overflow-hidden mb-2" style={{ height: 4, backgroundColor: T.border }}>
-              <div className="h-full rounded-full transition-all" style={{
-                width: `${CHECKLIST.filter(c => c.state === "done").length / CHECKLIST.length * 100}%`,
-                backgroundColor: T.primary,
-              }} />
-            </div>
-            <div>
-              {CHECKLIST.map((item, i) => (
-                <ChecklistItem
-                  key={i}
-                  state={item.state}
-                  title={item.title}
-                  desc={item.desc}
-                  cta={"cta" in item ? (item as any).cta : undefined}
-                  rightSlot={"isEmail" in item ? (
-                    <button onClick={() => setEmailEnabled(v => !v)} style={{
-                      width: 40, height: 22, borderRadius: 999, border: "none",
-                      backgroundColor: emailEnabled ? T.primary : T.border,
-                      position: "relative", cursor: "pointer", flexShrink: 0,
-                      transition: "background-color 0.2s",
-                    }}>
-                      <span style={{
-                        position: "absolute", top: 3, left: emailEnabled ? 20 : 3,
-                        width: 16, height: 16, borderRadius: "50%", backgroundColor: "white",
-                        transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                      }} />
-                    </button>
-                  ) : undefined}
-                />
-              ))}
-            </div>
-          </div>
-
-        </div>
       </div>
     </div>
   );

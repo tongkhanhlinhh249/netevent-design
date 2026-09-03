@@ -700,19 +700,20 @@ function EventsListScreen({ events, onCreateEvent, onManage }: {
   onCreateEvent: () => void;
   onManage: (ev: TimelineEvent) => void;
 }) {
-  type ListTab = "all" | "draft" | "upcoming" | "live" | "ended" | "cancelled";
-  const [listTab, setListTab]         = useState<ListTab>("live");
+  type ListTab = "active" | "ended";
+  const [listTab, setListTab]         = useState<ListTab>("active");
   const [search, setSearch]           = useState("");
   const [filterFormat, setFormat]     = useState("all-format");
   const [filterPublish, setPublish]   = useState("all-publish");
 
+  // Hai trạng thái: "Đang diễn ra" gộp sự kiện đang chạy, sắp diễn ra và bản
+  // nháp đang chuẩn bị; "Đã kết thúc" gộp sự kiện đã xong, đã lưu trữ và đã
+  // huỷ. Nhánh "đang diễn ra" viết theo phủ định để một status mới thêm sau
+  // này vẫn hiện ra thay vì biến mất khỏi cả hai tab.
+  const CLOSED: EventStatus[] = ["ended", "archived", "cancelled"];
   const tabFilter: Record<ListTab, (ev: TimelineEvent) => boolean> = {
-    all:       ()   => true,
-    draft:     (ev) => ev.status === "draft",
-    upcoming:  (ev) => ev.status === "published",
-    live:      (ev) => ev.status === "live",
-    ended:     (ev) => ev.status === "ended" || ev.status === "archived",
-    cancelled: (ev) => ev.status === "cancelled",
+    active: (ev) => !CLOSED.includes(ev.status),
+    ended:  (ev) => CLOSED.includes(ev.status),
   };
 
   const publishFilter = (ev: TimelineEvent) => {
@@ -744,12 +745,8 @@ function EventsListScreen({ events, onCreateEvent, onManage }: {
       {/* ── Tabs ── */}
       <div className="flex gap-5 overflow-x-auto" style={{ borderBottom: `1px solid ${T.border}`, marginBottom: "24px" }}>
         {([
-          { id: "all"       as ListTab, label: "Tất cả" },
-          { id: "draft"     as ListTab, label: "Bản nháp" },
-          { id: "upcoming"  as ListTab, label: "Chờ diễn ra" },
-          { id: "live"      as ListTab, label: "Đang diễn ra" },
-          { id: "ended"     as ListTab, label: "Đã kết thúc" },
-          { id: "cancelled" as ListTab, label: "Đã hủy" },
+          { id: "active" as ListTab, label: "Đang diễn ra" },
+          { id: "ended"  as ListTab, label: "Đã kết thúc" },
         ]).map((t) => (
           <EventListTab key={t.id} label={t.label} active={listTab === t.id} onClick={() => setListTab(t.id)} />
         ))}
