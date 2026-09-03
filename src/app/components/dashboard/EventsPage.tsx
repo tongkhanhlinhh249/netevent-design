@@ -15,6 +15,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { Switch } from "../ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose } from "../ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "../ui/dialog";
@@ -212,6 +213,17 @@ export const THEMES = [
   { id: "workshop", label: "Workshop",      gradient: "linear-gradient(135deg, #064e3b 0%, #10b981 100%)" },
   { id: "launch",   label: "Product Launch",gradient: "linear-gradient(135deg, #1c1917 0%, #7c2d12 100%)" },
 ];
+
+// ── Múi giờ hiển thị (lấy theo trình duyệt) ───────────────────────────────────
+
+const TIMEZONE = (() => {
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+  const offset = -new Date().getTimezoneOffset();
+  const sign = offset >= 0 ? "+" : "-";
+  const hh = String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0");
+  const mm = String(Math.abs(offset) % 60).padStart(2, "0");
+  return { label: `GMT${sign}${hh}:${mm}`, city: zone.split("/").pop()?.replace(/_/g, " ") ?? "" };
+})();
 
 // ── Checklist config ──────────────────────────────────────────────────────────
 
@@ -843,12 +855,13 @@ function CoverUploadCard({ eventName }: { eventName: string }) {
 
 // ── Unified Event Preview Card ────────────────────────────────────────────────
 
-function UnifiedEventPreviewCard({ form, format, previewDate, needsLocation, needsOnlineLink }: {
-  form: { name: string; organizer: string; startTime: string; endTime: string; location: string; onlineLink: string };
-  format: string; previewDate: string | null; needsLocation: boolean; needsOnlineLink: boolean;
+function UnifiedEventPreviewCard({ form, theme, onThemeChange }: {
+  form: { name: string };
+  theme: string;
+  onThemeChange: (id: string) => void;
 }) {
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
-  const locationText = needsLocation && form.location ? form.location : needsOnlineLink && form.onlineLink ? form.onlineLink : null;
+  const activeTheme = THEMES.find((t) => t.id === theme);
 
   return (
     <div className="rounded-2xl overflow-hidden flex flex-col" style={{ border: `1px solid ${T.border}`, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -857,39 +870,38 @@ function UnifiedEventPreviewCard({ form, format, previewDate, needsLocation, nee
         previewUrl={previewUrl}
         onPreviewChange={setPreviewUrl}
         eventName={form.name || undefined}
+        placeholderBackground={activeTheme?.gradient}
       />
 
-      {/* Section 2: Event info preview */}
-      <div className="p-4 flex flex-col gap-2.5" style={{ backgroundColor: T.background }}>
-        {previewDate ? (
-          <div className="flex items-center gap-2" style={{ color: T.mutedFg, fontSize: T.xs }}>
-            <Calendar className="size-3.5 shrink-0" />
-            {previewDate} · {form.startTime} — {form.endTime}
-          </div>
-        ) : (
-          <div className="flex items-center gap-2" style={{ color: T.border, fontSize: T.xs }}>
-            <Calendar className="size-3.5 shrink-0" /> Chưa thiết lập thời gian
-          </div>
-        )}
-        {locationText ? (
-          <div className="flex items-center gap-2" style={{ color: T.mutedFg, fontSize: T.xs }}>
-            <MapPin className="size-3.5 shrink-0" />
-            <span className="truncate">{locationText}</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2" style={{ color: T.border, fontSize: T.xs }}>
-            <MapPin className="size-3.5 shrink-0" /> Chưa thiết lập địa điểm
-          </div>
-        )}
-        {form.organizer ? (
-          <div className="flex items-center gap-2" style={{ color: T.mutedFg, fontSize: T.xs }}>
-            <Users className="size-3.5 shrink-0" /> {form.organizer}
-          </div>
-        ) : (
-          <div className="flex items-center gap-2" style={{ color: T.border, fontSize: T.xs }}>
-            <Users className="size-3.5 shrink-0" /> Chưa có đơn vị tổ chức
-          </div>
-        )}
+      {/* Section 2: Theme picker for the public event page */}
+      <div className="p-4 flex flex-col gap-3" style={{ backgroundColor: T.background }}>
+        <div className="flex items-baseline justify-between gap-2">
+          <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>Giao diện trang sự kiện</p>
+          <span style={{ fontSize: T.xs, color: T.mutedFg }}>{activeTheme?.label}</span>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {THEMES.map((th) => {
+            const active = th.id === theme;
+            return (
+              <button key={th.id} type="button" data-pill="off"
+                onClick={() => onThemeChange(th.id)}
+                aria-pressed={active}
+                className="flex flex-col items-center gap-1.5 cursor-pointer transition-opacity hover:opacity-80"
+                style={{ width: 56 }}>
+                <div className="w-12 h-8 rounded-lg"
+                  style={{ background: th.gradient,
+                    outline: active ? `2px solid ${T.primary}` : "2px solid transparent",
+                    outlineOffset: "2px" }} />
+                <span style={{ fontSize: T.xs, lineHeight: 1.3, textAlign: "center",
+                  color: active ? T.primary : T.mutedFg,
+                  fontWeight: active ? T.fw_medium : T.fw_normal }}>{th.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6 }}>
+          Giao diện được dùng làm ảnh nền mặc định cho trang sự kiện khi bạn chưa tải ảnh cover.
+        </p>
       </div>
 
       {/* Section 3: Helper note */}
@@ -909,6 +921,11 @@ function UnifiedEventPreviewCard({ form, format, previewDate, needsLocation, nee
 function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCreated: (ev: EventDraft) => void }) {
   const [format, setFormat] = useState<EventFormat>("offline");
   const [loading, setLoading] = useState(false);
+  const [theme, setTheme] = useState("gradient");
+  const [visibility, setVisibility] = useState("public");
+  const [requireApproval, setRequireApproval] = useState(false);
+  const [limitAttendees, setLimitAttendees] = useState(false);
+  const [maxAttendees, setMaxAttendees] = useState("");
   const [form, setForm] = useState(() => {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
@@ -942,18 +959,14 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         startDate: form.startDate, startTime: form.startTime,
         endDate: form.endDate, endTime: form.endTime,
         format, location: needsLocation ? form.location : (needsOnlineLink ? form.onlineLink : ""),
-        theme: "gradient", visibility: "public",
-        requireApproval: false, limitAttendees: false, maxAttendees: "",
-        status: "draft", cover: "linear-gradient(135deg, #1eaaff 0%, #7c3aed 100%)",
+        theme, visibility,
+        requireApproval, limitAttendees, maxAttendees: limitAttendees ? maxAttendees : "",
+        status: "draft",
+        cover: THEMES.find((t) => t.id === theme)?.gradient ?? THEMES[1].gradient,
       };
       onCreated(newEvent);
     }, 700);
   };
-
-  // Live preview values
-  const previewDate = form.startDate
-    ? (() => { const [y,m,d] = form.startDate.split("-").map(Number); const days=["CN","T2","T3","T4","T5","T6","T7"]; return `${days[new Date(y,m-1,d).getDay()]}, ${d}/${m}/${y}`; })()
-    : null;
 
   return (
     <div className="w-full flex flex-col" style={{ minHeight: "min(calc(100vh - 180px), 100%)" }}>
@@ -971,9 +984,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
 
         {/* ── Left: Unified Preview sự kiện card ── */}
         <div className="lg:col-span-2 flex flex-col gap-0">
-          <UnifiedEventPreviewCard form={form} format={format}
-            previewDate={previewDate}
-            needsLocation={needsLocation} needsOnlineLink={needsOnlineLink} />
+          <UnifiedEventPreviewCard form={form} theme={theme} onThemeChange={setTheme} />
         </div>
 
         {/* ── Right: Form ── */}
@@ -984,6 +995,28 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
             </div>
 
             <div className="px-6 py-5 flex flex-col gap-5 overflow-y-auto" style={{ maxHeight: "min(calc(100vh - 320px), 60vh)" }}>
+
+              {/* 0. Quyền riêng tư */}
+              <div className="flex flex-col gap-1.5">
+                <Label>Quyền riêng tư</Label>
+                <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${T.border}` }}>
+                  {([
+                    { id: "public",  label: "Công khai", icon: Globe },
+                    { id: "private", label: "Riêng tư",  icon: Eye },
+                  ]).map((v, i) => (
+                    <button key={v.id} type="button" onClick={() => setVisibility(v.id)}
+                      className="flex-1 py-2 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      style={{
+                        fontSize: T.sm, fontWeight: visibility === v.id ? T.fw_semi : T.fw_normal,
+                        backgroundColor: visibility === v.id ? T.primary : T.background,
+                        color: visibility === v.id ? T.primaryFg : T.mutedFg,
+                        borderRight: i < 1 ? `1px solid ${T.border}` : "none",
+                      }}>
+                      <v.icon className="size-3.5" /> {v.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* 1. Tên sự kiện */}
               <div className="flex flex-col gap-1.5">
@@ -1028,7 +1061,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                     </div>
                   </div>
                   {/* Kết thúc */}
-                  <div className="flex items-center px-4 gap-4" style={{ height: 52 }}>
+                  <div className="flex items-center px-4 gap-4" style={{ height: 52, borderBottom: `1px dashed ${T.border}` }}>
                     <div className="flex flex-col items-center shrink-0" style={{ width: 10 }}>
                       <div style={{ width: 9, height: 9, borderRadius: "50%", border: `1.5px solid ${T.mutedFg}`, backgroundColor: "transparent" }} />
                     </div>
@@ -1054,6 +1087,17 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                         <input type="time" value={form.endTime} onChange={(e) => set("endTime")(e.target.value)}
                           style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
                       </div>
+                    </div>
+                  </div>
+                  {/* Múi giờ */}
+                  <div className="flex items-center px-4 gap-4" style={{ height: 44 }}>
+                    <div className="flex items-center justify-center shrink-0" style={{ width: 10 }}>
+                      <Globe className="size-3.5" style={{ color: T.mutedFg }} />
+                    </div>
+                    <span style={{ fontSize: T.sm, color: T.mutedFg, minWidth: 64 }}>Múi giờ</span>
+                    <div className="flex-1 flex items-baseline justify-end gap-2">
+                      <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{TIMEZONE.label}</span>
+                      <span style={{ fontSize: T.xs, color: T.mutedFg }}>{TIMEZONE.city}</span>
                     </div>
                   </div>
                 </div>
@@ -1104,6 +1148,60 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                 <Label htmlFor="ev-org">Đơn vị tổ chức</Label>
                 <Input id="ev-org" placeholder="Tên công ty, tổ chức hoặc cá nhân tổ chức"
                   value={form.organizer} onChange={(e) => set("organizer")(e.target.value)} />
+              </div>
+
+              {/* 7. Tùy chọn sự kiện */}
+              <div className="flex flex-col gap-1.5">
+                <Label>Tùy chọn sự kiện</Label>
+                <div className="rounded-2xl overflow-hidden"
+                  style={{ border: `1px solid ${T.border}`, backgroundColor: `color-mix(in srgb, ${T.primary} 5%, ${T.background})` }}>
+
+                  {/* Giá vé */}
+                  <div className="flex items-center px-4 gap-3" style={{ height: 52, borderBottom: `1px dashed ${T.border}` }}>
+                    <Ticket className="size-4 shrink-0" style={{ color: T.mutedFg }} />
+                    <span style={{ fontSize: T.sm, color: T.foreground }}>Giá vé</span>
+                    <div className="flex-1 flex items-center justify-end">
+                      <span style={{ fontSize: T.sm, color: T.mutedFg }}>Miễn phí</span>
+                    </div>
+                  </div>
+
+                  {/* Yêu cầu duyệt */}
+                  <div className="flex items-center px-4 gap-3" style={{ height: 52, borderBottom: `1px dashed ${T.border}` }}>
+                    <UserCheck className="size-4 shrink-0" style={{ color: T.mutedFg }} />
+                    <span style={{ fontSize: T.sm, color: T.foreground }}>Yêu cầu duyệt</span>
+                    <div className="flex-1 flex items-center justify-end">
+                      <Switch checked={requireApproval} onCheckedChange={setRequireApproval} />
+                    </div>
+                  </div>
+
+                  {/* Sức chứa */}
+                  <div className="flex items-center px-4 gap-3" style={{ height: 52 }}>
+                    <Users className="size-4 shrink-0" style={{ color: T.mutedFg }} />
+                    <span style={{ fontSize: T.sm, color: T.foreground }}>Sức chứa</span>
+                    <div className="flex-1 flex items-center justify-end gap-2">
+                      {limitAttendees ? (
+                        <>
+                          <Input type="number" min={1} placeholder="100"
+                            value={maxAttendees} onChange={(e) => setMaxAttendees(e.target.value)}
+                            className="h-8 w-24 text-right" style={{ fontSize: T.sm }} />
+                          <button type="button" onClick={() => { setLimitAttendees(false); setMaxAttendees(""); }}
+                            className="cursor-pointer transition-opacity hover:opacity-70"
+                            style={{ fontSize: T.xs, color: T.mutedFg }}>Bỏ giới hạn</button>
+                        </>
+                      ) : (
+                        <button type="button" onClick={() => setLimitAttendees(true)}
+                          className="flex items-center gap-1.5 cursor-pointer transition-opacity hover:opacity-70"
+                          style={{ fontSize: T.sm, color: T.mutedFg }}>
+                          Không giới hạn <Pencil className="size-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+                <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6 }}>
+                  Hạng vé và giá vé chi tiết được thiết lập ở <strong>Kho vé</strong> sau khi tạo bản nháp.
+                </p>
               </div>
 
             </div>
