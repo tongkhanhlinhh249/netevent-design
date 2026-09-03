@@ -767,7 +767,7 @@ function EventsListScreen({ events, onCreateEvent, onManage }: {
               />
             </div>
             <Select value={filterFormat} onValueChange={setFormat}>
-              <SelectTrigger className="h-9 w-[152px] cursor-pointer" style={{ fontSize: T.sm }}>
+              <SelectTrigger className="h-9 w-[184px] cursor-pointer" style={{ fontSize: T.sm }}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

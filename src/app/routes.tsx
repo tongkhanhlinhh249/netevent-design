@@ -11,6 +11,8 @@ import { ThongTinChiTietRoute } from "./pages/event/ThongTinChiTietRoute";
 import { AttendeesRoute } from "./pages/event/AttendeesRoute";
 import { CheckInRoute } from "./pages/event/CheckInRoute";
 import { KhoVeRoute } from "./pages/event/KhoVeRoute";
+import { LichSuHoatDongRoute } from "./pages/event/LichSuHoatDongRoute";
+import { ThanhVienRoute } from "./pages/event/ThanhVienRoute";
 
 export const router = createBrowserRouter([
   {
@@ -28,6 +30,8 @@ export const router = createBrowserRouter([
               { path: "mini-game",              Component: MiniGameRoute },
               { path: "thong-tin-chi-tiet",     Component: ThongTinChiTietRoute },
               { path: "nguoi-tham-du",          Component: AttendeesRoute },
+              { path: "lich-su-hoat-dong",      Component: LichSuHoatDongRoute },
+              { path: "thanh-vien",             Component: ThanhVienRoute },
             ],
           },
           { path: "trang-su-kien",     Component: LandingPageRoute },

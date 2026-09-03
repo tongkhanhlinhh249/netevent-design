@@ -1,6 +1,6 @@
 import * as React from "react";
-import { NavLink, Outlet, useNavigate } from "react-router";
-import { ChevronDown, Gamepad2, ExternalLink } from "lucide-react";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router";
+import { ChevronDown, Gamepad2, History, Users, ExternalLink } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -43,9 +43,12 @@ const TABS = [
   { label: "Thông tin chi tiết", to: "/event/thong-tin-chi-tiet",   end: false },
 ];
 
-const MORE_ITEMS = [
-  { label: "Trang sự kiện",  to: "/event/trang-su-kien", icon: ExternalLink },
-  { label: "Mini Game",      to: "/event/mini-game",     icon: Gamepad2 },
+// Các tab tuỳ chọn: mặc định ẩn, người dùng bật trong menu "Nâng cao" thì tab
+// mới hiện ra ngoài thanh tab chính.
+const OPTIONAL_TABS = [
+  { id: "mini-game",  label: "Mini game",          to: "/event/mini-game",         icon: Gamepad2 },
+  { id: "lich-su",    label: "Lịch sử hoạt động",  to: "/event/lich-su-hoat-dong", icon: History  },
+  { id: "thanh-vien", label: "Thành viên",         to: "/event/thanh-vien",        icon: Users    },
 ];
 
 export function EventWorkspaceLayout() {
@@ -55,6 +58,35 @@ export function EventWorkspaceLayout() {
 
   const [editOpen, setEditOpen] = React.useState(false);
   const [moreOpen, setMoreOpen] = React.useState(false);
+  // Giữ lựa chọn qua các lần tải trang: nếu không, mở thẳng /event/thanh-vien
+  // sẽ ra một trang mà tab của nó không có trên thanh tab.
+  const [shownTabs, setShownTabs] = React.useState<string[]>(() => {
+    try {
+      const raw = sessionStorage.getItem("netevent_shown_tabs");
+      return raw ? (JSON.parse(raw) as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  React.useEffect(() => {
+    try {
+      sessionStorage.setItem("netevent_shown_tabs", JSON.stringify(shownTabs));
+    } catch {
+      // sessionStorage có thể bị chặn — lựa chọn vẫn sống trong phiên hiện tại.
+    }
+  }, [shownTabs]);
+  const location = useLocation();
+
+  const toggleTab = (tab: typeof OPTIONAL_TABS[number]) => {
+    setShownTabs((prev) => {
+      const on = prev.includes(tab.id);
+      // Đang ẩn tab mà người dùng lại đang đứng ở chính trang đó thì quay về
+      // tab đầu, nếu không sẽ ở lại một trang không còn tab nào sáng.
+      if (on && location.pathname === tab.to) navigate("/event");
+      return on ? prev.filter((id) => id !== tab.id) : [...prev, tab.id];
+    });
+  };
   const moreRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -102,9 +134,15 @@ export function EventWorkspaceLayout() {
             </Button>
           </div>
 
-          {/* Tab nav */}
-          <div className="flex gap-4 sm:gap-6 overflow-x-auto items-center" style={{ scrollbarWidth: "none" }}>
-            {TABS.map((tab) => (
+          {/* Tab nav — chỉ danh sách tab cuộn ngang; menu "Nâng cao" nằm ngoài
+              vùng cuộn, vì overflow-x-auto sẽ cắt mất popup của nó. */}
+          <div className="flex items-center gap-4 sm:gap-6">
+          <div className="flex gap-4 sm:gap-6 overflow-x-auto items-center min-w-0" style={{ scrollbarWidth: "none" }}>
+            {[
+              ...TABS,
+              // Tab tuỳ chọn đã bật trong menu "Nâng cao" đứng cùng hàng với các tab cố định.
+              ...OPTIONAL_TABS.filter((t) => shownTabs.includes(t.id)).map((t) => ({ label: t.label, to: t.to, end: false })),
+            ].map((tab) => (
               <NavLink
                 key={tab.to}
                 to={tab.to}
@@ -128,7 +166,9 @@ export function EventWorkspaceLayout() {
               </NavLink>
             ))}
 
-            {/* Thêm dropdown */}
+            </div>
+
+            {/* Menu "Nâng cao" — bật/tắt các tab tuỳ chọn */}
             <div ref={moreRef} style={{ position: "relative", flexShrink: 0 }}>
               <button
                 onClick={() => setMoreOpen(o => !o)}
@@ -140,36 +180,43 @@ export function EventWorkspaceLayout() {
                   borderBottom: `2px solid ${moreOpen ? T.primary : "transparent"}`,
                   whiteSpace: "nowrap", transition: "color 0.15s",
                 }}>
-                Thêm <ChevronDown style={{ width: 14, height: 14, transition: "transform 0.15s", transform: moreOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
+                Nâng cao <ChevronDown style={{ width: 14, height: 14, transition: "transform 0.15s", transform: moreOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
               </button>
               {moreOpen && (
                 <div style={{
                   position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 50,
                   backgroundColor: T.background, border: `1px solid ${T.border}`,
-                  borderRadius: 12, padding: "6px", minWidth: 180,
+                  borderRadius: 12, padding: "6px", minWidth: 232,
                   boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
                 }}>
-                  {MORE_ITEMS.map((item) => (
-                    <NavLink key={item.to} to={item.to}
-                      onClick={() => setMoreOpen(false)}
-                      style={{ textDecoration: "none" }}>
-                      {({ isActive }) => (
-                        <div style={{
-                          display: "flex", alignItems: "center", gap: 8,
+                  <p style={{ fontSize: T.xs, color: T.mutedFg, padding: "6px 10px 8px" }}>
+                    Chọn để hiện tab ra thanh tab
+                  </p>
+                  {OPTIONAL_TABS.map((item) => {
+                    const on = shownTabs.includes(item.id);
+                    return (
+                      <button key={item.id} type="button" data-pill="off"
+                        onClick={() => toggleTab(item)}
+                        aria-pressed={on}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 10, width: "100%",
                           padding: "8px 10px", borderRadius: 8, cursor: "pointer",
-                          fontSize: T.sm,
-                          color: isActive ? T.primary : T.foreground,
-                          backgroundColor: isActive ? `color-mix(in srgb, ${T.primary} 8%, transparent)` : "transparent",
+                          background: "none", border: "none", textAlign: "left",
+                          fontSize: T.sm, color: on ? T.primary : T.foreground,
                           transition: "background 0.1s",
                         }}
-                        onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLDivElement).style.backgroundColor = T.secondary; }}
-                        onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent"; }}>
-                          <item.icon style={{ width: 14, height: 14, flexShrink: 0 }} />
-                          {item.label}
-                        </div>
-                      )}
-                    </NavLink>
-                  ))}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = T.secondary; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}>
+                        <span style={{
+                          width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
+                          border: on ? `5px solid ${T.primary}` : `1.5px solid ${T.border}`,
+                          transition: "border 0.15s",
+                        }} />
+                        <item.icon style={{ width: 14, height: 14, flexShrink: 0 }} />
+                        {item.label}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
