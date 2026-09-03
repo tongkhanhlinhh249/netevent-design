@@ -79,13 +79,11 @@ export function EventWorkspaceLayout() {
   const location = useLocation();
 
   const toggleTab = (tab: typeof OPTIONAL_TABS[number]) => {
-    setShownTabs((prev) => {
-      const on = prev.includes(tab.id);
-      // Đang ẩn tab mà người dùng lại đang đứng ở chính trang đó thì quay về
-      // tab đầu, nếu không sẽ ở lại một trang không còn tab nào sáng.
-      if (on && location.pathname === tab.to) navigate("/event");
-      return on ? prev.filter((id) => id !== tab.id) : [...prev, tab.id];
-    });
+    const on = shownTabs.includes(tab.id);
+    // Điều hướng phải nằm ngoài hàm updater của setState: updater chạy trong
+    // lúc render, gọi navigate() ở đó là cập nhật router giữa chừng render.
+    if (on && location.pathname === tab.to) navigate("/event");
+    setShownTabs((prev) => (on ? prev.filter((id) => id !== tab.id) : [...prev, tab.id]));
   };
   const moreRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
@@ -171,6 +169,7 @@ export function EventWorkspaceLayout() {
             {/* Menu "Nâng cao" — bật/tắt các tab tuỳ chọn */}
             <div ref={moreRef} style={{ position: "relative", flexShrink: 0 }}>
               <button
+                data-pill="off"
                 onClick={() => setMoreOpen(o => !o)}
                 style={{
                   display: "flex", alignItems: "center", gap: 4,

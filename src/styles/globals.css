@@ -18,7 +18,13 @@ button:not(
   [data-slot="accordion-trigger"],
   [data-slot="sidebar-menu-button"],
   [data-slot="sidebar-rail"],
-  [data-pill="off"]
+  [data-pill="off"],
+  /* Một <button> tự khai bo góc cỡ card (rounded-xl/2xl/3xl) là cả một thẻ
+     hoặc một hàng, không phải nút hành động — bo tròn hết sẽ kéo nó thành
+     hình viên thuốc khổng lồ. Bo góc nhỏ (sm/md/lg) vẫn thành viên thuốc. */
+  [class*="rounded-xl"],
+  [class*="rounded-2xl"],
+  [class*="rounded-3xl"]
 ),
 a[data-slot="button"] {
   border-radius: 9999px !important;

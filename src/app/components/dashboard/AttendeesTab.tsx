@@ -8,7 +8,7 @@ import {
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "../ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "../ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
 // ── CSS tokens ────────────────────────────────────────────────────────────────
@@ -260,13 +260,12 @@ export function AttendeesTab({ event }: { event: EventDraft }) {
 
   const [attendees, setAttendees]     = useState<Attendee[]>(hasAttendees ? MOCK_ATTENDEES : []);
   const [search, setSearch]           = useState("");
-  const [filterTier, setFilterTier]   = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterCheckin, setFilterCheckin] = useState("all");
-  const [quickFilter, setQuickFilter] = useState("all");
+  // Một bộ lọc duy nhất thay cho 4 state rời trước đây. Giá trị "tier:X" lọc
+  // theo hạng vé, còn lại lọc theo trạng thái.
+  const [listFilter, setListFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"registered" | "name">("registered");
   const [selectedAttendee, setSelected] = useState<Attendee | null>(null);
   const [drawerOpen, setDrawerOpen]   = useState(false);
-  const [activeTierFilter, setTierFilter] = useState<string | null>(null);
 
   const handleCheckin = (id: string) => {
     setAttendees((prev) => prev.map((a) => a.id === id
@@ -274,19 +273,33 @@ export function AttendeesTab({ event }: { event: EventDraft }) {
       : a));
   };
 
-  const filtered = attendees.filter((a) => {
-    const q = search.toLowerCase();
-    const matchSearch = !search || a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q)
-      || a.phone.includes(q) || a.ticketCode.toLowerCase().includes(q);
-    const matchTier   = (filterTier === "all" && !activeTierFilter) || a.tier === filterTier || a.tier === activeTierFilter;
-    const matchStatus = filterStatus === "all" || a.status === filterStatus;
-    const matchCheckin = filterCheckin === "all" || (filterCheckin === "checked-in" ? a.checkedIn : !a.checkedIn);
-    const matchQuick  = quickFilter === "all"
-      || (quickFilter === "not-checkin" && !a.checkedIn)
-      || (quickFilter === "checked-in" && a.checkedIn)
-      || (quickFilter === "cancelled" && a.status === "cancelled");
-    return matchSearch && matchTier && matchStatus && matchCheckin && matchQuick;
-  });
+  const matchesFilter = (a: Attendee, key: string) =>
+    key === "all"          ? true
+    : key === "not-checkin" ? !a.checkedIn && a.status !== "cancelled"
+    : key === "checked-in"  ? a.checkedIn
+    : key === "cancelled"   ? a.status === "cancelled"
+    : key.startsWith("tier:") ? a.tier === key.slice(5)
+    : true;
+
+  /** "30/06/2026 09:30" -> số so sánh được. */
+  const registeredKey = (v: string) => {
+    const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
+    return m ? Number(`${m[3]}${m[2]}${m[1]}${m[4]}${m[5]}`) : 0;
+  };
+
+  const filtered = attendees
+    .filter((a) => {
+      const q = search.toLowerCase();
+      const matchSearch = !search || a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q)
+        || a.phone.includes(q) || a.ticketCode.toLowerCase().includes(q);
+      return matchSearch && matchesFilter(a, listFilter);
+    })
+    .sort((x, y) => sortBy === "name"
+      ? x.name.localeCompare(y.name, "vi")
+      : registeredKey(y.registeredAt) - registeredKey(x.registeredAt));
+
+  /** Số người khớp một lựa chọn lọc, để hiện ngay trong menu. */
+  const countFor = (key: string) => attendees.filter((a) => matchesFilter(a, key)).length;
 
   // Lấy từ TIER_BREAKDOWN để khớp với các thẻ hạng vé ngay bên dưới.
   const totalRegistered = TIER_BREAKDOWN.reduce((n, t) => n + t.registered, 0);
@@ -460,10 +473,10 @@ export function AttendeesTab({ event }: { event: EventDraft }) {
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {TIER_BREAKDOWN.map((t) => {
-            const isActive = activeTierFilter === t.tier;
+            const isActive = listFilter === `tier:${t.tier}`;
             return (
               <button key={t.tier}
-                onClick={() => setTierFilter(isActive ? null : t.tier)}
+                onClick={() => setListFilter(isActive ? "all" : `tier:${t.tier}`)}
                 className="rounded-xl p-4 text-left transition-all cursor-pointer"
                 style={{
                   backgroundColor: T.background,
@@ -491,49 +504,69 @@ export function AttendeesTab({ event }: { event: EventDraft }) {
         </div>
       </div>
 
-      {/* Quick filters + search */}
+      {/* Danh sách: tiêu đề, tìm kiếm, rồi một hàng lọc/sắp xếp — theo bố cục mẫu */}
       <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex gap-1.5 flex-wrap">
-            {[
-              { id: "all", label: "Tất cả" },
-              { id: "not-checkin", label: "Chưa check-in" },
-              { id: "checked-in", label: "Đã check-in" },
-            ].map((f) => (
-              <button key={f.id} onClick={() => setQuickFilter(f.id)}
-                className="px-3 py-1.5 rounded-full transition-all cursor-pointer"
-                style={{
-                  fontSize: T.xs, fontWeight: quickFilter === f.id ? T.fw_semi : T.fw_normal,
-                  backgroundColor: quickFilter === f.id ? T.primary : T.secondary,
-                  color: quickFilter === f.id ? T.primaryFg : T.mutedFg,
-                  border: `1px solid ${quickFilter === f.id ? T.primary : T.border}`,
-                }}>
-                {f.label}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center justify-between gap-2">
+          <p style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>
+            Danh sách người tham dự
+            <span style={{ fontSize: T.xs, color: T.mutedFg, marginLeft: 6, fontWeight: T.fw_normal }}>
+              ({filtered.length})
+            </span>
+          </p>
           <Button size="sm" variant="outline" className="shrink-0">
             <Download className="size-3.5" /> Export CSV
           </Button>
         </div>
 
-        <div className="flex gap-2 flex-col sm:flex-row">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4" style={{ color: T.mutedFg }} />
-            <input
-              placeholder="Tìm theo tên, email, SĐT hoặc mã vé..."
-              value={search} onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl pl-9 pr-3 py-2 outline-none"
-              style={{ border: `1px solid ${T.border}`, backgroundColor: T.background, fontSize: T.sm, color: T.foreground }}
-            />
-          </div>
-          <Select value={filterTier} onValueChange={setFilterTier}>
-            <SelectTrigger className="w-full sm:w-36 cursor-pointer"><SelectValue placeholder="Tất cả hạng vé" /></SelectTrigger>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 pointer-events-none" style={{ color: T.mutedFg }} />
+          <input
+            placeholder="Tìm theo tên, email, SĐT hoặc mã vé..."
+            value={search} onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-xl pl-9 pr-3 py-2 outline-none"
+            style={{ border: `1px solid ${T.border}`, backgroundColor: T.background, fontSize: T.sm, color: T.foreground }}
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <Select value={listFilter} onValueChange={setListFilter}>
+            <SelectTrigger className="h-9 w-auto min-w-[168px] cursor-pointer" style={{ fontSize: T.sm }}>
+              <span className="flex items-center gap-1.5">
+                <Filter className="size-3.5" style={{ color: T.mutedFg }} />
+                <SelectValue />
+              </span>
+            </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả hạng vé</SelectItem>
-              <SelectItem value="Standard">Standard</SelectItem>
-              <SelectItem value="VIP">VIP</SelectItem>
-              <SelectItem value="Early Bird">Early Bird</SelectItem>
+              <SelectItem value="all">Tất cả · {countFor("all")}</SelectItem>
+              <SelectSeparator />
+              <SelectGroup>
+                <SelectLabel>Trạng thái</SelectLabel>
+                <SelectItem value="not-checkin">Chưa check-in · {countFor("not-checkin")}</SelectItem>
+                <SelectItem value="checked-in">Đã check-in · {countFor("checked-in")}</SelectItem>
+                <SelectItem value="cancelled">Đã huỷ · {countFor("cancelled")}</SelectItem>
+              </SelectGroup>
+              <SelectSeparator />
+              <SelectGroup>
+                <SelectLabel>Hạng vé</SelectLabel>
+                {TIER_BREAKDOWN.map((t) => (
+                  <SelectItem key={t.tier} value={`tier:${t.tier}`}>
+                    {t.tier} · {countFor(`tier:${t.tier}`)}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as "registered" | "name")}>
+            <SelectTrigger className="h-9 w-auto min-w-[184px] cursor-pointer" style={{ fontSize: T.sm }}>
+              <span className="flex items-center gap-1.5">
+                <Clock className="size-3.5" style={{ color: T.mutedFg }} />
+                <SelectValue />
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="registered">Thời gian đăng ký</SelectItem>
+              <SelectItem value="name">Tên A → Z</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -541,21 +574,6 @@ export function AttendeesTab({ event }: { event: EventDraft }) {
 
       {/* Attendee table */}
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>
-            Danh sách người tham dự
-            <span style={{ fontSize: T.xs, color: T.mutedFg, marginLeft: "6px", fontWeight: T.fw_normal }}>
-              ({filtered.length} người)
-            </span>
-          </p>
-          {activeTierFilter && (
-            <button onClick={() => setTierFilter(null)}
-              className="flex items-center gap-1 hover:opacity-70 transition-opacity cursor-pointer"
-              style={{ fontSize: T.xs, color: T.primary }}>
-              <X className="size-3" /> Bỏ lọc: {activeTierFilter}
-            </button>
-          )}
-        </div>
         <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${T.border}` }}>
           <Table>
             <TableHeader>
