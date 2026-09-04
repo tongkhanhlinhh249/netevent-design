@@ -275,27 +275,36 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
   return (
     <div className="flex flex-col gap-6 pb-10">
 
-      {/* Dòng chỉ số: vẫn một dòng để nhường vùng đầu cho khối 1 và 2, nhưng số
-          đặt ở cỡ lớn để đọc lướt được, thay vì chữ nhỏ màu mờ. */}
-      <div className="flex items-center gap-5 flex-wrap">
+      {/* Ba ô chỉ số chia đều hết bề ngang */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {([
-          { value: events.length,   label: "sự kiện",      live: false },
-          { value: upcoming.length, label: "sắp diễn ra",  live: false },
-          { value: live.length,     label: "đang diễn ra", live: true  },
-        ]).map((m, i) => (
-          <React.Fragment key={m.label}>
-            {i > 0 && <span className="shrink-0" style={{ width: 1, height: 18, backgroundColor: T.border }} />}
-            <span className="flex items-baseline gap-1.5">
-              {m.live && m.value > 0 && (
-                <span className="inline-block size-2 rounded-full self-center shrink-0 animate-pulse"
-                  style={{ backgroundColor: "#f86880" }} />
-              )}
-              <span style={{ fontSize: T.xl, fontWeight: T.fw_bold, lineHeight: 1,
-                color: m.live && m.value > 0 ? "#f86880" : T.foreground }}>{m.value}</span>
-              <span style={{ fontSize: T.sm, color: T.mutedFg }}>{m.label}</span>
-            </span>
-          </React.Fragment>
-        ))}
+          { value: events.length,   label: "sự kiện",      sub: "Trong workspace",  icon: Calendar, live: false },
+          { value: upcoming.length, label: "sắp diễn ra",  sub: "Chưa kết thúc",    icon: Clock,    live: false },
+          { value: live.length,     label: "đang diễn ra", sub: "Cần trực hôm nay", icon: Radio,    live: true  },
+        ]).map((m) => {
+          const on = m.live && m.value > 0;
+          return (
+            <div key={m.label} className="rounded-2xl p-4 flex flex-col gap-3"
+              style={{ backgroundColor: T.background,
+                border: `1px solid ${on ? "rgba(248,104,128,0.35)" : T.border}` }}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="size-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: on ? "rgba(248,104,128,0.10)" : `color-mix(in srgb, ${T.primary} 8%, transparent)` }}>
+                  <m.icon className="size-4" style={{ color: on ? "#f86880" : T.primary }} />
+                </span>
+                {on && (
+                  <span className="size-2 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: "#f86880" }} />
+                )}
+              </div>
+              <div>
+                <p style={{ fontSize: T["2xl"], fontWeight: T.fw_bold, lineHeight: 1.1,
+                  color: on ? "#f86880" : T.foreground }}>{m.value}</p>
+                <p style={{ fontSize: T.sm, color: T.foreground, marginTop: 4 }}>{m.label}</p>
+                <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>{m.sub}</p>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Hai cột: trái là việc phải làm ngay, phải là thông tin tham khảo.
@@ -345,41 +354,6 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
         </Section>
       )}
 
-      </div>{/* hết cột trái */}
-
-      <div className="flex flex-col gap-6 min-w-0">
-
-      {/* ── Khối 3 — Sắp diễn ra (tối đa 3, nối sang màn Sự kiện) ── */}
-      {!allClosed && upcoming.length > 0 && (
-        <Section title="Sắp diễn ra">
-          <div className="rounded-2xl overflow-hidden"
-            style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-            {upcoming.slice(0, 3).map((e, i) => (
-              <button key={e.id} data-pill="off" onClick={() => onGoToEvents?.()}
-                className="w-full flex items-start gap-3 px-4 py-3 text-left cursor-pointer transition-opacity hover:opacity-80"
-                style={{ background: "none", borderTop: i === 0 ? "none" : `1px solid ${T.border}`,
-                  borderLeft: "none", borderRight: "none", borderBottom: "none" }}>
-                {/* Cột phải chỉ rộng 360px: tên đứng riêng một dòng, ngày và số
-                    đăng ký xuống dòng dưới, thay vì nhồi hết vào một hàng rồi cắt cụt. */}
-                <Calendar className="size-4 shrink-0 mt-0.5" style={{ color: T.mutedFg }} />
-                <span className="flex-1 min-w-0 flex flex-col">
-                  <span className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{e.name}</span>
-                  <span style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 1 }}>
-                    {e.startDate} · {e.registrants > 0 ? `${e.registrants.toLocaleString()} đăng ký` : "chưa có đăng ký"}
-                  </span>
-                </span>
-                <ChevronRight className="size-3.5 shrink-0 mt-1" style={{ color: T.mutedFg }} />
-              </button>
-            ))}
-          </div>
-          <button data-pill="off" onClick={() => onGoToEvents?.()}
-            className="self-start flex items-center gap-1 cursor-pointer transition-opacity hover:opacity-70"
-            style={{ background: "none", border: "none", padding: 0, fontSize: T.sm, color: T.primary }}>
-            Xem tất cả sự kiện <ChevronRight className="size-3.5" />
-          </button>
-        </Section>
-      )}
-
       {/* ── Khối 4 — Hoạt động gần đây ── */}
       <Section title="Hoạt động gần đây">
         <div className="rounded-2xl overflow-hidden"
@@ -401,6 +375,42 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
           ))}
         </div>
       </Section>
+
+      </div>{/* hết cột trái */}
+
+      <div className="flex flex-col gap-6 min-w-0">
+
+      {/* ── Khối 3 — Sắp diễn ra (tối đa 3, nối sang màn Sự kiện) ── */}
+      {!allClosed && upcoming.length > 0 && (
+        <Section title="Sắp diễn ra" action={
+          <button data-pill="off" onClick={() => onGoToEvents?.()}
+            className="shrink-0 flex items-center gap-1 cursor-pointer transition-opacity hover:opacity-70"
+            style={{ background: "none", border: "none", padding: 0, fontSize: T.sm, color: T.primary }}>
+            Xem tất cả <ChevronRight className="size-3.5" />
+          </button>
+        }>
+          <div className="rounded-2xl overflow-hidden"
+            style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+            {upcoming.slice(0, 3).map((e, i) => (
+              <button key={e.id} data-pill="off" onClick={() => onGoToEvents?.()}
+                className="w-full flex items-start gap-3 px-4 py-3 text-left cursor-pointer transition-opacity hover:opacity-80"
+                style={{ background: "none", borderTop: i === 0 ? "none" : `1px solid ${T.border}`,
+                  borderLeft: "none", borderRight: "none", borderBottom: "none" }}>
+                {/* Cột phải chỉ rộng 360px: tên đứng riêng một dòng, ngày và số
+                    đăng ký xuống dòng dưới, thay vì nhồi hết vào một hàng rồi cắt cụt. */}
+                <Calendar className="size-4 shrink-0 mt-0.5" style={{ color: T.mutedFg }} />
+                <span className="flex-1 min-w-0 flex flex-col">
+                  <span className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{e.name}</span>
+                  <span style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 1 }}>
+                    {e.startDate} · {e.registrants > 0 ? `${e.registrants.toLocaleString()} đăng ký` : "chưa có đăng ký"}
+                  </span>
+                </span>
+                <ChevronRight className="size-3.5 shrink-0 mt-1" style={{ color: T.mutedFg }} />
+              </button>
+            ))}
+          </div>
+        </Section>
+      )}
 
       </div>{/* hết cột phải */}
       </div>{/* hết lưới hai cột */}
