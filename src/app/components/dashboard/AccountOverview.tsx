@@ -189,8 +189,8 @@ function LiveEventCard({ event, onManage }: { event: OvEvent; onManage: () => vo
   return (
     <div className="rounded-2xl p-5 flex flex-col gap-4"
       style={{ backgroundColor: T.background, border: `1px solid rgba(248,104,128,0.35)` }}>
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <span className="inline-flex items-center gap-1.5 shrink-0" style={{
+      <div className="flex flex-col gap-2">
+        <span className="inline-flex items-center gap-1.5 self-start" style={{
           fontSize: T.xs, fontWeight: T.fw_semi, padding: "2px 8px", borderRadius: 999,
           backgroundColor: "rgba(248,104,128,0.10)", color: "#f86880",
           border: "1px solid rgba(248,104,128,0.30)" }}>
@@ -298,6 +298,11 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
         ))}
       </div>
 
+      {/* Hai cột: trái là việc phải làm ngay, phải là thông tin tham khảo.
+          Dồn hết vào một cột full-width khiến mỗi khối bị kéo giãn hết bề ngang. */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start">
+      <div className="flex flex-col gap-6 min-w-0">
+
       {/* ── Khối 1 — Đang diễn ra (ẩn hẳn khi không có) ── */}
       {live.length > 0 && (
         <Section title="Đang diễn ra">
@@ -340,6 +345,10 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
         </Section>
       )}
 
+      </div>{/* hết cột trái */}
+
+      <div className="flex flex-col gap-6 min-w-0">
+
       {/* ── Khối 3 — Sắp diễn ra (tối đa 3, nối sang màn Sự kiện) ── */}
       {!allClosed && upcoming.length > 0 && (
         <Section title="Sắp diễn ra">
@@ -347,16 +356,19 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
             style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
             {upcoming.slice(0, 3).map((e, i) => (
               <button key={e.id} data-pill="off" onClick={() => onGoToEvents?.()}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left cursor-pointer transition-opacity hover:opacity-80"
+                className="w-full flex items-start gap-3 px-4 py-3 text-left cursor-pointer transition-opacity hover:opacity-80"
                 style={{ background: "none", borderTop: i === 0 ? "none" : `1px solid ${T.border}`,
                   borderLeft: "none", borderRight: "none", borderBottom: "none" }}>
-                <Calendar className="size-4 shrink-0" style={{ color: T.mutedFg }} />
-                <span className="shrink-0" style={{ fontSize: T.xs, color: T.mutedFg, minWidth: 76 }}>{e.startDate}</span>
-                <span className="flex-1 min-w-0 truncate" style={{ fontSize: T.sm, color: T.foreground }}>{e.name}</span>
-                <span className="shrink-0" style={{ fontSize: T.xs, color: T.mutedFg }}>
-                  {e.registrants > 0 ? `${e.registrants.toLocaleString()} đăng ký` : "Chưa có đăng ký"}
+                {/* Cột phải chỉ rộng 360px: tên đứng riêng một dòng, ngày và số
+                    đăng ký xuống dòng dưới, thay vì nhồi hết vào một hàng rồi cắt cụt. */}
+                <Calendar className="size-4 shrink-0 mt-0.5" style={{ color: T.mutedFg }} />
+                <span className="flex-1 min-w-0 flex flex-col">
+                  <span className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{e.name}</span>
+                  <span style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 1 }}>
+                    {e.startDate} · {e.registrants > 0 ? `${e.registrants.toLocaleString()} đăng ký` : "chưa có đăng ký"}
+                  </span>
                 </span>
-                <ChevronRight className="size-3.5 shrink-0" style={{ color: T.mutedFg }} />
+                <ChevronRight className="size-3.5 shrink-0 mt-1" style={{ color: T.mutedFg }} />
               </button>
             ))}
           </div>
@@ -389,6 +401,9 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
           ))}
         </div>
       </Section>
+
+      </div>{/* hết cột phải */}
+      </div>{/* hết lưới hai cột */}
     </div>
   );
 }
