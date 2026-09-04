@@ -1,13 +1,9 @@
 import * as React from "react";
-import { useState } from "react";
 import {
-  Calendar, MapPin, Search, Plus, Zap, Activity,
-  AlertCircle, AlertTriangle, Clock, Users, UserCheck,
-  Gamepad2, Mail, Radio, Laptop, ExternalLink, QrCode, Gift, X,
+  Calendar, Plus, Activity, AlertCircle, Clock, Users, UserCheck,
+  Radio, ChevronRight, QrCode, CreditCard, Link2, FileText, Rocket,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 
@@ -51,30 +47,43 @@ interface OvEvent {
   startDate: string; startTime: string; status: EventStatus;
   myRole: MyRole; registrants: number; checkins: number;
   revenue?: number; hasTickets: boolean; alerts: string[];
+  location?: string;
+  /** Đơn chờ xác nhận thanh toán. */
+  pendingPayments?: number;
+  hasCover?: boolean;
+  /** Link phòng họp, chỉ áp dụng cho sự kiện online. */
+  onlineLink?: string;
+  /** Ngày chuyển sang bản nháp, để biết đã "nằm im" bao lâu. */
+  draftSince?: string;
 }
+
+/** Lời mời thành viên gửi đi nhưng chưa ai nhận. */
+const PENDING_INVITES = 2;
 
 // ── Mock data ─────────────────────────────────────────────────────────────────
 
 const MOCK_EVENTS: OvEvent[] = [
   { id: "e1", name: "NetEvent Demo Conference 2026", format: "offline",
     startDate: "01/08/2026", startTime: "09:00", status: "published",
-    myRole: "owner", registrants: 328, checkins: 0, revenue: 45_000_000, hasTickets: true,
+    myRole: "owner", registrants: 328, checkins: 0, revenue: 45_000_000, hasTickets: true, hasCover: true,
+    location: "NetSpace — Công ty Công nghệ & Truyền thông",
     alerts: ["Gần đến lịch nhưng chưa xuất bản", "Chưa setup kho vé"] },
   { id: "e2", name: "Hội thảo AI & Tương lai 2026", format: "hybrid",
     startDate: "15/08/2026", startTime: "13:30", status: "draft",
-    myRole: "owner", registrants: 0, checkins: 0, hasTickets: false,
+    myRole: "owner", registrants: 0, checkins: 0, hasTickets: false, hasCover: true, draftSince: "15/08/2026",
     alerts: ["Gần đến lịch nhưng chưa xuất bản", "Chưa setup kho vé"] },
   { id: "e3", name: "Tech Summit Hà Nội", format: "offline",
     startDate: "22/09/2026", startTime: "08:30", status: "draft",
-    myRole: "admin", registrants: 0, checkins: 0, hasTickets: true,
+    myRole: "admin", registrants: 0, checkins: 0, hasTickets: false, hasCover: false, draftSince: "22/08/2026",
     alerts: ["Gần đến lịch nhưng chưa xuất bản"] },
   { id: "e4", name: "Sun Music Festival 2026", format: "offline",
     startDate: "20/07/2026", startTime: "18:00", status: "live",
     myRole: "staff-checkin", registrants: 1200, checkins: 874, hasTickets: true, revenue: 180_000_000,
+    hasCover: true, pendingPayments: 12, location: "SECC, Quận 7, TP.HCM",
     alerts: [] },
   { id: "e5", name: "Startup Pitch Night", format: "online",
     startDate: "10/08/2026", startTime: "19:00", status: "published",
-    myRole: "staff-ops", registrants: 56, checkins: 0, hasTickets: false,
+    myRole: "staff-ops", registrants: 56, checkins: 0, hasTickets: false, hasCover: true, onlineLink: "",
     alerts: ["Chưa setup kho vé"] },
   { id: "e6", name: "Workshop Thiết kế sản phẩm số", format: "online",
     startDate: "05/07/2026", startTime: "09:00", status: "ended",
@@ -86,24 +95,6 @@ const MOCK_EVENTS: OvEvent[] = [
     alerts: [] },
 ];
 
-const ALERT_ITEMS = [
-  { icon: <AlertCircle className="size-4" />, color: T.warningText, bg: T.warningSubtle,
-    title: "3 sự kiện bản nháp chưa xuất bản",
-    desc: "NetEvent Demo Conference, Hội thảo AI, Tech Summit", cta: "Xem" },
-  { icon: <QrCode className="size-4" />, color: T.primary, bg: "rgba(30,170,255,0.08)",
-    title: "2 sự kiện sắp diễn ra chưa bật check-in",
-    desc: "NetEvent Demo Conference 2026, Startup Pitch Night", cta: "Bật ngay" },
-  { icon: <Mail className="size-4" />, color: T.mutedFg, bg: T.secondary,
-    title: "1 sự kiện chưa bật email nhắc lịch",
-    desc: "Startup Pitch Night — diễn ra 10/08/2026", cta: "Cấu hình" },
-  { icon: <Gamepad2 className="size-4" />, color: "#7c3aed", bg: "rgba(124,58,237,0.08)",
-    title: "1 mini game đã tạo nhưng chưa publish",
-    desc: "Tech Summit Hà Nội — Bốc thăm trúng thưởng", cta: "Publish" },
-  { icon: <Gift className="size-4" />, color: "#dc2626", bg: "rgba(239,68,68,0.08)",
-    title: "4 người thắng chưa xác nhận trao quà",
-    desc: "Sun Music Festival 2026 — Mini game vòng quay", cta: "Xử lý" },
-];
-
 const ACTIVITY_LOG = [
   { actor: "Nguyễn Thị Lan", action: "đã tạo sự kiện",              target: "NetEvent Demo Conference 2026", time: "2 giờ trước"  },
   { actor: "Trần Staff A",   action: "đã check-in 24 người cho",    target: "Sun Music Festival 2026",       time: "3 giờ trước"  },
@@ -112,340 +103,276 @@ const ACTIVITY_LOG = [
   { actor: "Nguyễn Thị Lan", action: "đã xuất bản",                 target: "Startup Pitch Night",           time: "1 ngày trước" },
 ];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Suy ra dữ liệu cho từng khối ──────────────────────────────────────────────
 
-const STATUS_CFG: Record<EventStatus, { label: string; bg: string; color: string }> = {
-  draft:     { label: "Bản nháp",     bg: T.warningSubtle,        color: T.warningText  },
-  published: { label: "Sắp diễn ra",  bg: "rgba(30,170,255,0.1)", color: T.primary      },
-  live:      { label: "Đang diễn ra", bg: "rgba(239,68,68,0.08)", color: "#dc2626"      },
-  ended:     { label: "Đã kết thúc",  bg: T.secondary,            color: T.mutedFg      },
-  cancelled: { label: "Đã hủy",       bg: T.secondary,            color: T.mutedFg      },
-};
+/** Một dòng trong khối "Cần xử lý": một câu + một hành động. */
+type Todo = { id: string; icon: React.FC<{ className?: string }>; text: string; cta: string };
 
-const ROLE_CFG: Record<MyRole, string> = {
-  "owner":        "Owner",
-  "admin":        "Admin sự kiện",
-  "staff-checkin":"Staff check-in",
-  "staff-ops":    "Staff vận hành",
-};
+/**
+ * Sinh các dòng cần xử lý theo thứ tự ưu tiên đã thống nhất, tối đa 5 dòng.
+ * Mỗi quy tắc đọc tín hiệu thật trên dữ liệu chứ không gán cứng câu chữ, để
+ * khi dữ liệu đổi thì dòng cũng tự mất đi.
+ */
+function buildTodos(events: OvEvent[]): Todo[] {
+  const rows: Todo[] = [];
 
-const FORMAT_CFG: Record<string, { icon: React.ReactNode; label: string }> = {
-  offline: { icon: <MapPin  className="size-3" />, label: "Offline" },
-  online:  { icon: <Laptop  className="size-3" />, label: "Online"  },
-  hybrid:  { icon: <Radio   className="size-3" />, label: "Hybrid"  },
-};
+  // 1. Đơn chờ xác nhận thanh toán
+  for (const e of events) {
+    if (e.pendingPayments && e.pendingPayments > 0) {
+      rows.push({ id: `pay-${e.id}`, icon: CreditCard, cta: "Xác nhận",
+        text: `${e.pendingPayments} đơn chờ xác nhận thanh toán — ${e.name}` });
+    }
+  }
 
-// ── Sub-components ─────────────────────────────────────────────────────────────
+  // 2. Sắp diễn ra nhưng chưa đủ điều kiện xuất bản
+  for (const e of events) {
+    if (e.status === "ended" || e.status === "cancelled" || e.status === "live") continue;
+    const thieu: string[] = [];
+    if (e.hasCover === false) thieu.push("ảnh cover");
+    if (!e.hasTickets)        thieu.push("kho vé");
+    if (thieu.length && e.status === "draft") {
+      rows.push({ id: `ready-${e.id}`, icon: FileText, cta: "Hoàn thiện",
+        text: `${e.name} còn thiếu ${thieu.join(" và ")}` });
+    }
+  }
 
-function StatCard({ icon, label, value, sub, iconBg, iconColor }: {
-  icon: React.ReactNode; label: string; value: string;
-  sub?: string; iconBg?: string; iconColor?: string;
+  // 3. Bản nháp nằm im quá lâu
+  for (const e of events) {
+    if (e.status === "draft" && e.draftSince && e.hasCover !== false && e.hasTickets === false) {
+      rows.push({ id: `draft-${e.id}`, icon: Clock, cta: "Mở sự kiện",
+        text: `${e.name} đang là bản nháp từ ${e.draftSince}` });
+    }
+  }
+
+  // 4. Sự kiện online chưa có link tham gia
+  for (const e of events) {
+    if (e.format === "online" && e.status !== "ended" && e.status !== "cancelled" && !e.onlineLink) {
+      rows.push({ id: `link-${e.id}`, icon: Link2, cta: "Thêm link",
+        text: `${e.name} chưa có link tham gia` });
+    }
+  }
+
+  // 5. Lời mời thành viên chưa được nhận
+  if (PENDING_INVITES > 0) {
+    rows.push({ id: "invites", icon: Users, cta: "Xem thành viên",
+      text: `${PENDING_INVITES} lời mời chưa được nhận` });
+  }
+
+  return rows.slice(0, 5);
+}
+
+/** "01/08/2026" -> số so sánh được, để sắp xếp theo ngày. */
+function dateKey(v: string) {
+  const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? Number(`${m[3]}${m[2]}${m[1]}`) : 0;
+}
+
+// ── Các khối ──────────────────────────────────────────────────────────────────
+
+function Section({ title, action, children }: {
+  title: string; action?: React.ReactNode; children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl p-4 flex flex-col gap-3"
-      style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-      <div className="flex items-center gap-2.5">
-        <div className="size-8 rounded-lg flex items-center justify-center shrink-0"
-          style={{ backgroundColor: iconBg ?? "rgba(30,170,255,0.08)", color: iconColor ?? T.primary }}>
-          {icon}
-        </div>
-        <p style={{ fontSize: T.xs, color: T.mutedFg }}>{label}</p>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>{title}</h3>
+        {action}
       </div>
-      <div>
-        <p style={{ fontSize: T.xl, fontWeight: T.fw_bold, color: T.foreground }}>{value}</p>
-        {sub && <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>{sub}</p>}
+      {children}
+    </div>
+  );
+}
+
+/** Khối 1 — sự kiện đang chạy. Đây là thứ quan trọng nhất trong ngày diễn ra. */
+function LiveEventCard({ event, onManage }: { event: OvEvent; onManage: () => void }) {
+  const pct = event.registrants > 0 ? Math.round(event.checkins / event.registrants * 100) : 0;
+  return (
+    <div className="rounded-2xl p-5 flex flex-col gap-4"
+      style={{ backgroundColor: T.background, border: `1px solid rgba(248,104,128,0.35)` }}>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <span className="inline-flex items-center gap-1.5 shrink-0" style={{
+          fontSize: T.xs, fontWeight: T.fw_semi, padding: "2px 8px", borderRadius: 999,
+          backgroundColor: "rgba(248,104,128,0.10)", color: "#f86880",
+          border: "1px solid rgba(248,104,128,0.30)" }}>
+          <span className="size-1.5 rounded-full animate-pulse" style={{ backgroundColor: "#f86880" }} />
+          Đang diễn ra
+        </span>
+        <p className="min-w-0" style={{ fontSize: T.lg, fontWeight: T.fw_semi, color: T.foreground }}>{event.name}</p>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <p style={{ fontSize: T.sm, color: T.mutedFg }}>
+          {event.startTime}{event.location ? ` · ${event.location}` : ""}
+        </p>
+        <p style={{ fontSize: T.sm, color: T.foreground }}>
+          <strong>{event.registrants.toLocaleString()}</strong> đăng ký ·{" "}
+          <strong>{event.checkins.toLocaleString()}</strong> đã check-in ({pct}%)
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button size="sm" onClick={onManage}><QrCode className="size-3.5" /> Check-in QR</Button>
+        <Button size="sm" variant="outline" onClick={onManage}>Quản lý sự kiện →</Button>
       </div>
     </div>
   );
 }
 
-function StatusBadge({ status }: { status: EventStatus }) {
-  const cfg = STATUS_CFG[status];
-  return (
-    <span style={{ fontSize: T.xs, fontWeight: T.fw_medium, padding: "2px 8px", borderRadius: "999px",
-      backgroundColor: cfg.bg, color: cfg.color, whiteSpace: "nowrap" }}>
-      {cfg.label}
-    </span>
-  );
-}
+export function AccountOverview({ onGoToEvents, onCreateEvent }: {
+  onGoToEvents?: () => void;
+  onCreateEvent?: () => void;
+} = {}) {
+  const events = MOCK_EVENTS;
 
-function RoleBadge({ role }: { role: MyRole }) {
-  return (
-    <span style={{ fontSize: T.xs, padding: "2px 8px", borderRadius: "999px",
-      backgroundColor: T.secondary, color: T.mutedFg, whiteSpace: "nowrap",
-      border: `1px solid ${T.border}` }}>
-      {ROLE_CFG[role]}
-    </span>
-  );
-}
+  const live     = events.filter((e) => e.status === "live");
+  const upcoming = events
+    .filter((e) => e.status === "published" || e.status === "draft")
+    .sort((a, b) => dateKey(a.startDate) - dateKey(b.startDate));
+  const todos    = buildTodos(events);
 
-// ── Empty state ────────────────────────────────────────────────────────────────
+  const noEvents  = events.length === 0;
+  const allClosed = !noEvents && events.every((e) => e.status === "ended" || e.status === "cancelled");
 
-function EmptyState({ tab }: { tab: TabKey }) {
-  const cfg = {
-    all:    { title: "Bạn chưa có sự kiện nào",
-              desc:  "Tạo sự kiện đầu tiên để bắt đầu quản lý đăng ký, vé và check-in trên NetEvent.", cta: true },
-    mine:   { title: "Bạn chưa sở hữu sự kiện nào",
-              desc:  "Các sự kiện bạn tạo hoặc được gán làm owner sẽ hiển thị tại đây.", cta: true },
-    shared: { title: "Bạn chưa được phân quyền vào sự kiện nào",
-              desc:  "Khi có người mời bạn tham gia quản lý hoặc vận hành sự kiện, sự kiện đó sẽ hiển thị tại đây.", cta: false },
-  }[tab];
-  return (
-    <div className="flex flex-col items-center justify-center py-20 rounded-2xl"
-      style={{ border: `1px dashed ${T.border}`, backgroundColor: T.background }}>
-      <Calendar className="size-12 mb-4" style={{ color: T.mutedFg, opacity: 0.35 }} />
-      <p style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground, marginBottom: 8 }}>
-        {cfg.title}
-      </p>
-      <p style={{ fontSize: T.sm, color: T.mutedFg, textAlign: "center", maxWidth: 360,
-        marginBottom: 20, lineHeight: 1.6 }}>{cfg.desc}</p>
-      {cfg.cta && <Button><Plus className="size-4" /> Tạo sự kiện</Button>}
-    </div>
-  );
-}
-
-// ── Main component ─────────────────────────────────────────────────────────────
-
-export function AccountOverview() {
-  const [tab, setTab]         = useState<TabKey>("all");
-  const [search, setSearch]   = useState("");
-  const [statusF, setStatusF] = useState("all");
-  const [timeF, setTimeF]     = useState("all");
-  const [formatF, setFormatF] = useState("all");
-  const [roleF, setRoleF]     = useState("all");
-
-  const tabFiltered = MOCK_EVENTS.filter((e) => {
-    if (tab === "mine")   return e.myRole === "owner" || e.myRole === "admin";
-    if (tab === "shared") return e.myRole === "staff-checkin" || e.myRole === "staff-ops";
-    return true;
-  });
-
-  const events = tabFiltered.filter((e) => {
-    if (search    && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
-    if (statusF !== "all" && e.status !== statusF) return false;
-    if (formatF !== "all" && e.format !== formatF) return false;
-    if (roleF   !== "all" && e.myRole !== roleF)   return false;
-    return true;
-  });
-
-  const attention  = events.filter((e) => e.alerts.length > 0);
-  const hasFilters = !!(search || statusF !== "all" || timeF !== "all" || formatF !== "all" || roleF !== "all");
-
-  const TABS: { key: TabKey; label: string; count: number }[] = [
-    { key: "all",    label: "Tất cả",                  count: MOCK_EVENTS.length },
-    { key: "mine",   label: "Của tôi",                 count: MOCK_EVENTS.filter(e => e.myRole === "owner" || e.myRole === "admin").length },
-    { key: "shared", label: "Được phân quyền cho tôi", count: MOCK_EVENTS.filter(e => e.myRole === "staff-checkin" || e.myRole === "staff-ops").length },
-  ];
-
-  return (
-    <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6 items-start pb-10">
-
-      {/* LEFT — tabs + filters + stats + event table */}
-      <div className="flex flex-col gap-6 min-w-0">
-
-        {/* Tab filter */}
-        <div style={{ borderBottom: `1px solid ${T.border}` }}>
-          <div className="flex gap-0">
-            {TABS.map((t) => (
-              <button key={t.key} onClick={() => setTab(t.key)}
-                data-pill="off"
-                style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "0 4px 12px", marginRight: 24, marginBottom: -1,
-                  fontSize: T.sm, fontWeight: tab === t.key ? T.fw_semi : T.fw_normal,
-                  color: tab === t.key ? T.primary : T.mutedFg,
-                  borderBottom: `2px solid ${tab === t.key ? T.primary : "transparent"}`,
-                }}>
-                {t.label}
-                <span style={{
-                  fontSize: T.xs, padding: "1px 7px", borderRadius: "999px",
-                  backgroundColor: tab === t.key ? T.primary : T.secondary,
-                  color: tab === t.key ? T.primaryFg : T.mutedFg,
-                }}>{t.count}</span>
-              </button>
-            ))}
+  // ── Tài khoản mới: chỉ một khối onboarding, không khối rỗng nào khác ──
+  if (noEvents) {
+    return (
+      <div className="rounded-2xl p-6 flex flex-col gap-5 max-w-2xl"
+        style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+        <div className="flex items-center gap-3">
+          <span className="size-10 rounded-xl flex items-center justify-center"
+            style={{ backgroundColor: `color-mix(in srgb, ${T.primary} 12%, transparent)` }}>
+            <Rocket className="size-5" style={{ color: T.primary }} />
+          </span>
+          <div>
+            <p style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Bắt đầu với NetEvent</p>
+            <p style={{ fontSize: T.sm, color: T.mutedFg, marginTop: 2 }}>Ba bước để mở bán vé sự kiện đầu tiên.</p>
           </div>
         </div>
 
-        {/* Secondary filters */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Search */}
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 pointer-events-none"
-              style={{ color: T.mutedFg }} />
-            <Input placeholder="Tìm sự kiện..." value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-9 w-full" style={{ fontSize: T.sm }} />
-          </div>
-
-          {/* Dropdown group */}
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <Select value={statusF} onValueChange={setStatusF}>
-              <SelectTrigger className="h-9 w-[168px] cursor-pointer" style={{ fontSize: T.sm }}>
-                <SelectValue placeholder="Trạng thái" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                <SelectItem value="draft">Bản nháp</SelectItem>
-                <SelectItem value="published">Sắp diễn ra</SelectItem>
-                <SelectItem value="live">Đang diễn ra</SelectItem>
-                <SelectItem value="ended">Đã kết thúc</SelectItem>
-                <SelectItem value="cancelled">Đã hủy</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={timeF} onValueChange={setTimeF}>
-              <SelectTrigger className="h-9 w-[160px] cursor-pointer" style={{ fontSize: T.sm }}>
-                <SelectValue placeholder="Thời gian" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả thời gian</SelectItem>
-                <SelectItem value="week">Tuần này</SelectItem>
-                <SelectItem value="month">Tháng này</SelectItem>
-                <SelectItem value="3months">3 tháng tới</SelectItem>
-                <SelectItem value="custom">Tùy chỉnh</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={formatF} onValueChange={setFormatF}>
-              <SelectTrigger className="h-9 w-[136px] cursor-pointer" style={{ fontSize: T.sm }}>
-                <SelectValue placeholder="Hình thức" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="offline">Offline</SelectItem>
-                <SelectItem value="online">Online</SelectItem>
-              </SelectContent>
-            </Select>
-            {hasFilters && (
-              <button onClick={() => { setSearch(""); setStatusF("all"); setTimeF("all"); setFormatF("all"); }}
-                style={{ display: "flex", alignItems: "center", gap: 4, height: 36, padding: "0 10px",
-                  borderRadius: 8, fontSize: T.xs, color: T.mutedFg, border: `1px solid ${T.border}`,
-                  background: "none", cursor: "pointer", whiteSpace: "nowrap" }}>
-                <X className="size-3" /> Xóa bộ lọc
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Quick stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard icon={<Calendar className="size-4" />}    label="Tổng sự kiện"
-            value={String(MOCK_EVENTS.length)} sub="Trong workspace" />
-          <StatCard icon={<Clock className="size-4" />}       label="Sắp diễn ra"
-            value={String(MOCK_EVENTS.filter(e => e.status === "published").length)} sub="Trong 30 ngày tới"
-            iconBg="rgba(30,170,255,0.08)" iconColor={T.primary} />
-          <StatCard icon={<Radio className="size-4" />}       label="Đang diễn ra"
-            value={String(MOCK_EVENTS.filter(e => e.status === "live").length)}
-            iconBg="rgba(239,68,68,0.08)" iconColor="#dc2626" />
-          <StatCard icon={<AlertCircle className="size-4" />} label="Bản nháp cần xử lý"
-            value={String(MOCK_EVENTS.filter(e => e.status === "draft").length)}
-            iconBg={T.warningSubtle} iconColor={T.warningText} />
-        </div>
-
-        {/* Event list or empty state */}
-        {events.length === 0 ? (
-          <EmptyState tab={tab} />
-        ) : (
-          <div className="rounded-2xl overflow-hidden"
-            style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-            <div className="px-5 py-4" style={{ borderBottom: `1px solid ${T.border}` }}>
-              <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>
-                Danh sách sự kiện
-              </h3>
-              <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>
-                {events.length} sự kiện{hasFilters ? " phù hợp với bộ lọc" : ""}
-              </p>
-            </div>
-            <div style={{ overflowX: "auto" }}>
-              <table className="w-full" style={{ borderCollapse: "collapse", minWidth: 640 }}>
-                <thead>
-                  <tr style={{ backgroundColor: T.secondary }}>
-                    {["Sự kiện", ...(tab !== "mine" ? ["Vai trò"] : []), "Trạng thái", "Đăng ký", "Check-in", "Thao tác"].map((h) => (
-                      <th key={h} style={{ padding: "10px 16px", textAlign: "left",
-                        fontSize: T.xs, fontWeight: T.fw_medium, color: T.mutedFg, whiteSpace: "nowrap" }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {events.map((e) => (
-                    <tr key={e.id} style={{ borderTop: `1px solid ${T.border}`, cursor: "default" }}
-                      onMouseEnter={(el) => (el.currentTarget.style.backgroundColor = T.secondary)}
-                      onMouseLeave={(el) => (el.currentTarget.style.backgroundColor = "transparent")}>
-                      <td style={{ padding: "12px 16px", minWidth: 200 }}>
-                        <p style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground, marginBottom: 2 }}>
-                          {e.name}
-                        </p>
-                        <p style={{ fontSize: T.xs, color: T.mutedFg, display: "flex", alignItems: "center", gap: 4 }}>
-                          <Calendar className="size-3" /> {e.startDate}
-                          <span style={{ margin: "0 1px" }}>·</span>
-                          {FORMAT_CFG[e.format].icon} {FORMAT_CFG[e.format].label}
-                        </p>
-                      </td>
-                      {tab !== "mine" && (
-                        <td style={{ padding: "12px 16px" }}>
-                          <span style={{ fontSize: T.xs, padding: "2px 8px", borderRadius: "999px",
-                            backgroundColor: T.secondary, color: T.mutedFg, whiteSpace: "nowrap",
-                            border: `1px solid ${T.border}` }}>
-                            Nhân viên sự kiện
-                          </span>
-                        </td>
-                      )}
-                      <td style={{ padding: "12px 16px" }}><StatusBadge status={e.status} /></td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <span style={{ fontSize: T.sm, color: T.foreground }}>
-                          {e.registrants > 0 ? e.registrants.toLocaleString() : "—"}
-                        </span>
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <span style={{ fontSize: T.sm, color: T.foreground }}>
-                          {e.checkins > 0 ? e.checkins.toLocaleString() : "—"}
-                        </span>
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <Button size="sm" variant="outline">
-                          <ExternalLink className="size-3" /> Chi tiết
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* RIGHT — Hoạt động gần đây (luôn hiển thị) */}
-      <div className="flex flex-col gap-5">
-        <div className="rounded-2xl p-5"
-          style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-            <Activity className="size-4 shrink-0" style={{ color: T.primary }} />
-            <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>
-              Hoạt động gần đây
-            </h3>
-          </div>
-          {ACTIVITY_LOG.map((log, i) => (
-            <div key={i} style={{
-              display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 0",
-              borderBottom: i < ACTIVITY_LOG.length - 1 ? `1px solid ${T.border}` : "none",
-            }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", marginTop: 6, flexShrink: 0,
-                backgroundColor: T.primary }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: T.xs, color: T.foreground, lineHeight: 1.5 }}>
-                  <span style={{ fontWeight: T.fw_medium }}>{log.actor}</span>
-                  {" "}{log.action}{" "}
-                  <span style={{ fontWeight: T.fw_medium }}>{log.target}</span>
-                </p>
-                <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>{log.time}</p>
-              </div>
+        <div className="flex flex-col gap-3">
+          {[
+            "Tạo sự kiện và điền thời gian, địa điểm",
+            "Thiết lập kho vé và form đăng ký",
+            "Xuất bản trang sự kiện và chia sẻ",
+          ].map((step, i) => (
+            <div key={step} className="flex items-center gap-3">
+              <span className="size-6 rounded-full shrink-0 flex items-center justify-center"
+                style={{ backgroundColor: T.secondary, color: T.mutedFg, fontSize: T.xs, fontWeight: T.fw_semi }}>
+                {i + 1}
+              </span>
+              <span style={{ fontSize: T.sm, color: T.foreground }}>{step}</span>
             </div>
           ))}
         </div>
+
+        <Button className="self-start" onClick={onCreateEvent}>
+          <Plus className="size-4" /> Tạo sự kiện đầu tiên
+        </Button>
       </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6 pb-10">
+
+      {/* Dòng chỉ số gọn, thay cho 4 card chiếm hết vùng nhìn đầu tiên */}
+      <p style={{ fontSize: T.sm, color: T.mutedFg }}>
+        <strong style={{ color: T.foreground }}>{events.length}</strong> sự kiện ·{" "}
+        <strong style={{ color: T.foreground }}>{upcoming.length}</strong> sắp diễn ra ·{" "}
+        <strong style={{ color: T.foreground }}>{live.length}</strong> đang diễn ra
+      </p>
+
+      {/* ── Khối 1 — Đang diễn ra (ẩn hẳn khi không có) ── */}
+      {live.length > 0 && (
+        <Section title="Đang diễn ra">
+          <div className="flex flex-col gap-3">
+            {live.map((e) => <LiveEventCard key={e.id} event={e} onManage={() => onGoToEvents?.()} />)}
+          </div>
+        </Section>
+      )}
+
+      {/* Tất cả sự kiện đã khép lại */}
+      {allClosed && (
+        <div className="rounded-2xl p-5 flex items-center justify-between gap-3 flex-wrap"
+          style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+          <p style={{ fontSize: T.sm, color: T.mutedFg }}>Không có sự kiện nào đang hoạt động.</p>
+          <Button size="sm" onClick={onCreateEvent}><Plus className="size-3.5" /> Tạo sự kiện</Button>
+        </div>
+      )}
+
+      {/* ── Khối 2 — Cần xử lý ── */}
+      {!allClosed && (
+        <Section title="Cần xử lý">
+          {todos.length === 0 ? (
+            <p style={{ fontSize: T.sm, color: T.mutedFg }}>Không có việc cần xử lý.</p>
+          ) : (
+            <div className="rounded-2xl overflow-hidden"
+              style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+              {todos.map((t, i) => (
+                <div key={t.id} className="flex items-center gap-3 px-4 py-3"
+                  style={{ borderTop: i === 0 ? "none" : `1px solid ${T.border}` }}>
+                  <t.icon className="size-4 shrink-0" style={{ color: T.mutedFg }} />
+                  <span className="flex-1 min-w-0" style={{ fontSize: T.sm, color: T.foreground }}>{t.text}</span>
+                  <Button size="sm" variant="outline" className="shrink-0" style={{ fontSize: T.xs }}
+                    onClick={() => onGoToEvents?.()}>
+                    {t.cta}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+      )}
+
+      {/* ── Khối 3 — Sắp diễn ra (tối đa 3, nối sang màn Sự kiện) ── */}
+      {!allClosed && upcoming.length > 0 && (
+        <Section title="Sắp diễn ra">
+          <div className="rounded-2xl overflow-hidden"
+            style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+            {upcoming.slice(0, 3).map((e, i) => (
+              <button key={e.id} data-pill="off" onClick={() => onGoToEvents?.()}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left cursor-pointer transition-opacity hover:opacity-80"
+                style={{ background: "none", borderTop: i === 0 ? "none" : `1px solid ${T.border}`,
+                  borderLeft: "none", borderRight: "none", borderBottom: "none" }}>
+                <Calendar className="size-4 shrink-0" style={{ color: T.mutedFg }} />
+                <span className="shrink-0" style={{ fontSize: T.xs, color: T.mutedFg, minWidth: 76 }}>{e.startDate}</span>
+                <span className="flex-1 min-w-0 truncate" style={{ fontSize: T.sm, color: T.foreground }}>{e.name}</span>
+                <span className="shrink-0" style={{ fontSize: T.xs, color: T.mutedFg }}>
+                  {e.registrants > 0 ? `${e.registrants.toLocaleString()} đăng ký` : "Chưa có đăng ký"}
+                </span>
+                <ChevronRight className="size-3.5 shrink-0" style={{ color: T.mutedFg }} />
+              </button>
+            ))}
+          </div>
+          <button data-pill="off" onClick={() => onGoToEvents?.()}
+            className="self-start flex items-center gap-1 cursor-pointer transition-opacity hover:opacity-70"
+            style={{ background: "none", border: "none", padding: 0, fontSize: T.sm, color: T.primary }}>
+            Xem tất cả sự kiện <ChevronRight className="size-3.5" />
+          </button>
+        </Section>
+      )}
+
+      {/* ── Khối 4 — Hoạt động gần đây ── */}
+      <Section title="Hoạt động gần đây">
+        <div className="rounded-2xl overflow-hidden"
+          style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+          {ACTIVITY_LOG.map((a, i) => (
+            <button key={`${a.actor}-${a.time}`} data-pill="off" onClick={() => onGoToEvents?.()}
+              className="w-full flex items-start gap-3 px-4 py-3 text-left cursor-pointer transition-opacity hover:opacity-80"
+              style={{ background: "none", borderTop: i === 0 ? "none" : `1px solid ${T.border}`,
+                borderLeft: "none", borderRight: "none", borderBottom: "none" }}>
+              <Activity className="size-4 shrink-0 mt-0.5" style={{ color: T.mutedFg }} />
+              <span className="flex-1 min-w-0">
+                <span style={{ fontSize: T.sm, color: T.foreground }}>
+                  <strong style={{ fontWeight: T.fw_medium }}>{a.actor}</strong> {a.action}{" "}
+                  <strong style={{ fontWeight: T.fw_medium }}>{a.target}</strong>
+                </span>
+                <span className="block" style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>{a.time}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </Section>
     </div>
   );
 }

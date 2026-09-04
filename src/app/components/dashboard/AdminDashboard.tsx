@@ -1710,7 +1710,10 @@ export function AdminDashboard({ currentRole, onLogout }: AdminDashboardProps) {
               <Outlet />
             ) : activePage === "overview" ? (
               <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 xl:px-10 py-6 m-[0px]" style={{ maxWidth: "1280px" }}>
-                <AccountOverview />
+                <AccountOverview
+                  onGoToEvents={() => { setActivePage("events"); setEventsScreen("list"); }}
+                  onCreateEvent={() => { setActivePage("events"); setEventsScreen("create"); }}
+                />
               </div>
             ) : (
               <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 xl:px-10 py-6" style={{ maxWidth: "1280px", paddingTop: 24, paddingBottom: 24 }}>

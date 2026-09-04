@@ -1493,6 +1493,16 @@ function LandingPageEditor({ event, settings, onSettingsChange }: {
 
 // ── Demo Public Landing Page ──────────────────────────────────────────────────
 
+/** Vài người đăng ký gần nhất, hiển thị công khai trên trang sự kiện. */
+const RECENT_JOINERS = [
+  { name: "Nguyễn Thị Hoa", tint: "#f87171" },
+  { name: "Trần Minh Tú",   tint: "#a78bfa" },
+  { name: "Lê Văn Đức",     tint: "#34d399" },
+  { name: "Phạm Thu Hà",    tint: "#fbbf24" },
+  { name: "Hoàng Quốc Bảo", tint: "#60a5fa" },
+];
+const TOTAL_JOINERS = 328;
+
 const DEMO_TIERS = [
   { id: "standard",   name: "Standard",   price: 0,      priceLabel: "Miễn phí", remaining: 120, soldOut: false, desc: "Vé tham dự cơ bản. Bao gồm tài liệu sự kiện và tea-break." },
   { id: "vip",        name: "VIP",        price: 499000, priceLabel: "499.000đ", remaining: 28,  soldOut: false, desc: "Ưu tiên chỗ ngồi, networking riêng và quà tặng đặc biệt." },
@@ -1587,8 +1597,10 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
               )}
             </EventCoverLarge>
 
-            {/* Host card */}
-            <div className="rounded-2xl p-4" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+            <div style={{ borderTop: `1px solid ${T.border}` }} />
+
+            {/* Đơn vị tổ chức — không khung, các mục ngăn nhau bằng đường kẻ mảnh */}
+            <div>
               <p style={{ fontSize: T.xs, fontWeight: T.fw_semi, color: T.mutedFg,
                 textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "12px" }}>
                 Đơn vị tổ chức
@@ -1604,6 +1616,33 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                 </div>
               </div>
             </div>
+
+            <div style={{ borderTop: `1px solid ${T.border}` }} />
+
+            {/* Người tham dự — vài người đăng ký gần nhất */}
+            <div>
+              <p style={{ fontSize: T.xs, fontWeight: T.fw_semi, color: T.mutedFg,
+                textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "12px" }}>
+                {TOTAL_JOINERS.toLocaleString()} người sẽ tham dự
+              </p>
+              <div className="flex items-center gap-2 mb-3">
+                {RECENT_JOINERS.map((j, i) => (
+                  <span key={j.name} title={j.name}
+                    className="size-8 rounded-full shrink-0 flex items-center justify-center"
+                    style={{ backgroundColor: j.tint, marginLeft: i === 0 ? 0 : -14,
+                      border: `2px solid ${T.background}`,
+                      fontSize: "10px", fontWeight: T.fw_semi, color: "#fff" }}>
+                    {j.name.trim().split(/\s+/).slice(-1)[0][0]}
+                  </span>
+                ))}
+              </div>
+              <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6 }}>
+                {RECENT_JOINERS.slice(0, 2).map((j) => j.name).join(", ")}
+                {TOTAL_JOINERS > 2 ? ` và ${(TOTAL_JOINERS - 2).toLocaleString()} người khác` : ""}
+              </p>
+            </div>
+
+            <div style={{ borderTop: `1px solid ${T.border}` }} />
 
             {/* Share card */}
             <div>
@@ -1649,9 +1688,6 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                 lineHeight: 1.25, marginBottom: "10px" }}>
                 {eventName}
               </h1>
-              <p style={{ fontSize: T.base, color: T.mutedFg, lineHeight: 1.7, marginBottom: "24px" }}>
-                Sự kiện kết nối cộng đồng làm sản phẩm, marketing và công nghệ sự kiện.
-              </p>
 
               {/* Meta rows */}
               <div className="flex flex-col gap-3">
