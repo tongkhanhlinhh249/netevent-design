@@ -1,6 +1,12 @@
 import * as React from "react";
+import { useState } from "react";
 import { Ticket, Plus, Users, DollarSign, TrendingUp, Settings, Download, Eye } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Textarea } from "../../components/ui/textarea";
+import { Sheet, SheetContent } from "../../components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 
 const T = {
   background:    "var(--background)",
@@ -25,7 +31,12 @@ const T = {
   "2xl":"var(--text-2xl)",
 };
 
-const TIERS = [
+type Tier = {
+  id: string; name: string; price: number; currency: string;
+  sold: number; total: number; status: string; desc: string;
+};
+
+const INITIAL_TIERS: Tier[] = [
   {
     id: "t1", name: "Vé tiêu chuẩn", price: 0, currency: "VND",
     sold: 228, total: 300, status: "active",
@@ -65,10 +76,106 @@ function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: s
   );
 }
 
+
+function TierSheet({ mode, tier, onClose, onSave }: {
+  mode: "view" | "edit" | "create";
+  tier?: Tier;
+  onClose: () => void;
+  onSave: (t: Tier) => void;
+}) {
+  const readOnly = mode === "view";
+  const [name, setName]   = useState(tier?.name ?? "");
+  const [desc, setDesc]   = useState(tier?.desc ?? "");
+  const [price, setPrice] = useState(String(tier?.price ?? 0));
+  const [total, setTotal] = useState(String(tier?.total ?? 100));
+  const [status, setStatus] = useState(tier?.status ?? "active");
+
+  const title = mode === "create" ? "Thêm hạng vé" : mode === "edit" ? "Chỉnh sửa hạng vé" : tier?.name ?? "Hạng vé";
+
+  const submit = () => {
+    onSave({
+      id: tier?.id ?? `t${Date.now()}`,
+      name: name.trim() || "Hạng vé mới",
+      desc: desc.trim(),
+      price: Number(price) || 0,
+      currency: "VND",
+      sold: tier?.sold ?? 0,
+      total: Number(total) || 0,
+      status,
+    });
+    onClose();
+  };
+
+  return (
+    <Sheet open onOpenChange={(o) => !o && onClose()}>
+      <SheetContent className="p-0 flex flex-col gap-0 sm:max-w-[440px]">
+        <div className="px-5 py-4" style={{ borderBottom: `1px solid ${T.border}` }}>
+          <p style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>{title}</p>
+          {readOnly && tier && (
+            <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>
+              Đã bán {tier.sold}/{tier.total} vé
+            </p>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="tier-name">Tên hạng vé</Label>
+            <Input id="tier-name" disabled={readOnly} value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="tier-desc">Mô tả</Label>
+            <Textarea id="tier-desc" rows={3} disabled={readOnly} value={desc} onChange={(e) => setDesc(e.target.value)} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="tier-price">Giá vé (₫)</Label>
+              <Input id="tier-price" type="number" min={0} step={1000} disabled={readOnly}
+                value={price} onChange={(e) => setPrice(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="tier-total">Số lượng</Label>
+              <Input id="tier-total" type="number" min={0} disabled={readOnly}
+                value={total} onChange={(e) => setTotal(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Trạng thái</Label>
+            <Select value={status} onValueChange={setStatus} disabled={readOnly}>
+              <SelectTrigger className="cursor-pointer"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Đang mở</SelectItem>
+                <SelectItem value="ended">Đã kết thúc</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 px-5 py-4" style={{ borderTop: `1px solid ${T.border}` }}>
+          <Button variant="outline" onClick={onClose}>{readOnly ? "Đóng" : "Huỷ"}</Button>
+          {!readOnly && <Button onClick={submit}>Lưu</Button>}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export function KhoVeRoute() {
-  const totalRevenue = TIERS.reduce((s, t) => s + t.price * t.sold, 0);
-  const totalSold    = TIERS.reduce((s, t) => s + t.sold, 0);
-  const totalCap     = TIERS.reduce((s, t) => s + t.total, 0);
+  const [tiers, setTiers] = useState<Tier[]>(INITIAL_TIERS);
+  const [sheet, setSheet] = useState<{ mode: "view" | "edit" | "create"; tier?: Tier } | null>(null);
+
+  const saveTier = (t: Tier) => setTiers((prev) => {
+    const i = prev.findIndex((x) => x.id === t.id);
+    if (i === -1) return [...prev, t];
+    const next = [...prev]; next[i] = t; return next;
+  });
+
+  const totalRevenue = tiers.reduce((s, t) => s + t.price * t.sold, 0);
+  const totalSold    = tiers.reduce((s, t) => s + t.sold, 0);
+  const totalCap     = tiers.reduce((s, t) => s + t.total, 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -82,7 +189,8 @@ export function KhoVeRoute() {
             Quản lý hạng vé, giá và số lượng cho sự kiện.
           </p>
         </div>
-        <Button style={{ backgroundColor: "rgba(30,170,255,0.12)", color: "var(--primary)", border: "1px solid rgba(30,170,255,0.25)" }}>
+        <Button onClick={() => setSheet({ mode: "create" })}
+          style={{ backgroundColor: "rgba(30,170,255,0.12)", color: "var(--primary)", border: "1px solid rgba(30,170,255,0.25)" }}>
           <Plus className="size-4" /> Thêm hạng vé
         </Button>
       </div>
@@ -97,7 +205,7 @@ export function KhoVeRoute() {
           value={totalRevenue > 0 ? `${(totalRevenue / 1_000_000).toFixed(0)}M ₫` : "0 ₫"}
           sub="Từ vé có phí" />
         <StatCard icon={<Users className="size-4" />} label="Hạng vé"
-          value={String(TIERS.length)} sub={`${TIERS.filter(t => t.status === "active").length} đang hoạt động`} />
+          value={String(tiers.length)} sub={`${tiers.filter(t => t.status === "active").length} đang hoạt động`} />
       </div>
 
       {/* Tier cards */}
@@ -109,7 +217,7 @@ export function KhoVeRoute() {
           </Button>
         </div>
 
-        {TIERS.map((tier) => {
+        {tiers.map((tier) => {
           const pct = Math.round(tier.sold / tier.total * 100);
           const isActive = tier.status === "active";
           return (
@@ -168,10 +276,10 @@ export function KhoVeRoute() {
 
                 {/* Actions */}
                 <div className="flex gap-2 shrink-0">
-                  <Button size="sm" variant="outline">
+                  <Button size="sm" variant="outline" onClick={() => setSheet({ mode: "view", tier })}>
                     <Eye className="size-3.5" /> Xem
                   </Button>
-                  <Button size="sm" variant="outline">
+                  <Button size="sm" variant="outline" onClick={() => setSheet({ mode: "edit", tier })}>
                     <Settings className="size-3.5" /> Chỉnh sửa
                   </Button>
                 </div>
@@ -180,6 +288,16 @@ export function KhoVeRoute() {
           );
         })}
       </div>
+
+      {sheet && (
+        <TierSheet
+          key={`${sheet.mode}-${sheet.tier?.id ?? "new"}`}
+          mode={sheet.mode}
+          tier={sheet.tier}
+          onClose={() => setSheet(null)}
+          onSave={saveTier}
+        />
+      )}
     </div>
   );
 }

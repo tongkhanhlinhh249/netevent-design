@@ -1,13 +1,21 @@
 import * as React from "react";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import {
   Users, Ticket, DollarSign, UserCheck, Globe,
   AlertCircle, ChevronRight, ExternalLink,
   Calendar, MapPin, Pencil, BarChart3, Mail, QrCode, Plus,
-  Download, Eye, Settings, Copy, Facebook, Twitter, Linkedin, MessageCircle, Image
+  Download, Eye, Settings, Copy, Facebook, Twitter, Linkedin, MessageCircle, Image,
+  ArrowLeft, UserPlus, Check, X, Sparkles, AtSign, Send, CalendarClock, Search
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Dialog, DialogContent } from "../ui/dialog";
+import { Textarea } from "../ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Sheet, SheetContent } from "../ui/sheet";
 
 // ── Tokens ───────────────────────────────────────────────────────────────────
 
@@ -74,10 +82,396 @@ const RECENT_ATTENDEES = [
   { name: "Hoàng Quốc Bảo",  email: "bao.hoa***@firm.vn",    ticket: "Vé VIP",         status: "checkin",    time: "35 phút trước" },
 ];
 
-const HOSTS = [
+type Host = { name: string; email: string; role: string };
+
+const HOSTS: Host[] = [
   { name: "Nguyễn Thị Lan", email: "owner@netevent.vn", role: "Người tạo" },
   { name: "Trần Văn Minh",  email: "admin@netevent.vn", role: "Quản lý"   },
 ];
+
+// ── Dialog thêm / sửa ban tổ chức ─────────────────────────────────────────────
+
+const ACCESS_OPTIONS = [
+  { id: "Quản lý",        desc: "Toàn quyền quản lý sự kiện." },
+  { id: "Không quản lý",  desc: "Chỉ hiển thị, không quản lý được sự kiện." },
+];
+
+function AccessControl({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p style={{ fontSize: T.xs, color: T.mutedFg }}>Phân quyền</p>
+      {ACCESS_OPTIONS.map((o) => {
+        const on = value === o.id;
+        return (
+          <button key={o.id} type="button" data-pill="off"
+            onClick={() => onChange(o.id)}
+            aria-pressed={on}
+            className="rounded-xl p-3 flex items-center gap-3 text-left cursor-pointer transition-colors"
+            style={{
+              border: on ? `2px solid ${T.foreground}` : `1px solid ${T.border}`,
+              backgroundColor: T.background,
+            }}>
+            <UserPlus className="size-4 shrink-0" style={{ color: T.mutedFg }} />
+            <span className="flex-1 min-w-0 flex flex-col">
+              <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{o.id}</span>
+              <span style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 1 }}>{o.desc}</span>
+            </span>
+            {on && (
+              <span className="size-5 rounded-full shrink-0 flex items-center justify-center"
+                style={{ backgroundColor: T.foreground }}>
+                <Check className="size-3" style={{ color: T.background }} />
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function HostDialog({ mode, host, onClose, onSave, onRemove }: {
+  mode: "add" | "edit";
+  host?: Host;
+  onClose: () => void;
+  onSave: (h: Host) => void;
+  onRemove?: (h: Host) => void;
+}) {
+  // Luồng thêm đi qua hai bước: tìm email, rồi cấu hình. Luồng sửa vào thẳng
+  // bước cấu hình vì đã biết người đó là ai.
+  const [step, setStep] = useState<"search" | "configure">(mode === "edit" ? "configure" : "search");
+  const [email, setEmail] = useState(host?.email ?? "");
+  const [name, setName] = useState(host?.name ?? "");
+  const [showOnPage, setShow] = useState(true);
+  const [access, setAccess] = useState(host?.role === "Không quản lý" ? "Không quản lý" : "Quản lý");
+
+  const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  const submit = () => {
+    onSave({ name: name.trim() || email.trim().split("@")[0], email: email.trim(), role: access });
+    onClose();
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-[420px]">
+        {step === "search" ? (
+          <div className="flex flex-col gap-4">
+            <span className="size-11 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: T.secondary }}>
+              <UserPlus className="size-5" style={{ color: T.mutedFg }} />
+            </span>
+
+            <div>
+              <p style={{ fontSize: T.lg, fontWeight: T.fw_semi, color: T.foreground }}>Thêm ban tổ chức</p>
+              <p style={{ fontSize: T.sm, color: T.mutedFg, marginTop: 4, lineHeight: 1.6 }}>
+                Thêm người vào ban tổ chức để hiển thị trên trang sự kiện, hoặc để cùng quản lý sự kiện.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="host-email">Nhập email hoặc tìm kiếm</Label>
+              <Input id="host-email" autoFocus placeholder="ten@congty.vn"
+                value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+
+            {looksLikeEmail ? (
+              <button type="button" data-pill="off"
+                onClick={() => setStep("configure")}
+                className="rounded-xl p-3 flex items-center gap-3 text-left cursor-pointer transition-colors"
+                style={{ backgroundColor: T.secondary, border: `1px solid ${T.border}` }}>
+                <span className="size-8 rounded-full shrink-0 flex items-center justify-center"
+                  style={{ backgroundColor: T.background }}>
+                  <Users className="size-4" style={{ color: T.mutedFg }} />
+                </span>
+                <span className="flex-1 min-w-0 flex flex-col">
+                  <span className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{email.trim()}</span>
+                  <span style={{ fontSize: T.xs, color: T.mutedFg }}>Mời vào ban tổ chức qua email</span>
+                </span>
+              </button>
+            ) : (
+              <div className="flex flex-col items-center gap-1 py-6">
+                <p style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.mutedFg }}>Chưa có gợi ý nào</p>
+                <p className="text-center" style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.5 }}>
+                  Nhập email của người bạn muốn mời vào ban tổ chức.
+                </p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              {mode === "add" && (
+                <button type="button" data-pill="off" onClick={() => setStep("search")}
+                  className="shrink-0 cursor-pointer transition-opacity hover:opacity-70"
+                  style={{ background: "none", border: "none", padding: 2, color: T.mutedFg }}>
+                  <ArrowLeft className="size-4" />
+                </button>
+              )}
+              <p style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>
+                {mode === "add" ? "Cấu hình ban tổ chức" : "Cập nhật ban tổ chức"}
+              </p>
+            </div>
+
+            <p className="truncate" style={{ fontSize: T.sm, color: T.mutedFg }}>{email}</p>
+
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>Hiển thị trên trang sự kiện</p>
+                <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2, lineHeight: 1.5 }}>
+                  Tên và ảnh sẽ xuất hiện ở mục đơn vị tổ chức trên trang sự kiện.
+                </p>
+              </div>
+              <Switch className="shrink-0 mt-0.5" checked={showOnPage} onCheckedChange={setShow} />
+            </div>
+
+            {mode === "add" && (
+              <div className="flex items-center gap-3">
+                <span className="size-10 rounded-full shrink-0" style={{ backgroundColor: T.secondary }} />
+                <Input placeholder="Tên hiển thị" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+            )}
+
+            <AccessControl value={access} onChange={setAccess} />
+
+            {mode === "add" ? (
+              <Button onClick={submit} disabled={!looksLikeEmail}>Gửi lời mời</Button>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={submit}>Cập nhật</Button>
+                <Button variant="outline"
+                  style={{ color: T.destructive, borderColor: T.destructive }}
+                  onClick={() => { if (host && onRemove) onRemove(host); onClose(); }}>
+                  Gỡ khỏi ban tổ chức
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Mời khách ─────────────────────────────────────────────────────────────────
+
+const INVITE_QUOTA = 15;
+
+const CONTACTS = [
+  { name: "Hoàng Anh Tuấn",  email: "tuan.hoang@gmail.com",   tint: "#f87171" },
+  { name: "Nguyễn Chí Hưng", email: "hung.nguyen@gmail.com",  tint: "#a78bfa" },
+  { name: "Lê Công Khoa",    email: "khoa.le@gmail.com",      tint: "#fbbf24" },
+  { name: "Phạm Mạnh Hùng",  email: "hung.pham@gmail.com",    tint: "#fb7185" },
+];
+
+const PAST_EVENTS = [
+  { name: "Fanmeeting offline Hoàng Xuân", date: "19 Thg 6", guests: 4 },
+];
+
+function InviteGuestsDialog({ onClose }: { onClose: () => void }) {
+  const [source, setSource] = useState<"suggest" | "emails">("suggest");
+  const [search, setSearch] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
+  const [emails, setEmails] = useState("");
+
+  const toggle = (email: string) =>
+    setPicked((prev) => prev.includes(email) ? prev.filter((e) => e !== email) : [...prev, email]);
+
+  const shown = CONTACTS.filter((c) =>
+    !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase()));
+
+  const left = INVITE_QUOTA - picked.length;
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-[760px] p-0 gap-0 overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-5 py-3.5" style={{ borderBottom: `1px solid ${T.border}` }}>
+          <p style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Mời khách</p>
+          <span style={{ fontSize: T.xs, color: T.mutedFg, padding: "2px 10px", borderRadius: 999,
+            border: `1px solid ${T.border}`, whiteSpace: "nowrap", marginRight: 24 }}>
+            Còn {left} lượt
+          </span>
+        </div>
+
+        <div className="flex" style={{ minHeight: 380 }}>
+          {/* Rail trái: nguồn danh sách khách */}
+          <div className="shrink-0 flex flex-col gap-1 p-3" style={{ width: 220, borderRight: `1px solid ${T.border}` }}>
+            {([
+              { id: "suggest" as const, label: "Gợi ý",      icon: Sparkles },
+              { id: "emails"  as const, label: "Nhập email", icon: AtSign },
+            ]).map((o) => {
+              const on = source === o.id;
+              return (
+                <button key={o.id} type="button" data-pill="off"
+                  onClick={() => setSource(o.id)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-left cursor-pointer transition-colors"
+                  style={{
+                    backgroundColor: on ? T.secondary : "transparent",
+                    color: on ? T.foreground : T.mutedFg,
+                    fontSize: T.sm, fontWeight: on ? T.fw_medium : T.fw_normal,
+                    border: "none",
+                  }}>
+                  <o.icon className="size-4 shrink-0" /> {o.label}
+                </button>
+              );
+            })}
+
+            <div style={{ borderTop: `1px solid ${T.border}`, margin: "8px 0" }} />
+
+            <p style={{ fontSize: "10px", fontWeight: T.fw_semi, color: T.mutedFg,
+              textTransform: "uppercase" as const, letterSpacing: "0.05em", padding: "0 12px 4px" }}>
+              Danh bạ
+            </p>
+            <div className="flex items-center justify-between gap-2 px-3 py-2">
+              <span className="flex items-center gap-2" style={{ fontSize: T.sm, color: T.foreground }}>
+                <span className="inline-block size-1.5 rounded-full" style={{ backgroundColor: T.mutedFg }} />
+                Tất cả
+              </span>
+              <span style={{ fontSize: T.xs, color: T.mutedFg }}>{CONTACTS.length}</span>
+            </div>
+
+            <p style={{ fontSize: "10px", fontWeight: T.fw_semi, color: T.mutedFg,
+              textTransform: "uppercase" as const, letterSpacing: "0.05em", padding: "12px 12px 4px" }}>
+              Sự kiện trước
+            </p>
+            {PAST_EVENTS.map((e) => (
+              <div key={e.name} className="px-3 py-2">
+                <p className="truncate" style={{ fontSize: T.sm, color: T.foreground }}>{e.name}</p>
+                <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 1 }}>{e.date} · {e.guests} khách</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Panel phải */}
+          <div className="flex-1 min-w-0 flex flex-col gap-3 p-4">
+            {source === "suggest" ? (
+              <>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 pointer-events-none" style={{ color: T.mutedFg }} />
+                  <Input className="pl-9" placeholder="Tìm trong gợi ý"
+                    value={search} onChange={(e) => setSearch(e.target.value)} />
+                </div>
+
+                <div className="flex flex-col overflow-y-auto" style={{ maxHeight: 300 }}>
+                  {shown.map((c) => {
+                    const on = picked.includes(c.email);
+                    return (
+                      <button key={c.email} type="button" data-pill="off"
+                        onClick={() => toggle(c.email)}
+                        aria-pressed={on}
+                        className="flex items-center gap-3 px-2 py-2.5 rounded-lg text-left cursor-pointer transition-colors"
+                        style={{ background: "none", border: "none" }}>
+                        <span className="size-9 rounded-full shrink-0" style={{ backgroundColor: c.tint }} />
+                        <span className="flex-1 min-w-0 flex flex-col">
+                          <span className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{c.name}</span>
+                          <span className="truncate" style={{ fontSize: T.xs, color: T.mutedFg }}>{c.email}</span>
+                        </span>
+                        <span className="size-5 rounded-full shrink-0 flex items-center justify-center"
+                          style={{ border: on ? "none" : `1.5px solid ${T.border}`,
+                            backgroundColor: on ? T.primary : "transparent" }}>
+                          {on && <Check className="size-3" style={{ color: T.primaryFg ?? "#fff" }} />}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {shown.length === 0 && (
+                    <p className="text-center py-8" style={{ fontSize: T.sm, color: T.mutedFg }}>Không tìm thấy ai phù hợp.</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="invite-emails">Nhập email, cách nhau bằng dấu phẩy</Label>
+                <Textarea id="invite-emails" rows={10}
+                  placeholder="an@congty.vn, binh@congty.vn"
+                  value={emails} onChange={(e) => setEmails(e.target.value)} />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 px-5 py-3.5" style={{ borderTop: `1px solid ${T.border}` }}>
+          <span style={{ fontSize: T.xs, color: T.mutedFg }}>
+            {source === "suggest" ? `Đã chọn ${picked.length} người` : "Mỗi email một lời mời"}
+          </span>
+          <Button disabled={source === "suggest" ? picked.length === 0 : !emails.trim()} onClick={onClose}>
+            Tiếp tục <ChevronRight className="size-3.5" />
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Soạn thông báo cho người tham dự ──────────────────────────────────────────
+
+function BlastSheet({ eventName, onClose }: { eventName: string; onClose: () => void }) {
+  const [status, setStatus] = useState("going");
+  const [tier, setTier] = useState("all");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+
+  return (
+    <Sheet open onOpenChange={(o) => !o && onClose()}>
+      <SheetContent className="p-0 flex flex-col gap-0 sm:max-w-[440px]">
+        <div className="px-5 py-4" style={{ borderBottom: `1px solid ${T.border}` }}>
+          <p style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Gửi thông báo</p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
+          <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6 }}>
+            Thông báo được gửi qua email, SMS hoặc thông báo trong ứng dụng, và hiển thị trên trang
+            sự kiện với những người đủ điều kiện.
+          </p>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Người nhận</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="h-9 cursor-pointer" style={{ fontSize: T.sm }}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                  <SelectItem value="going">Sẽ tham dự</SelectItem>
+                  <SelectItem value="checked-in">Đã check-in</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={tier} onValueChange={setTier}>
+                <SelectTrigger className="h-9 cursor-pointer" style={{ fontSize: T.sm }}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả hạng vé</SelectItem>
+                  {TICKET_TIERS.map((t) => <SelectItem key={t.name} value={t.name}>{t.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="blast-subject">Tiêu đề (không bắt buộc)</Label>
+            <Input id="blast-subject" placeholder={`Thông báo mới từ ${eventName}`}
+              value={subject} onChange={(e) => setSubject(e.target.value)} />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="blast-message">Nội dung</Label>
+            <Textarea id="blast-message" rows={10} placeholder="Nhắn gì đó tới người tham dự..."
+              value={message} onChange={(e) => setMessage(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 px-5 py-4" style={{ borderTop: `1px solid ${T.border}` }}>
+          <div className="flex items-center gap-2">
+            <Button disabled={!message.trim()} onClick={onClose}>
+              <Send className="size-3.5" /> Gửi
+            </Button>
+            <Button variant="outline" disabled={!message.trim()}>
+              <CalendarClock className="size-3.5" /> Hẹn giờ
+            </Button>
+          </div>
+          <Button variant="ghost" disabled={!message.trim()} style={{ fontSize: T.xs }}>Xem trước</Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -215,6 +609,12 @@ export function EventDashboard() {
   const isLive       = status === "live";
   const isEnded      = status === "ended";
   const hasData      = !isDraft;
+
+  const [hosts, setHosts] = useState<Host[]>(HOSTS);
+  const [hostDialog, setHostDialog] = useState<{ mode: "add" | "edit"; host?: Host } | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [blastOpen, setBlastOpen]   = useState(false);
+  const navigate = useNavigate();
 
   const [emails, setEmails] = useState({ confirm: true, remind: false, thanks: false });
   const setEmail = (k: keyof typeof emails) => (v: boolean) => setEmails((e) => ({ ...e, [k]: v }));
@@ -381,7 +781,6 @@ export function EventDashboard() {
                   {isDraft ? "Chưa cấu hình hình thức đăng ký" : "Tình hình bán vé theo hạng"}
                 </p>
               </div>
-              <Button size="sm" variant="outline"><Settings className="size-3.5" /> Quản lý</Button>
             </div>
             {isDraft ? (
               <div className="flex flex-col items-center justify-center py-8 rounded-xl"
@@ -438,7 +837,9 @@ export function EventDashboard() {
                 <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Người tham dự mới nhất</h3>
                 <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>Đăng ký gần đây nhất</p>
               </div>
-              <Button size="sm" variant="outline"><Eye className="size-3.5" /> Xem tất cả</Button>
+              <Button size="sm" variant="outline" onClick={() => navigate("/event/nguoi-tham-du")}>
+            <Eye className="size-3.5" /> Xem tất cả
+          </Button>
             </div>
             {!hasData ? (
               <div className="flex flex-col items-center justify-center py-12 m-5">
@@ -493,7 +894,8 @@ export function EventDashboard() {
           <div className="rounded-2xl p-5" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
             <div className="flex items-start justify-between gap-3">
               <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Lời mời</h3>
-              <Button size="sm" variant="outline" className="shrink-0" style={{ fontSize: T.xs }}>
+              <Button size="sm" variant="outline" className="shrink-0" style={{ fontSize: T.xs }}
+                onClick={() => setInviteOpen(true)}>
                 <Plus className="size-3.5" /> Mời khách
               </Button>
             </div>
@@ -534,7 +936,8 @@ export function EventDashboard() {
           <div className="rounded-2xl p-5" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
             <div className="flex items-center justify-between gap-3">
               <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Cấu hình email</h3>
-              <Button size="sm" variant="outline" className="shrink-0" style={{ fontSize: T.xs }}>
+              <Button size="sm" variant="outline" className="shrink-0" style={{ fontSize: T.xs }}
+                onClick={() => setBlastOpen(true)}>
                 <Pencil className="size-3.5" /> Nội dung
               </Button>
             </div>
@@ -564,12 +967,13 @@ export function EventDashboard() {
           <div className="rounded-2xl p-5" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
             <div className="flex items-center justify-between gap-3 mb-3">
               <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Ban tổ chức</h3>
-              <Button size="sm" variant="outline" className="shrink-0" style={{ fontSize: T.xs }}>
+              <Button size="sm" variant="outline" className="shrink-0" style={{ fontSize: T.xs }}
+                onClick={() => setHostDialog({ mode: "add" })}>
                 <Plus className="size-3.5" /> Thêm
               </Button>
             </div>
             <div className="flex flex-col">
-              {HOSTS.map((h, i) => (
+              {hosts.map((h, i) => (
                 <div key={h.email} className="flex items-center gap-3 py-2.5"
                   style={{ borderTop: i === 0 ? "none" : `1px solid ${T.border}` }}>
                   <span className="size-8 rounded-full shrink-0 flex items-center justify-center"
@@ -585,7 +989,8 @@ export function EventDashboard() {
                     backgroundColor: i === 0 ? T.successSubtle : T.warningSubtle,
                     color: i === 0 ? T.successText : T.warningText }}>{h.role}</span>
                   <button className="shrink-0 cursor-pointer transition-opacity hover:opacity-70"
-                    style={{ background: "none", border: "none", padding: 2, color: T.mutedFg }}>
+                    style={{ background: "none", border: "none", padding: 2, color: T.mutedFg }}
+                    onClick={() => setHostDialog({ mode: "edit", host: h })}>
                     <Pencil className="size-3.5" />
                   </button>
                 </div>
@@ -598,6 +1003,25 @@ export function EventDashboard() {
           </div>
 
         </div>{/* end RIGHT column */}
+
+        {inviteOpen && <InviteGuestsDialog onClose={() => setInviteOpen(false)} />}
+        {blastOpen && <BlastSheet eventName="NetEvent Demo Conference 2026" onClose={() => setBlastOpen(false)} />}
+
+        {hostDialog && (
+          <HostDialog
+            // key ép remount để form không giữ dữ liệu của lần mở trước
+            key={`${hostDialog.mode}-${hostDialog.host?.email ?? "new"}`}
+            mode={hostDialog.mode}
+            host={hostDialog.host}
+            onClose={() => setHostDialog(null)}
+            onSave={(h) => setHosts((prev) => {
+              const i = prev.findIndex((x) => x.email === (hostDialog.host?.email ?? h.email));
+              if (i === -1) return [...prev, h];
+              const next = [...prev]; next[i] = { ...next[i], ...h }; return next;
+            })}
+            onRemove={(h) => setHosts((prev) => prev.filter((x) => x.email !== h.email))}
+          />
+        )}
 
       </div>
     </div>

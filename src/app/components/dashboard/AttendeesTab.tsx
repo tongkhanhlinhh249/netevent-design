@@ -301,7 +301,7 @@ export function AttendeesTab({ event }: { event: EventDraft }) {
   /** Số người khớp một lựa chọn lọc, để hiện ngay trong menu. */
   const countFor = (key: string) => attendees.filter((a) => matchesFilter(a, key)).length;
 
-  // Lấy từ TIER_BREAKDOWN để khớp với các thẻ hạng vé ngay bên dưới.
+  // Lấy từ TIER_BREAKDOWN để khớp với bộ lọc theo hạng vé bên dưới.
   const totalRegistered = TIER_BREAKDOWN.reduce((n, t) => n + t.registered, 0);
   const totalCapacity   = TIER_BREAKDOWN.reduce((n, t) => n + t.registered + t.remaining, 0);
   const registrationOpen = event.status !== "ended" && event.status !== "cancelled";
@@ -440,39 +440,6 @@ export function AttendeesTab({ event }: { event: EventDraft }) {
             color: registrationOpen ? T.mutedFg : T.destructive }}>
             {registrationOpen ? "Đang mở đăng ký" : "Đã đóng đăng ký"}
           </p>
-        </div>
-
-        {/* Thẻ theo hạng vé — bấm vào để lọc danh sách bên dưới */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {TIER_BREAKDOWN.map((t) => {
-            const isActive = listFilter === `tier:${t.tier}`;
-            return (
-              <button key={t.tier}
-                onClick={() => setListFilter(isActive ? "all" : `tier:${t.tier}`)}
-                className="rounded-xl p-4 text-left transition-all cursor-pointer"
-                style={{
-                  backgroundColor: T.background,
-                  border: isActive ? `2px solid ${T.primary}` : `1px solid ${T.border}`,
-                }}>
-                <div className="flex items-center justify-between mb-2">
-                  <span style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>{t.tier}</span>
-                  <span style={{ fontSize: T.xs, color: T.mutedFg }}>{t.price}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  {[
-                    { l: "Đăng ký", v: t.registered },
-                    { l: "Check-in", v: t.checkedIn },
-                    { l: "Còn lại", v: t.remaining },
-                  ].map((c) => (
-                    <div key={c.l}>
-                      <p style={{ fontSize: T.lg, fontWeight: T.fw_semi, color: T.primary }}>{c.v}</p>
-                      <p style={{ fontSize: T.xs, color: T.mutedFg }}>{c.l}</p>
-                    </div>
-                  ))}
-                </div>
-              </button>
-            );
-          })}
         </div>
 
         {/* Ba thao tác nhanh */}
