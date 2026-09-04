@@ -374,56 +374,45 @@ const PRESET_GROUPS: {
 ];
 
 function PermissionGroupsTab() {
+  const [detail, setDetail] = useState<typeof PRESET_GROUPS[number] | null>(null);
+  const granted = (g: typeof PRESET_GROUPS[number]) =>
+    g.allow === "all" ? PERMISSIONS.length : (g.allow as PermissionId[]).length;
+
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <p style={{ fontSize: T.sm, color: T.mutedFg, lineHeight: 1.6 }}>
-          Bốn nhóm quyền mặc định không chỉnh sửa được. Cần khác đi thì tạo một nhóm quyền tuỳ chỉnh.
-        </p>
-      </div>
+      <p style={{ fontSize: T.sm, color: T.mutedFg, lineHeight: 1.6 }}>
+        Bốn nhóm quyền mặc định không chỉnh sửa được. Cần khác đi thì tạo một nhóm quyền tuỳ chỉnh.
+      </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {PRESET_GROUPS.map((g) => {
-          const allowAll = g.allow === "all";
-          return (
-            <div key={g.id} className="rounded-2xl p-4 flex flex-col gap-3"
-              style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-              <div className="flex items-start gap-3">
-                <span className="size-9 rounded-lg shrink-0 flex items-center justify-center"
-                  style={{ backgroundColor: `color-mix(in srgb, ${g.tint} 12%, transparent)` }}>
-                  <g.icon className="size-4" style={{ color: g.tint }} />
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>{g.name}</p>
-                    <span style={{ fontSize: "10px", padding: "1px 7px", borderRadius: 999,
-                      backgroundColor: T.secondary, color: T.mutedFg, whiteSpace: "nowrap" }}>Mặc định</span>
-                  </div>
-                  <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2, lineHeight: 1.5 }}>{g.desc}</p>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                {PERMISSIONS.map((perm) => {
-                  const on = allowAll || (g.allow as PermissionId[]).includes(perm.id);
-                  return (
-                    <div key={perm.id} className="flex items-center gap-2">
-                      {on
-                        ? <CheckCircle2 className="size-3.5 shrink-0" style={{ color: T.successText }} />
-                        : <X className="size-3.5 shrink-0" style={{ color: T.border }} />}
-                      <span style={{ fontSize: T.xs, color: on ? T.foreground : T.mutedFg }}>{perm.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
+        {PRESET_GROUPS.map((g) => (
+          <button key={g.id} data-pill="off"
+            onClick={() => setDetail(g)}
+            className="rounded-2xl p-4 flex items-center gap-3 text-left cursor-pointer transition-opacity hover:opacity-85"
+            style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+            <span className="size-9 rounded-lg shrink-0 flex items-center justify-center"
+              style={{ backgroundColor: `color-mix(in srgb, ${g.tint} 12%, transparent)` }}>
+              <g.icon className="size-4" style={{ color: g.tint }} />
+            </span>
+            <span className="flex-1 min-w-0 flex flex-col">
+              <span className="flex items-center gap-2">
+                <span style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>{g.name}</span>
+                <span style={{ fontSize: "10px", padding: "1px 7px", borderRadius: 999,
+                  backgroundColor: T.secondary, color: T.mutedFg, whiteSpace: "nowrap" }}>Mặc định</span>
+              </span>
+              <span className="truncate" style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>{g.desc}</span>
+            </span>
+            <span className="shrink-0 flex items-center gap-1" style={{ fontSize: T.xs, color: T.mutedFg }}>
+              {granted(g)}/{PERMISSIONS.length} quyền
+              <ChevronRight className="size-3.5" />
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* Ô tạo nhóm quyền tuỳ chỉnh */}
       <button data-pill="off"
-        className="rounded-2xl p-5 flex items-center gap-3 w-full text-left cursor-pointer transition-opacity hover:opacity-80"
+        className="rounded-2xl p-4 flex items-center gap-3 w-full text-left cursor-pointer transition-opacity hover:opacity-80"
         style={{ border: `2px dashed ${T.border}`, backgroundColor: "transparent" }}>
         <span className="size-9 rounded-lg shrink-0 flex items-center justify-center"
           style={{ backgroundColor: `color-mix(in srgb, ${T.primary} 12%, transparent)` }}>
@@ -432,10 +421,47 @@ function PermissionGroupsTab() {
         <span className="flex flex-col min-w-0">
           <span style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>Tạo nhóm quyền tuỳ chỉnh</span>
           <span style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>
-            Tự chọn từng quyền trong số {PERMISSIONS.length} quyền ở trên.
+            Tự chọn từng quyền trong số {PERMISSIONS.length} quyền.
           </span>
         </span>
       </button>
+
+      {/* Chi tiết quyền của một nhóm */}
+      <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
+        <DialogContent>
+          {detail && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <detail.icon className="size-4" style={{ color: detail.tint }} />
+                  {detail.name}
+                </DialogTitle>
+                <DialogDescription>{detail.desc}</DialogDescription>
+              </DialogHeader>
+
+              <div className="flex flex-col gap-1.5 py-1">
+                {PERMISSIONS.map((perm) => {
+                  const on = detail.allow === "all" || (detail.allow as PermissionId[]).includes(perm.id);
+                  return (
+                    <div key={perm.id} className="flex items-center gap-2 py-1">
+                      {on
+                        ? <CheckCircle2 className="size-4 shrink-0" style={{ color: T.successText }} />
+                        : <X className="size-4 shrink-0" style={{ color: T.border }} />}
+                      <span style={{ fontSize: T.sm, color: on ? T.foreground : T.mutedFg }}>{perm.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">Đóng</Button>
+                </DialogClose>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
