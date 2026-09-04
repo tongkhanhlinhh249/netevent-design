@@ -331,6 +331,152 @@ function MemberRowActions({ member, currentRole, onSuspend, onActivate, onRemove
 
 // ── Member Management Page ────────────────────────────────────────────────────
 
+// ── Nhóm quyền ────────────────────────────────────────────────────────────────
+
+/** Các quyền dùng chung cho mọi nhóm; thứ tự này cũng là thứ tự hiển thị. */
+const PERMISSIONS = [
+  { id: "event",    label: "Tạo và chỉnh sửa sự kiện" },
+  { id: "publish",  label: "Xuất bản trang sự kiện" },
+  { id: "tickets",  label: "Quản lý kho vé và giá vé" },
+  { id: "checkin",  label: "Check-in người tham dự" },
+  { id: "guests",   label: "Xem danh sách người tham dự" },
+  { id: "members",  label: "Mời và quản lý thành viên" },
+  { id: "revenue",  label: "Xem báo cáo doanh thu" },
+] as const;
+
+type PermissionId = typeof PERMISSIONS[number]["id"];
+
+const PRESET_GROUPS: {
+  id: string; name: string; desc: string;
+  icon: React.FC<{ className?: string; style?: React.CSSProperties }>;
+  tint: string; allow: PermissionId[] | "all";
+}[] = [
+  {
+    id: "owner", name: "Chủ tài khoản", icon: Crown, tint: T.accentFg,
+    desc: "Toàn quyền trên tài khoản và mọi sự kiện.",
+    allow: "all",
+  },
+  {
+    id: "admin", name: "Quản trị sự kiện", icon: Shield, tint: T.primary,
+    desc: "Dựng và vận hành sự kiện được giao.",
+    allow: ["event", "publish", "tickets", "checkin", "guests", "revenue"],
+  },
+  {
+    id: "staff", name: "Nhân sự sự kiện", icon: UserCog, tint: T.successText,
+    desc: "Trực tại sự kiện, chủ yếu lo check-in.",
+    allow: ["checkin", "guests"],
+  },
+  {
+    id: "viewer", name: "Chỉ xem", icon: Eye, tint: T.mutedFg,
+    desc: "Theo dõi số liệu, không thay đổi được gì.",
+    allow: ["guests", "revenue"],
+  },
+];
+
+function PermissionGroupsTab() {
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <p style={{ fontSize: T.sm, color: T.mutedFg, lineHeight: 1.6 }}>
+          Bốn nhóm quyền mặc định không chỉnh sửa được. Cần khác đi thì tạo một nhóm quyền tuỳ chỉnh.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {PRESET_GROUPS.map((g) => {
+          const allowAll = g.allow === "all";
+          return (
+            <div key={g.id} className="rounded-2xl p-4 flex flex-col gap-3"
+              style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+              <div className="flex items-start gap-3">
+                <span className="size-9 rounded-lg shrink-0 flex items-center justify-center"
+                  style={{ backgroundColor: `color-mix(in srgb, ${g.tint} 12%, transparent)` }}>
+                  <g.icon className="size-4" style={{ color: g.tint }} />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>{g.name}</p>
+                    <span style={{ fontSize: "10px", padding: "1px 7px", borderRadius: 999,
+                      backgroundColor: T.secondary, color: T.mutedFg, whiteSpace: "nowrap" }}>Mặc định</span>
+                  </div>
+                  <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2, lineHeight: 1.5 }}>{g.desc}</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                {PERMISSIONS.map((perm) => {
+                  const on = allowAll || (g.allow as PermissionId[]).includes(perm.id);
+                  return (
+                    <div key={perm.id} className="flex items-center gap-2">
+                      {on
+                        ? <CheckCircle2 className="size-3.5 shrink-0" style={{ color: T.successText }} />
+                        : <X className="size-3.5 shrink-0" style={{ color: T.border }} />}
+                      <span style={{ fontSize: T.xs, color: on ? T.foreground : T.mutedFg }}>{perm.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Ô tạo nhóm quyền tuỳ chỉnh */}
+      <button data-pill="off"
+        className="rounded-2xl p-5 flex items-center gap-3 w-full text-left cursor-pointer transition-opacity hover:opacity-80"
+        style={{ border: `2px dashed ${T.border}`, backgroundColor: "transparent" }}>
+        <span className="size-9 rounded-lg shrink-0 flex items-center justify-center"
+          style={{ backgroundColor: `color-mix(in srgb, ${T.primary} 12%, transparent)` }}>
+          <Plus className="size-4" style={{ color: T.primary }} />
+        </span>
+        <span className="flex flex-col min-w-0">
+          <span style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>Tạo nhóm quyền tuỳ chỉnh</span>
+          <span style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>
+            Tự chọn từng quyền trong số {PERMISSIONS.length} quyền ở trên.
+          </span>
+        </span>
+      </button>
+    </div>
+  );
+}
+
+// ── Trang Vai trò: gộp quản lý thành viên và nhóm quyền ───────────────────────
+
+function RolesPage(props: {
+  currentRole: UserRole;
+  inviteOpen?: boolean;
+  onInviteOpenChange?: (open: boolean) => void;
+}) {
+  const [tab, setTab] = useState<"members" | "groups">("members");
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex gap-5 overflow-x-auto" style={{ borderBottom: `1px solid ${T.border}` }}>
+        {([
+          { id: "members" as const, label: "Quản lý thành viên" },
+          { id: "groups"  as const, label: "Nhóm quyền" },
+        ]).map((t) => {
+          const active = tab === t.id;
+          return (
+            <button key={t.id} data-pill="off"
+              onClick={() => setTab(t.id)}
+              className="pb-3 transition-colors cursor-pointer"
+              style={{
+                fontSize: T.sm, fontWeight: active ? T.fw_semi : T.fw_normal,
+                borderBottom: active ? `2px solid ${T.primary}` : "2px solid transparent",
+                color: active ? T.primary : T.mutedFg,
+              }}>
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === "members" ? <MemberManagementPage {...props} /> : <PermissionGroupsTab />}
+    </div>
+  );
+}
+
 function MemberManagementPage({ currentRole, inviteOpen: externalInviteOpen, onInviteOpenChange }: {
   currentRole: UserRole;
   inviteOpen?: boolean;
@@ -1247,7 +1393,7 @@ function NotificationsPage({ notifications, onMarkAllRead, onMarkRead, onAccept,
 const NAV_ITEMS = [
   { id: "overview", label: "Tổng quan",          icon: LayoutDashboard },
   { id: "events",   label: "Sự kiện",             icon: Calendar },
-  { id: "members",  label: "Quản lý thành viên",  icon: Users },
+  { id: "members",  label: "Vai trò",  icon: Users },
   { id: "reports",  label: "Báo cáo",             icon: BarChart3 },
   { id: "settings", label: "Cài đặt",             icon: Settings },
 ];
@@ -1543,7 +1689,7 @@ export function AdminDashboard({ currentRole, onLogout }: AdminDashboardProps) {
             ) : (
               <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 xl:px-10 py-6" style={{ maxWidth: "1280px", paddingTop: 24, paddingBottom: 24 }}>
                 {activePage === "members"
-                  ? <MemberManagementPage currentRole={currentRole} inviteOpen={membersInviteOpen} onInviteOpenChange={setMembersInviteOpen} />
+                  ? <RolesPage currentRole={currentRole} inviteOpen={membersInviteOpen} onInviteOpenChange={setMembersInviteOpen} />
                   : activePage === "events"
                   ? <EventsPage screen={eventsScreen} onScreenChange={setEventsScreen} />
                   : activePage === "notifications"
