@@ -187,9 +187,11 @@ function Section({ title, action, children }: {
 function LiveEventCard({ event, onManage }: { event: OvEvent; onManage: () => void }) {
   const pct = event.registrants > 0 ? Math.round(event.checkins / event.registrants * 100) : 0;
   return (
-    <div className="rounded-2xl p-5 flex flex-col gap-4"
+    <div className="rounded-2xl p-5 flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6"
       style={{ backgroundColor: T.background, border: `1px solid rgba(248,104,128,0.35)` }}>
-      <div className="flex flex-col gap-2">
+      {/* Khối này chiếm hết bề ngang nên bày ngang: thông tin bên trái, hành
+          động bên phải, thay vì xếp dọc rồi bỏ trống nửa màn. */}
+      <div className="flex-1 min-w-0 flex flex-col gap-2">
         <span className="inline-flex items-center gap-1.5 self-start" style={{
           fontSize: T.xs, fontWeight: T.fw_semi, padding: "2px 8px", borderRadius: 999,
           backgroundColor: "rgba(248,104,128,0.10)", color: "#f86880",
@@ -198,19 +200,26 @@ function LiveEventCard({ event, onManage }: { event: OvEvent; onManage: () => vo
           Đang diễn ra
         </span>
         <p className="min-w-0" style={{ fontSize: T.lg, fontWeight: T.fw_semi, color: T.foreground }}>{event.name}</p>
-      </div>
-
-      <div className="flex flex-col gap-1">
         <p style={{ fontSize: T.sm, color: T.mutedFg }}>
           {event.startTime}{event.location ? ` · ${event.location}` : ""}
         </p>
-        <p style={{ fontSize: T.sm, color: T.foreground }}>
-          <strong>{event.registrants.toLocaleString()}</strong> đăng ký ·{" "}
-          <strong>{event.checkins.toLocaleString()}</strong> đã check-in ({pct}%)
-        </p>
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
+      {/* Tiến độ check-in — con số cần nhìn nhất trong lúc sự kiện đang chạy */}
+      <div className="shrink-0 flex flex-col gap-1.5 lg:w-64">
+        <div className="flex items-baseline justify-between gap-3">
+          <span style={{ fontSize: T.sm, color: T.foreground }}>
+            <strong>{event.checkins.toLocaleString()}</strong>
+            <span style={{ color: T.mutedFg }}> / {event.registrants.toLocaleString()} đã check-in</span>
+          </span>
+          <span style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: "#f86880" }}>{pct}%</span>
+        </div>
+        <div className="rounded-full overflow-hidden" style={{ height: 6, backgroundColor: T.border }}>
+          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: "#f86880" }} />
+        </div>
+      </div>
+
+      <div className="shrink-0 flex items-center gap-2 flex-wrap">
         <Button size="sm" onClick={onManage}><QrCode className="size-3.5" /> Check-in QR</Button>
         <Button size="sm" variant="outline" onClick={onManage}>Quản lý sự kiện →</Button>
       </div>
@@ -307,11 +316,6 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
         })}
       </div>
 
-      {/* Hai cột: trái là việc phải làm ngay, phải là thông tin tham khảo.
-          Dồn hết vào một cột full-width khiến mỗi khối bị kéo giãn hết bề ngang. */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start">
-      <div className="flex flex-col gap-6 min-w-0">
-
       {/* ── Khối 1 — Đang diễn ra (ẩn hẳn khi không có) ── */}
       {live.length > 0 && (
         <Section title="Đang diễn ra">
@@ -320,6 +324,11 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
           </div>
         </Section>
       )}
+
+      {/* Hai cột: trái là việc phải làm ngay, phải là thông tin tham khảo.
+          Dồn hết vào một cột full-width khiến mỗi khối bị kéo giãn hết bề ngang. */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start">
+      <div className="flex flex-col gap-6 min-w-0">
 
       {/* Tất cả sự kiện đã khép lại */}
       {allClosed && (
