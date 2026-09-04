@@ -275,12 +275,28 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
   return (
     <div className="flex flex-col gap-6 pb-10">
 
-      {/* Dòng chỉ số gọn, thay cho 4 card chiếm hết vùng nhìn đầu tiên */}
-      <p style={{ fontSize: T.sm, color: T.mutedFg }}>
-        <strong style={{ color: T.foreground }}>{events.length}</strong> sự kiện ·{" "}
-        <strong style={{ color: T.foreground }}>{upcoming.length}</strong> sắp diễn ra ·{" "}
-        <strong style={{ color: T.foreground }}>{live.length}</strong> đang diễn ra
-      </p>
+      {/* Dòng chỉ số: vẫn một dòng để nhường vùng đầu cho khối 1 và 2, nhưng số
+          đặt ở cỡ lớn để đọc lướt được, thay vì chữ nhỏ màu mờ. */}
+      <div className="flex items-center gap-5 flex-wrap">
+        {([
+          { value: events.length,   label: "sự kiện",      live: false },
+          { value: upcoming.length, label: "sắp diễn ra",  live: false },
+          { value: live.length,     label: "đang diễn ra", live: true  },
+        ]).map((m, i) => (
+          <React.Fragment key={m.label}>
+            {i > 0 && <span className="shrink-0" style={{ width: 1, height: 18, backgroundColor: T.border }} />}
+            <span className="flex items-baseline gap-1.5">
+              {m.live && m.value > 0 && (
+                <span className="inline-block size-2 rounded-full self-center shrink-0 animate-pulse"
+                  style={{ backgroundColor: "#f86880" }} />
+              )}
+              <span style={{ fontSize: T.xl, fontWeight: T.fw_bold, lineHeight: 1,
+                color: m.live && m.value > 0 ? "#f86880" : T.foreground }}>{m.value}</span>
+              <span style={{ fontSize: T.sm, color: T.mutedFg }}>{m.label}</span>
+            </span>
+          </React.Fragment>
+        ))}
+      </div>
 
       {/* ── Khối 1 — Đang diễn ra (ẩn hẳn khi không có) ── */}
       {live.length > 0 && (
