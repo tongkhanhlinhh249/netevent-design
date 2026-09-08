@@ -528,7 +528,25 @@ export function SimpleAreaChart({ data, xKey, yKey, color, xInterval = 2 }: {
   data: Record<string, number | string>[];
   xKey: string; yKey: string; color: string; xInterval?: number;
 }) {
-  const VW = 560; const VH = 180;
+  // Đo bề rộng thật của container thay vì cố định 560: viewBox cố định kèm
+  // height cố định khiến preserveAspectRatio khoá tỷ lệ, chart chỉ vẽ được
+  // 560px rồi căn giữa và bỏ trống hai bên. Dùng preserveAspectRatio="none"
+  // thì lấp đầy được nhưng chữ và nét vẽ bị kéo giãn theo.
+  const wrapRef = React.useRef<HTMLDivElement>(null);
+  const [measuredW, setMeasuredW] = useState(560);
+
+  React.useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([entry]) => {
+      const next = Math.round(entry.contentRect.width);
+      if (next > 0) setMeasuredW(next);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const VW = measuredW; const VH = 180;
   const PAD = { t: 10, r: 8, b: 28, l: 38 };
   const iW = VW - PAD.l - PAD.r;
   const iH = VH - PAD.t - PAD.b;
@@ -544,6 +562,7 @@ export function SimpleAreaChart({ data, xKey, yKey, color, xInterval = 2 }: {
   const areaPath = `${linePath} L${pts[pts.length-1][0].toFixed(1)},${(PAD.t+iH).toFixed(1)} L${PAD.l},${(PAD.t+iH).toFixed(1)} Z`;
 
   return (
+    <div ref={wrapRef} style={{ width: "100%" }}>
     <svg viewBox={`0 0 ${VW} ${VH}`} width="100%" height={VH} style={{ overflow: "visible", display: "block" }}>
       {yTicks.map((tick, i) => (
         <g key={`y-${i}`}>
@@ -566,6 +585,7 @@ export function SimpleAreaChart({ data, xKey, yKey, color, xInterval = 2 }: {
         <circle key={`dot-${i}`} cx={x} cy={y} r={2} fill={color} />
       ))}
     </svg>
+    </div>
   );
 }
 
