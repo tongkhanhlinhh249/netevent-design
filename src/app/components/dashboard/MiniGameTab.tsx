@@ -6,7 +6,7 @@ import {
   Download, Search, Check, X, AlertCircle,
   Maximize2, Award, Trash2, UserCheck, Gamepad2,
   ClipboardList, Minimize2, Zap, Settings,
-  ChevronDown, Pencil, Upload, Info, SlidersHorizontal, CalendarCheck, ArrowRight, MoreHorizontal, ExternalLink
+  ChevronDown, Pencil, Upload, Info, SlidersHorizontal, CalendarCheck, ArrowRight, MoreHorizontal, ExternalLink, Gift
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
@@ -20,6 +20,10 @@ import { cn } from "../ui/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "../ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { publishDraw } from "../../data/drawSync";
+import { useGiftGame, useRewards, inventoryOf, gameStateOf, type GiftGame, type GameState } from "../../data/attendeeFlow";
+import { GiftStateBadge } from "./GiftGameShared";
+import { GiftGameManage } from "./GiftGameManage";
+import { GiftGameSetup } from "./GiftGameSetup";
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
@@ -55,7 +59,7 @@ const T = {
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type MgStatus = "draft" | "ready" | "scheduled" | "live" | "paused" | "ended";
-type MgView   = "list" | "setup" | "manage" | "operate";
+type MgView   = "list" | "setup" | "manage" | "operate" | "gift-setup" | "gift-manage";
 type WinnerDisplay = "full" | "partial" | "code";
 
 // Hạng vé là bộ lọc trên danh sách sự kiện chứ không phải một nguồn riêng, nên
@@ -1392,9 +1396,46 @@ function SetupPage({ game, eventName, pool, focus, onBack, onSave, onOpenDraw }:
 
 // ── List View ──────────────────────────────────────────────────────────────────
 
-function MgListView({ games, onCreate, onManage, onSetup }: {
+interface GiftSummary { game: GiftGame; state: GameState; allocated: number; total: number }
+
+/** Tạo mini game: chọn loại trước. Mỗi sự kiện có tối đa một minigame chọn quà (lượt cấp khi check-in). */
+function CreateMenu({ onDraw, onGift, giftExists, primary }: {
+  onDraw: () => void; onGift: () => void; giftExists: boolean; primary?: boolean;
+}) {
+  const item = (Icon: typeof Trophy, title: string, desc: string) => (
+    <>
+      <Icon size={16} style={{ color: T.mutedFg, marginTop: 2 } as React.CSSProperties} />
+      <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{title}</span>
+        <span style={{ fontSize: T.xs, color: T.mutedFg }}>{desc}</span>
+      </span>
+    </>
+  );
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button variant={primary ? "default" : "outline"} style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
+          <Plus size={13} /> Tạo mini game <ChevronDown size={13} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align={primary ? "center" : "end"} className="w-72">
+        <DropdownMenuItem onSelect={onDraw} className="items-start gap-3 py-2">
+          {item(Trophy, "Bốc thăm may mắn", "Quay số trúng thưởng trên màn chiếu")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={onGift} disabled={giftExists} className="items-start gap-3 py-2">
+          {item(Gift, "Chọn quà ngẫu nhiên", giftExists ? "Sự kiện đã có minigame này" : "Người đã check-in chọn 1 trong 3 hộp quà")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function MgListView({ games, gift, onCreate, onCreateGift, onOpenGift, onManage, onSetup }: {
   games: MiniGame[];
+  gift: GiftSummary | null;
   onCreate: () => void;
+  onCreateGift: () => void;
+  onOpenGift: () => void;
   onManage: (g: MiniGame) => void;
   onSetup: (g: MiniGame) => void;
 }) {
@@ -1407,26 +1448,45 @@ function MgListView({ games, onCreate, onManage, onSetup }: {
           <h2 style={{ fontSize: T.xl, fontWeight: T.fw_semi, color: T.foreground, margin: 0, marginBottom: 4 }}>Mini Game</h2>
           <p style={{ fontSize: T.sm, color: T.mutedFg, margin: 0 }}>Quản lý các chương trình bốc thăm và hoạt động tương tác trong sự kiện.</p>
         </div>
-        <Button variant="outline" onClick={onCreate} style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
-          <Plus size={13} /> Tạo bốc thăm
-        </Button>
+        <CreateMenu onDraw={onCreate} onGift={onCreateGift} giftExists={!!gift} />
       </div>
 
-      {games.length === 0 ? (
+      {games.length === 0 && !gift ? (
         <div style={{ padding: "64px 0", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
           <div style={{ width: 68, height: 68, borderRadius: 18, marginBottom: 18, display: "flex", alignItems: "center", justifyContent: "center", background: `color-mix(in srgb, ${T.primary} 10%, transparent)` }}>
             <Gamepad2 size={30} style={{ color: T.primary } as React.CSSProperties} />
           </div>
           <h3 style={{ fontSize: T.lg, fontWeight: T.fw_semi, color: T.foreground, marginBottom: 8 }}>Chưa có mini game nào</h3>
           <p style={{ fontSize: T.sm, color: T.mutedFg, maxWidth: 360, lineHeight: 1.6, marginBottom: 20 }}>
-            Tạo bốc thăm may mắn công khai để bốc thăm quà tặng trong lúc sự kiện diễn ra.
+            Bốc thăm may mắn trên màn chiếu, hoặc cho người đã check-in chọn một hộp quà ngẫu nhiên.
           </p>
-          <Button onClick={onCreate} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Plus size={14} /> Tạo bốc thăm
-          </Button>
+          <CreateMenu onDraw={onCreate} onGift={onCreateGift} giftExists={false} primary />
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {gift && (
+            <Card style={{ padding: "14px 16px" }}>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #f59e0b, #e11d48)" }}>
+                    <Gift size={20} color="white" />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                      <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{gift.game.name || "Chọn quà ngẫu nhiên"}</p>
+                      <span style={{ flexShrink: 0 }}><GiftStateBadge state={gift.state} /></span>
+                    </div>
+                    <p style={{ fontSize: T.xs, color: T.mutedFg, margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+                      Chọn quà ngẫu nhiên · Người đã check-in · {gift.game.gifts.length} phần quà · Đã phát {gift.allocated}/{gift.total}
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" className="shrink-0" onClick={onOpenGift}>
+                  {gift.state === "draft" ? "Thiết lập" : "Quản lý"}
+                </Button>
+              </div>
+            </Card>
+          )}
           {games.map(game => {
             const setup = game.setup ?? LEGACY_SETUP;
             const status = statusOf(game);
@@ -1467,7 +1527,7 @@ function MgListView({ games, onCreate, onManage, onSetup }: {
 
 // ── Main export ────────────────────────────────────────────────────────────────
 
-export function MiniGameTab({ event }: { event?: { name?: string; status?: string } }) {
+export function MiniGameTab({ event }: { event?: { id?: string; name?: string; status?: string } }) {
   const eventName = event?.name ?? "NetEvent Demo 2026";
   // Sự kiện nháp chưa có ai đăng ký hay check-in — đây là cách xem trường hợp "chưa có ai check-in".
   const pool = event?.status === "draft" ? TIER_POOL.map(t => ({ ...t, checkedIn: 0, registered: 0 })) : TIER_POOL;
@@ -1478,6 +1538,17 @@ export function MiniGameTab({ event }: { event?: { name?: string; status?: strin
   const [setupFocus, setSetupFocus] = useState<SetupFocus | undefined>();
   // Màn quay mở từ đâu thì "Quay lại" về đó (khi chưa quay lượt nào).
   const [operateFrom, setOperateFrom] = useState<MgView>("list");
+  // Minigame chọn quà ngẫu nhiên: dữ liệu chung với trang check-in và màn người tham dự.
+  const eventId = event?.id ?? "t1";
+  const [giftGame] = useGiftGame(eventId);
+  const rewards = useRewards(eventId);
+  const giftSummary = useMemo<GiftSummary | null>(() => {
+    if (!giftGame) return null;
+    const inv = inventoryOf(giftGame, rewards);
+    return { game: giftGame, state: gameStateOf(giftGame, rewards),
+      allocated: inv.reduce((n, g) => n + g.allocated, 0), total: inv.reduce((n, g) => n + g.quantity, 0) };
+  }, [giftGame, rewards]);
+  const expectedAttendees = pool.reduce((n, t) => n + t.registered, 0);
 
   const selected = games.find(g => g.id === selectedId);
   const upsert = (g: MiniGame) =>
@@ -1496,6 +1567,19 @@ export function MiniGameTab({ event }: { event?: { name?: string; status?: strin
     setView("operate");
   };
 
+  if (view === "gift-setup") {
+    return (
+      <GiftGameSetup
+        key={giftGame?.id ?? "new"}
+        eventId={eventId} eventName={eventName} expected={expectedAttendees} initial={giftGame}
+        onBack={() => setView(giftGame && giftGame.status !== "draft" ? "gift-manage" : "list")}
+        onDone={g => setView(g.status === "draft" ? "list" : "gift-manage")}
+      />
+    );
+  }
+  if (view === "gift-manage" && giftGame) {
+    return <GiftGameManage eventId={eventId} onBack={() => setView("list")} onEdit={() => setView("gift-setup")} />;
+  }
   if (view === "setup") {
     return (
       <SetupPage
@@ -1532,7 +1616,10 @@ export function MiniGameTab({ event }: { event?: { name?: string; status?: strin
   return (
     <MgListView
       games={games}
+      gift={giftSummary}
       onCreate={() => openSetup(null)}
+      onCreateGift={() => setView("gift-setup")}
+      onOpenGift={() => setView(giftSummary?.state === "draft" ? "gift-setup" : "gift-manage")}
       onManage={g => { setSelectedId(g.id); setView("manage"); }}
       onSetup={g => openSetup(g)}
     />

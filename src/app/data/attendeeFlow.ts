@@ -333,6 +333,12 @@ export function reportGiftIncident(eventId: string, code: string, staff: string)
   logAudit(eventId, staff, `Báo sự cố quà tặng “${found?.gift?.name ?? code}” (mã ${code.trim().toUpperCase()})`, found?.regId);
 }
 
+/** Lưu minigame từ trang quản trị và ghi nhật ký thao tác. */
+export function saveGiftGame(eventId: string, game: GiftGame, actor: string, action: string) {
+  write(KEY.game(eventId), game);
+  logAudit(eventId, actor, action);
+}
+
 // ── Phiên người tham dự ────────────────────────────────────────────────────────
 // Sau khi check-in, thiết bị của người tham dự giữ phiên để vào Tổng quan và
 // Minigame mà không phải check-in lại. Không đưa ID người tham dự lên URL.
@@ -344,9 +350,17 @@ export const setAttendeeSession = (eventId: string, regId: string | null) => wri
 
 export interface AuditEntry { at: string; actor: string; action: string; regId?: string }
 
-export const useAudit = (eventId: string) => useStoreValue<AuditEntry[]>(KEY.audit(eventId), () => []);
+// Sự kiện mẫu: nhật ký khớp với các lượt check-in, phân bổ và trao quà đã có sẵn.
+const seedAudit = (eventId: string): AuditEntry[] => (eventId !== DEMO_EVENT_ID ? [] : [
+  { at: "09:10", actor: "Trần Thị B", action: "Xác nhận trao quà “Bình giữ nhiệt”", regId: "a4" },
+  { at: "09:06", actor: "Hệ thống", action: "Phân bổ quà “Bình giữ nhiệt” (hộp 1)", regId: "a4" },
+  { at: "08:47", actor: "Hệ thống", action: "Phân bổ quà “Áo thun sự kiện” (hộp 2)", regId: "a2" },
+  { at: "08:30", actor: "Nguyễn Thị Lan", action: "Kích hoạt minigame “Check-in liền tay – Nhận ngay quà xịn”" },
+]);
 
-function logAudit(eventId: string, actor: string, action: string, regId?: string) {
-  const list = read<AuditEntry[]>(KEY.audit(eventId), () => []);
+export const useAudit = (eventId: string) => useStoreValue<AuditEntry[]>(KEY.audit(eventId), () => seedAudit(eventId));
+
+export function logAudit(eventId: string, actor: string, action: string, regId?: string) {
+  const list = read<AuditEntry[]>(KEY.audit(eventId), () => seedAudit(eventId));
   write(KEY.audit(eventId), [{ at: hhmm(), actor, action, regId }, ...list].slice(0, 200));
 }
