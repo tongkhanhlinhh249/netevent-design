@@ -87,13 +87,13 @@ export const DEFAULT_UI: GiftGame["ui"] = {
   brandColor: BRAND_COLORS[0],
 };
 
-/** Minigame mới: diễn ra trong ngày, nhận quà tại booth check-in, chưa có quà. */
-export function newGiftGame(): GiftGame {
+/** Minigame mới: tên theo sự kiện, diễn ra trong ngày, nhận quà tại booth check-in, chưa có quà. */
+export function newGiftGame(eventName: string): GiftGame {
   const d = new Date();
   const day = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   return {
     id: `gg${Date.now().toString(36)}`,
-    name: "", description: "",
+    name: `Chọn quà ngẫu nhiên — ${eventName}`,
     startAt: `${day}T09:00`, endAt: `${day}T17:00`,
     pickupLocation: "Booth check-in",
     status: "draft",

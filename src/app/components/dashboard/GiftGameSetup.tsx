@@ -63,7 +63,7 @@ export function GiftGameSetup({ eventId, eventName, expected, initial, onBack, o
   eventId: string; eventName: string; expected: number; initial: GiftGame | null;
   onBack: () => void; onDone: (g: GiftGame) => void;
 }) {
-  const [draft, setDraft] = useState<GiftGame>(() => initial ?? newGiftGame());
+  const [draft, setDraft] = useState<GiftGame>(() => initial ?? newGiftGame(eventName));
   const [errors, setErrors] = useState<Errors>({});
   const [dialog, setDialog] = useState<{ gift: Gift | null } | null>(null);
   const [confirmLow, setConfirmLow] = useState(false);
@@ -126,10 +126,6 @@ export function GiftGameSetup({ eventId, eventName, expected, initial, onBack, o
             <Field label="Tên minigame" required error={errors.name}>
               <Input value={draft.name} aria-invalid={!!errors.name} placeholder="Ví dụ: Check-in liền tay – Nhận ngay quà xịn"
                 onChange={(e) => { patch({ name: e.target.value }); setErrors((x) => ({ ...x, name: undefined })); }} />
-            </Field>
-            <Field label="Mô tả">
-              <Textarea rows={2} value={draft.description} placeholder="Giới thiệu ngắn cách chơi"
-                onChange={(e) => patch({ description: e.target.value })} />
             </Field>
             <div className="flex flex-col gap-1.5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

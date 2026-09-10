@@ -172,7 +172,6 @@ export interface Gift {
 export interface GiftGame {
   id: string;
   name: string;
-  description: string;
   /** "YYYY-MM-DDTHH:mm", giờ địa phương. */
   startAt: string;
   endAt: string;
@@ -191,7 +190,6 @@ const todayAt = (h: number, m = 0) => {
 const demoGame = (): GiftGame => ({
   id: "gg1",
   name: "Check-in liền tay – Nhận ngay quà xịn",
-  description: "Mỗi người đã check-in có 01 lượt chọn một trong ba hộp quà.",
   startAt: todayAt(0), endAt: todayAt(23, 59),
   pickupLocation: "Booth check-in",
   status: "active",
