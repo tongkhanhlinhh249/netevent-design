@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from "../ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import {
   useGiftGame, useRewards, useCheckins, useAudit, registrationsOf, inventoryOf, gameStateOf,
-  saveGiftGame, logAudit, maskPhone, normalizePhone,
+  saveGiftGame, logAudit, maskPhone, normalizePhone, rewardGift,
 } from "../../data/attendeeFlow";
 import { T, ADMIN, GiftStateBadge, GiftThumb, windowLabel } from "./GiftGameShared";
 
@@ -68,7 +68,7 @@ export function GiftGameManage({ eventId, onBack, onEdit }: { eventId: string; o
   const total = inventory.reduce((n, g) => n + g.quantity, 0);
   const available = inventory.reduce((n, g) => n + (g.status === "active" ? g.available : 0), 0);
   const list = Object.entries(rewards).map(([regId, r]) => ({
-    regId, ...r, reg: regs.find((x) => x.id === regId), gift: game.gifts.find((g) => g.id === r.giftId),
+    regId, ...r, reg: regs.find((x) => x.id === regId), gift: rewardGift(game, r),
   })).sort((a, b) => b.playedAt.localeCompare(a.playedAt));
   const checkedIn = Object.keys(checkins).length;
   const played = list.length;

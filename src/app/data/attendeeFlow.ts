@@ -224,11 +224,15 @@ export interface Reward {
   status: "pending" | "claimed";
   claimedAt?: string;
   claimedBy?: string;
+  /** Tên, mã, ảnh quà lúc phân bổ — sửa cấu hình quà sau đó không đổi phần quà đã có. */
+  gift?: { name: string; code: string; image: string };
 }
 
 const seedRewards = (eventId: string): Record<string, Reward> => (eventId !== DEMO_EVENT_ID ? {} : {
-  a2: { code: "QX7K4P", giftId: "g2", box: 2, playedAt: "08:47", status: "pending" },
-  a4: { code: "M3TR8W", giftId: "g1", box: 1, playedAt: "09:06", status: "claimed", claimedAt: "09:10", claimedBy: "Trần Thị B" },
+  a2: { code: "QX7K4P", giftId: "g2", box: 2, playedAt: "08:47", status: "pending",
+    gift: { name: "Áo thun sự kiện", code: "AOT", image: "👕" } },
+  a4: { code: "M3TR8W", giftId: "g1", box: 1, playedAt: "09:06", status: "claimed", claimedAt: "09:10", claimedBy: "Trần Thị B",
+    gift: { name: "Bình giữ nhiệt", code: "BGN", image: "🥤" } },
 });
 
 export const useRewards = (eventId: string) => useStoreValue(KEY.rewards(eventId), () => seedRewards(eventId));
@@ -249,6 +253,15 @@ export function inventoryOf(game: GiftGame, rewards: Record<string, Reward>) {
     const claimed = list.filter((r) => r.giftId === g.id && r.status === "claimed").length;
     return { ...g, allocated, claimed, pending: allocated - claimed, available: Math.max(0, g.quantity - allocated) };
   });
+}
+
+/**
+ * Quà của một reward. Tên, mã và ảnh lấy theo bản ghi lúc phân bổ nên sửa cấu
+ * hình quà về sau không đổi kết quả đã có (BR15); phần còn lại theo cấu hình hiện tại.
+ */
+export function rewardGift(game: GiftGame | null, reward: Reward): Gift {
+  const current = game?.gifts.find((g) => g.id === reward.giftId);
+  return { id: reward.giftId, code: "", name: "Phần quà", image: "🎁", quantity: 0, status: "active", ...current, ...reward.gift };
 }
 
 export type GameState = "none" | "draft" | "upcoming" | "active" | "paused" | "ended" | "soldout";
@@ -277,8 +290,7 @@ export function playGiftBox(eventId: string, regId: string, box: 1 | 2 | 3): Pla
   const game = read(KEY.game(eventId), () => seedGame(eventId));
   const rewards = read(KEY.rewards(eventId), () => seedRewards(eventId));
   const existing = rewards[regId];
-  const existingGift = existing && game?.gifts.find((g) => g.id === existing.giftId);
-  if (existing && existingGift) return { status: "already", reward: existing, gift: existingGift };
+  if (existing) return { status: "already", reward: existing, gift: rewardGift(game, existing) };
   if (!read(KEY.checkins(eventId), () => seedCheckins(eventId))[regId]) return { status: "not-checked-in" };
   const state = gameStateOf(game, rewards);
   if (state === "soldout") return { status: "soldout" };
@@ -291,6 +303,7 @@ export function playGiftBox(eventId: string, regId: string, box: 1 | 2 | 3): Pla
   const reward: Reward = {
     code: newRewardCode(new Set(Object.values(rewards).map((x) => x.code))),
     giftId: gift.id, box, playedAt: hhmm(), status: "pending",
+    gift: { name: gift.name, code: gift.code, image: gift.image },
   };
   write(KEY.rewards(eventId), { ...rewards, [regId]: reward });
   logAudit(eventId, "Hệ thống", `Phân bổ quà “${gift.name}” (hộp ${box})`, regId);
@@ -304,7 +317,7 @@ export function lookupReward(eventId: string, code: string) {
   const entry = Object.entries(rewards).find(([, r]) => r.code === key);
   if (!entry) return null;
   const [regId, reward] = entry;
-  const gift = read(KEY.game(eventId), () => seedGame(eventId))?.gifts.find((g) => g.id === reward.giftId);
+  const gift = rewardGift(read(KEY.game(eventId), () => seedGame(eventId)), reward);
   return { regId, reward, gift, registration: registrationsOf(eventId).find((r) => r.id === regId) };
 }
 
