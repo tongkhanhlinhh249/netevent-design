@@ -35,7 +35,6 @@ export const router = createBrowserRouter([
             ],
           },
           { path: "trang-su-kien",     Component: LandingPageRoute },
-          { path: "check-in",          Component: CheckInRoute },
         ],
       },
     ],
@@ -51,6 +50,11 @@ export const router = createBrowserRouter([
   {
     path: "/demo",
     Component: DemoRoute,
+  },
+  // Check-in mở ở tab riêng, ngoài khung dashboard (không sidebar).
+  {
+    path: "/check-in",
+    Component: CheckInRoute,
   },
   {
     path: "*",

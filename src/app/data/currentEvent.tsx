@@ -9,18 +9,28 @@ import type { EventDraft } from "../components/dashboard/EventsPage";
  * (kèm theme, quyền riêng tư, giá vé… người dùng chọn) không đi tới đâu cả —
  * trang sự kiện luôn hiển thị theo DEMO_EVENT.
  *
- * State được ghi kèm sessionStorage vì trang sự kiện công khai (/demo) mở ở
- * tab mới, tức là một lần tải trang mới: context React không sống sót qua đó,
- * nên nếu chỉ giữ trong bộ nhớ thì tab mới sẽ lại rơi về DEMO_EVENT.
+ * State được ghi kèm localStorage vì trang sự kiện công khai (/demo) và trang
+ * check-in (/check-in) mở ở tab mới. sessionStorage không đủ: nó gắn với từng
+ * tab, và tab mở bằng link target="_blank" (mặc định noopener) không nhận bản
+ * sao sessionStorage của tab gốc, nên sẽ rơi về DEMO_EVENT. localStorage dùng
+ * chung cho mọi tab cùng origin; sự kiện "storage" giúp tab đang mở cập nhật
+ * ngay khi workspace sửa sự kiện (đổi đơn vị tổ chức, chế độ hiển thị…).
  */
 const STORAGE_KEY = "netevent_current_event";
 
-function readStored(): EventDraft {
+function parseStored(raw: string | null): EventDraft {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
     return raw ? (JSON.parse(raw) as EventDraft) : DEMO_EVENT;
   } catch {
     return DEMO_EVENT;
+  }
+}
+
+function readStored(): EventDraft {
+  try {
+    return parseStored(localStorage.getItem(STORAGE_KEY));
+  } catch {
+    return DEMO_EVENT; // localStorage bị chặn
   }
 }
 
@@ -35,10 +45,19 @@ export function CurrentEventProvider({ children }: { children: React.ReactNode }
   const setEvent = React.useCallback((ev: EventDraft) => {
     setEventState(ev);
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(ev));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(ev));
     } catch {
-      // sessionStorage có thể bị chặn — vẫn giữ được state trong tab hiện tại.
+      // localStorage có thể bị chặn hoặc đầy — vẫn giữ được state trong tab hiện tại.
     }
+  }, []);
+
+  // Tab khác (thường là workspace) vừa đổi sự kiện → tab này cập nhật theo.
+  React.useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) setEventState(parseStored(e.newValue));
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const value = React.useMemo(() => ({ event, setEvent }), [event, setEvent]);

@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { cn } from "../ui/utils";
 import { themePageBg } from "../../data/themes";
+import { longDateVi, shortDateVi } from "../../data/eventFormat";
 
 // ── CSS tokens ─────────────────────────────────────────────────────────────────
 
@@ -1287,7 +1288,8 @@ function LandingPageEditor({ event, settings, onSettingsChange }: {
       {/* ── Right canvas ── */}
       <div className="flex-1 min-w-0 overflow-auto">
         <DemoPublicLandingPage bgStyle={settings.bgStyle} bgColor={settings.bgColor} regMode={settings.regMode} ticketsConfigured={settings.ticketsConfigured} coverUrl={coverUrl} themeBg={themePageBg(event.theme)}
-          themeImage={(event as { pageImage?: string }).pageImage} />
+          themeImage={(event as { pageImage?: string }).pageImage}
+          event={event as PublicEvent} />
       </div>
 
       {/* ── Popup: Chỉnh sửa giới thiệu sự kiện ── */}
@@ -1513,10 +1515,57 @@ const DEMO_TIERS = [
 // Event brand accent color (separate from platform primary)
 const OG = "#FF8644";
 
-export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfigured = true, coverUrl, themeBg, themeImage }: { bgStyle?: "light" | "white" | "brand"; bgColor?: string; regMode?: RegMode; ticketsConfigured?: boolean; coverUrl?: string | null; themeBg?: string; themeImage?: string } = {}) {
+/** Các trường của sự kiện mà trang công khai đọc. */
+export type PublicEvent = {
+  id?: string; name?: string; description?: string;
+  startDate?: string; startTime?: string; endDate?: string; endTime?: string;
+  format?: string; location?: string; visibility?: string;
+  requireApproval?: boolean; limitAttendees?: boolean; maxAttendees?: string;
+  ticketPrice?: string; organizer?: string; organizerAvatar?: string;
+  coverImage?: string; cover?: string;
+};
+
+export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfigured = true, coverUrl, themeBg, themeImage, event }: { bgStyle?: "light" | "white" | "brand"; bgColor?: string; regMode?: RegMode; ticketsConfigured?: boolean; coverUrl?: string | null; themeBg?: string; themeImage?: string; event?: PublicEvent } = {}) {
   const showTiers = regMode === "tickets" || regMode === undefined; // default to showing tiers in /demo
+
+  // ── Nội dung lấy từ cấu hình sự kiện ──
+  // Sự kiện demo (id "t1") giữ phần nội dung mẫu mà model chưa có — ba hạng vé,
+  // danh sách người tham dự, bài giới thiệu dài, địa chỉ chi tiết. Sự kiện tạo
+  // mới hiển thị đúng những gì đã cấu hình; khối nào không có dữ liệu thì ẩn.
+  const isDemo = !event || event.id === "t1";
+  const eventName = event?.name?.trim() || "NetEvent Demo Conference 2026";
+  const isPrivate = event?.visibility === "private";
+  const isOnline = event?.format === "online";
+  const needsApproval = !isDemo && !!event?.requireApproval;
+  const priceNum = Number(event?.ticketPrice || 0);
+  const capacity = event?.limitAttendees && Number(event?.maxAttendees) > 0 ? Number(event?.maxAttendees) : undefined;
+  const tiers = isDemo ? DEMO_TIERS : [{
+    id: "general", name: "Vé tham dự", price: priceNum,
+    priceLabel: priceNum > 0 ? `${priceNum.toLocaleString("vi-VN")}đ` : "Miễn phí",
+    remaining: capacity ?? Infinity, soldOut: false,
+    desc: needsApproval ? "Ban tổ chức sẽ duyệt đăng ký trước khi gửi vé." : "Vé tham dự sự kiện.",
+  }];
+  const dateLabel = longDateVi(event?.startDate) ?? "Chưa có ngày";
+  const multiDay = !!event?.endDate && event.endDate !== event.startDate;
+  const timeLabel = event?.startTime
+    ? `${event.startTime} – ${event.endTime ?? ""}${multiDay ? ` · đến ${shortDateVi(event.endDate)}` : ""}`
+    : "";
+  const locTitle = event?.location?.trim() || "NetSpace — Công ty Công nghệ & Truyền thông";
+  const locationPrimary = isOnline ? "Sự kiện trực tuyến" : (event?.location?.trim() || "Chưa có địa điểm");
+  const locationSecondary = isOnline ? "Link tham gia gửi qua email sau khi đăng ký" : "Offline";
+  const organizerName = event?.organizer?.trim() || "NetSpace";
+  const organizerAvatar = event?.organizerAvatar;
+  const organizerNote = isDemo && !event?.organizer ? "Công ty Công nghệ & Truyền thông" : "";
+  const coverSrc = coverUrl ?? event?.coverImage ?? null;
+  const coverGradient = !isDemo && event?.cover ? event.cover
+    : "linear-gradient(145deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%)";
+  const aboutText = event?.description?.trim() ?? "";
+  const showLocation = isDemo || (!isOnline && !!event?.location?.trim());
+  const locAddress = isDemo ? "Tầng 3, Tòa nhà MIPEC, 229 P. Tây Sơn, Kim Liên, Hà Nội" : "";
+  const mapLabel = isDemo ? "MIPEC Tower, Tây Sơn" : locTitle;
+  const ticketLine = `${shortDateVi(event?.startDate) ?? ""} · ${event?.startTime ?? ""} — ${isOnline ? "Trực tuyến" : locTitle}`;
   const [step, setStep]         = useState<"select" | "form" | "payment" | "success">("select");
-  const [selectedTier, setTier] = useState<string | null>(null);
+  const [selectedTier, setTier] = useState<string | null>(tiers.length === 1 ? tiers[0].id : null);
   const [name, setName]         = useState("");
   const [email, setEmail]       = useState("");
   const [phone, setPhone]       = useState("");
@@ -1541,12 +1590,12 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
     if (Object.keys(errs).length) return;
     setLoading(true);
     setTimeout(() => {
-      const t = DEMO_TIERS.find((t) => t.id === selectedTier);
+      const t = tiers.find((t) => t.id === selectedTier);
       const prefix = t?.id === "vip" ? "VIP" : t?.id === "early-bird" ? "EB" : "STD";
       setCode(`NE-2026-${prefix}-${Math.floor(10000 + Math.random() * 90000)}`);
       setLoading(false);
       // Paid tiers → go to payment step; free → go directly to success
-      if (t && t.price > 0) setStep("payment");
+      if (t && t.price > 0 && !needsApproval) setStep("payment");
       else setStep("success");
     }, 1000);
   };
@@ -1563,8 +1612,7 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
     return () => clearTimeout(timer);
   }, [step]);
 
-  const tier = DEMO_TIERS.find((t) => t.id === selectedTier);
-  const eventName = "NetEvent Demo Conference 2026";
+  const tier = tiers.find((t) => t.id === selectedTier);
 
   return (
     <div className="min-h-full" style={{
@@ -1591,12 +1639,12 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
 
             {/* Cover 1:1 */}
             <EventCoverLarge
-              src={coverUrl}
-              gradient="linear-gradient(145deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%)"
+              src={coverSrc}
+              gradient={coverGradient}
               alt="Ảnh cover sự kiện"
             >
               {/* Event name overlay when no uploaded image */}
-              {!coverUrl && (
+              {!coverSrc && (
                 <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8, padding: 24 }}>
                   <Calendar style={{ width: 36, height: 36, color: "white", opacity: 0.3 }} />
                   <p style={{ color: "rgba(255,255,255,0.7)", fontSize: T.sm, textAlign: "center", margin: 0 }}>Ảnh cover sự kiện</p>
@@ -1613,19 +1661,26 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                 Đơn vị tổ chức
               </p>
               <div className="flex items-center gap-3">
-                <div className="size-10 rounded-full flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: `rgba(255,134,68,0.12)` }}>
-                  <span style={{ fontWeight: T.fw_bold, color: OG, fontSize: T.base }}>N</span>
-                </div>
+                {organizerAvatar ? (
+                  <img src={organizerAvatar} alt={organizerName}
+                    className="size-10 rounded-full shrink-0" style={{ objectFit: "cover" }} />
+                ) : (
+                  <div className="size-10 rounded-full flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: `rgba(255,134,68,0.12)` }}>
+                    <span style={{ fontWeight: T.fw_bold, color: OG, fontSize: T.base }}>{organizerName[0]?.toUpperCase()}</span>
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
-                  <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>NetSpace</p>
-                  <p style={{ fontSize: T.xs, color: T.mutedFg }}>Công ty Công nghệ & Truyền thông</p>
+                  <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>{organizerName}</p>
+                  {organizerNote && <p style={{ fontSize: T.xs, color: T.mutedFg }}>{organizerNote}</p>}
                 </div>
               </div>
             </div>
 
             <div style={{ borderTop: `1px solid ${T.border}` }} />
 
+            {/* Người tham dự — chỉ sự kiện demo có dữ liệu; sự kiện mới chưa có ai thì ẩn */}
+            {isDemo && (<>
             {/* Người tham dự — vài người đăng ký gần nhất */}
             <div>
               <p style={{ fontSize: T.xs, fontWeight: T.fw_semi, color: T.mutedFg,
@@ -1650,6 +1705,7 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
             </div>
 
             <div style={{ borderTop: `1px solid ${T.border}` }} />
+            </>)}
 
             {/* Share card */}
             <div>
@@ -1686,11 +1742,19 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
 
             {/* Event info header */}
             <div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 12px",
-                borderRadius: "999px", backgroundColor: T.successSubtle, marginBottom: "14px" }}>
-                <div className="size-1.5 rounded-full" style={{ backgroundColor: T.successText }} />
-                <span style={{ fontSize: T.xs, fontWeight: T.fw_medium, color: T.successText }}>Đang mở đăng ký</span>
-              </div>
+              {isPrivate ? (
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 12px",
+                  borderRadius: "999px", backgroundColor: "rgba(219,39,119,0.08)", marginBottom: "14px" }}>
+                  <div className="size-1.5 rounded-full" style={{ backgroundColor: "#db2777" }} />
+                  <span style={{ fontSize: T.xs, fontWeight: T.fw_medium, color: "#db2777" }}>Sự kiện riêng tư</span>
+                </div>
+              ) : (
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 12px",
+                  borderRadius: "999px", backgroundColor: T.successSubtle, marginBottom: "14px" }}>
+                  <div className="size-1.5 rounded-full" style={{ backgroundColor: T.successText }} />
+                  <span style={{ fontSize: T.xs, fontWeight: T.fw_medium, color: T.successText }}>Đang mở đăng ký</span>
+                </div>
+              )}
               <h1 style={{ fontSize: "clamp(22px, 3vw, 32px)", fontWeight: T.fw_bold, color: T.foreground,
                 lineHeight: 1.25, marginBottom: "10px" }}>
                 {eventName}
@@ -1699,8 +1763,8 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
               {/* Meta rows */}
               <div className="flex flex-col gap-3">
                 {[
-                  { icon: <Calendar className="size-4 shrink-0" />, primary: "Thứ Sáu, 01 Tháng 8, 2026", secondary: "08:00 – 17:00" },
-                  { icon: <MapPin className="size-4 shrink-0" />, primary: "NetSpace — Tòa nhà MIPEC, Hà Nội", secondary: "Offline" },
+                  { icon: <Calendar className="size-4 shrink-0" />, primary: dateLabel, secondary: timeLabel },
+                  { icon: <MapPin className="size-4 shrink-0" />, primary: locationPrimary, secondary: locationSecondary },
                 ].map((r, i) => (
                   <div key={i} className="flex items-start gap-3">
                     <div className="size-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
@@ -1722,10 +1786,10 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
               {/* Card header */}
               <div style={{ borderBottom: `1px solid ${T.border}`, padding: "20px 24px" }}>
                 <p style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>
-                  {showTiers && !ticketsConfigured ? "Kho vé chưa được thiết lập" : step === "success" ? "Đăng ký thành công! 🎉" : step === "payment" ? "Thanh toán" : step === "form" ? "Thông tin đăng ký" : "Đăng ký tham gia"}
+                  {showTiers && !ticketsConfigured ? "Kho vé chưa được thiết lập" : step === "success" ? (needsApproval ? "Đã gửi yêu cầu tham gia" : "Đăng ký thành công! 🎉") : step === "payment" ? "Thanh toán" : step === "form" ? "Thông tin đăng ký" : "Đăng ký tham gia"}
                 </p>
                 <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: "2px" }}>
-                  {showTiers && !ticketsConfigured ? "Ban tổ chức chưa hoàn tất cấu hình vé." : step === "success" ? "Vé QR đã được gửi tới email của bạn." : step === "payment" ? "Quét mã QR để hoàn tất thanh toán." : step === "form" ? "Điền thông tin để nhận vé QR tham dự sự kiện." : showTiers ? "Chọn hạng vé phù hợp với bạn." : "Điền thông tin để nhận mã QR tham dự sự kiện."}
+                  {showTiers && !ticketsConfigured ? "Ban tổ chức chưa hoàn tất cấu hình vé." : step === "success" ? (needsApproval ? "Ban tổ chức sẽ duyệt và gửi vé QR qua email." : "Vé QR đã được gửi tới email của bạn.") : step === "payment" ? "Quét mã QR để hoàn tất thanh toán." : step === "form" ? (needsApproval ? "Điền thông tin để gửi yêu cầu tham gia." : "Điền thông tin để nhận vé QR tham dự sự kiện.") : showTiers ? (tiers.length > 1 ? "Chọn hạng vé phù hợp với bạn." : "Kiểm tra thông tin vé rồi tiếp tục.") : "Điền thông tin để nhận mã QR tham dự sự kiện."}
                 </p>
               </div>
 
@@ -1773,7 +1837,7 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                 {/* ── STEP: SELECT TIER (mode: tickets) ── */}
                 {step === "select" && showTiers && ticketsConfigured && (
                   <div className="flex flex-col gap-4">
-                    {DEMO_TIERS.map((t) => {
+                    {tiers.map((t) => {
                       const selected = selectedTier === t.id;
                       return (
                         <button key={t.id} disabled={t.soldOut}
@@ -1802,7 +1866,7 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                                 </div>
                                 <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: "3px", lineHeight: 1.5 }}>{t.desc}</p>
                                 {!t.soldOut && (
-                                  <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: "4px" }}>Còn {t.remaining} vé</p>
+                                  <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: "4px" }}>{Number.isFinite(t.remaining) ? `Còn ${t.remaining} vé` : "Không giới hạn số lượng"}</p>
                                 )}
                               </div>
                             </div>
@@ -1827,7 +1891,7 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                         fontSize: T.sm, fontWeight: T.fw_semi,
                         border: "none", cursor: selectedTier ? "pointer" : "not-allowed",
                       }}>
-                      Tiếp tục đăng ký →
+                      {needsApproval ? "Gửi yêu cầu tham gia →" : "Tiếp tục đăng ký →"}
                     </button>
                     <p style={{ fontSize: T.xs, color: T.mutedFg, textAlign: "center" as const }}>
                       Bạn sẽ điền thông tin đăng ký ở bước tiếp theo.
@@ -1845,7 +1909,7 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                       className="w-full py-3 rounded-xl"
                       style={{ backgroundColor: OG, color: "white", border: "none",
                         fontSize: T.sm, fontWeight: T.fw_semi, cursor: "pointer" }}>
-                      Tiếp tục đăng ký →
+                      {needsApproval ? "Gửi yêu cầu tham gia →" : "Tiếp tục đăng ký →"}
                     </button>
                     <p style={{ fontSize: T.xs, color: T.mutedFg, textAlign: "center" as const }}>
                       Bạn sẽ điền thông tin đăng ký ở bước tiếp theo.
@@ -1991,10 +2055,12 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                         <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>
                           Xin chào <strong>{name}</strong>!
                         </p>
-                        <p style={{ fontSize: T.xs, color: T.mutedFg }}>Vé của bạn đã được tạo thành công.</p>
+                        <p style={{ fontSize: T.xs, color: T.mutedFg }}>{needsApproval ? "Yêu cầu tham gia của bạn đã được gửi tới ban tổ chức." : "Vé của bạn đã được tạo thành công."}</p>
                       </div>
                     </div>
 
+                    {/* Ticket card — chưa có vé khi còn chờ duyệt */}
+                    {!needsApproval && (<>
                     {/* Ticket card */}
                     <div className="rounded-2xl overflow-hidden" style={{ border: `2px solid ${OG}` }}>
                       <div className="flex items-center justify-between px-5 py-3"
@@ -2032,20 +2098,23 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                       <div style={{ borderTop: `2px dashed ${T.border}`, margin: "0 16px" }} />
                       <div className="px-5 py-3" style={{ backgroundColor: T.background }}>
                         <p style={{ fontSize: T.xs, color: T.mutedFg, textAlign: "center" as const }}>
-                          01/08/2026 · 08:00 — NetSpace, Tòa nhà MIPEC, Hà Nội
+                          {ticketLine}
                         </p>
                       </div>
                     </div>
+                    </>)}
 
                     {/* Email note */}
                     <div className="rounded-xl p-3 flex items-start gap-2.5"
                       style={{ backgroundColor: T.successSubtle, border: `1px solid ${T.successBorder}` }}>
                       <Mail className="size-4 shrink-0 mt-0.5" style={{ color: T.successText }} />
                       <p style={{ fontSize: T.xs, color: T.successText, lineHeight: 1.6 }}>
-                        Vé QR đã được gửi đến <strong>{email}</strong>. Vui lòng kiểm tra hộp thư đến hoặc spam.
+                        {needsApproval ? <>Khi được duyệt, vé QR sẽ được gửi tới <strong>{email}</strong>.</> : <>Vé QR đã được gửi đến <strong>{email}</strong>. Vui lòng kiểm tra hộp thư đến hoặc spam.</>}
                       </p>
                     </div>
 
+                    {/* Actions — tải vé chỉ có khi đã có vé */}
+                    {!needsApproval && (<>
                     {/* Actions */}
                     <div className="flex gap-2 flex-wrap">
                       <button onClick={() => {
@@ -2063,20 +2132,25 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                         Thêm vào lịch
                       </button>
                     </div>
+                    </>)}
                   </div>
                 )}
 
               </div>
             </div>
 
-            {/* ── Giới thiệu sự kiện ── */}
+            {/* ── Giới thiệu sự kiện — ẩn khi sự kiện chưa có mô tả ── */}
+            {(isDemo || aboutText) && (
             <div style={{ paddingTop: "8px", borderTop: `1px solid ${T.border}` }}>
               <h2 style={{ fontSize: T.lg, fontWeight: T.fw_semi, color: T.foreground, marginBottom: "12px" }}>
                 Giới thiệu sự kiện
               </h2>
-              <p style={{ fontSize: T.sm, color: T.mutedFg, lineHeight: 1.8, marginBottom: "16px" }}>
-                NetEvent Demo Conference 2026 là sự kiện dành cho các đội ngũ tổ chức sự kiện, marketing, vận hành và công nghệ. Chương trình tập trung vào cách xây dựng trải nghiệm sự kiện hiệu quả, quản lý đăng ký, phát hành vé QR và tối ưu quy trình check-in.
+              <p style={{ fontSize: T.sm, color: T.mutedFg, lineHeight: 1.8, marginBottom: isDemo ? "16px" : 0, whiteSpace: "pre-line" }}>
+                {isDemo
+                  ? "NetEvent Demo Conference 2026 là sự kiện dành cho các đội ngũ tổ chức sự kiện, marketing, vận hành và công nghệ. Chương trình tập trung vào cách xây dựng trải nghiệm sự kiện hiệu quả, quản lý đăng ký, phát hành vé QR và tối ưu quy trình check-in."
+                  : aboutText}
               </p>
+              {isDemo && (
               <div className="flex flex-col gap-2.5">
                 {[
                   "Xu hướng tổ chức sự kiện hiện đại",
@@ -2090,18 +2164,21 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                   </div>
                 ))}
               </div>
+              )}
             </div>
+            )}
 
-            {/* ── Địa điểm ── */}
+            {/* ── Địa điểm — ẩn với sự kiện trực tuyến hoặc chưa có địa điểm ── */}
+            {showLocation && (
             <div style={{ paddingTop: "8px", borderTop: `1px solid ${T.border}` }}>
               <h2 style={{ fontSize: T.lg, fontWeight: T.fw_semi, color: T.foreground, marginBottom: "12px" }}>
                 Địa điểm
               </h2>
               <p style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>
-                NetSpace — Công ty Công nghệ & Truyền thông
+                {locTitle}
               </p>
               <p style={{ fontSize: T.sm, color: T.mutedFg, marginTop: "2px", marginBottom: "16px" }}>
-                Tầng 3, Tòa nhà MIPEC, 229 P. Tây Sơn, Kim Liên, Hà Nội
+                {locAddress}
               </p>
               <div className="rounded-2xl overflow-hidden relative flex items-center justify-center"
                 style={{ height: "200px", backgroundColor: T.secondary, border: `1px solid ${T.border}` }}>
@@ -2119,7 +2196,7 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                     <MapPin className="size-5" style={{ color: "white" }} />
                   </div>
                   <div className="px-3 py-1.5 rounded-xl" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-                    <p style={{ fontSize: T.xs, fontWeight: T.fw_medium, color: T.foreground }}>MIPEC Tower, Tây Sơn</p>
+                    <p style={{ fontSize: T.xs, fontWeight: T.fw_medium, color: T.foreground }}>{mapLabel}</p>
                   </div>
                 </div>
               </div>
@@ -2129,6 +2206,7 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                 <MapPin className="size-4" /> Xem chỉ đường
               </button>
             </div>
+            )}
 
           </div>
         </div>

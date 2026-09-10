@@ -6,16 +6,21 @@ import {
   AlertCircle, ChevronRight, ExternalLink,
   Calendar, MapPin, Pencil, BarChart3, Mail, QrCode, Plus,
   Download, Eye, Settings, Copy, Facebook, Twitter, Linkedin, MessageCircle, Image,
-  ArrowLeft, UserPlus, Check, X, Sparkles, AtSign, Send, CalendarClock, Search
+  ArrowLeft, UserPlus, Check, X, Sparkles, AtSign, Search, Lock, ChevronDown, Video
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Dialog, DialogContent } from "../ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
 import { Textarea } from "../ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Sheet, SheetContent } from "../ui/sheet";
+import { useCurrentEvent } from "../../data/currentEvent";
+import { OrganizerAvatarPicker } from "./OrganizerAvatarPicker";
+import { EmailSettingsCard } from "./EmailSettings";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { dateParts, shortDateVi } from "../../data/eventFormat";
 
 // ── Tokens ───────────────────────────────────────────────────────────────────
 
@@ -402,74 +407,58 @@ function InviteGuestsDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── Soạn thông báo cho người tham dự ──────────────────────────────────────────
+// ── Chế độ hiển thị ──────────────────────────────────────────────────────────
 
-function BlastSheet({ eventName, onClose }: { eventName: string; onClose: () => void }) {
-  const [status, setStatus] = useState("going");
-  const [tier, setTier] = useState("all");
-  const [subject, setSubject] = useState("");
-  const [message, setMessage] = useState("");
+const VISIBILITY_OPTIONS = [
+  { id: "public",  label: "Công khai", desc: "Ai cũng có thể tìm thấy trang sự kiện và đăng ký.", icon: Globe },
+  { id: "private", label: "Riêng tư",  desc: "Chỉ người có link mới xem và đăng ký được.",        icon: Lock },
+] as const;
 
+// ── Sửa đơn vị tổ chức ────────────────────────────────────────────────────────
+
+function OrganizerDialog({ name: initialName, avatar: initialAvatar, onClose, onSave }: {
+  name: string;
+  avatar?: string;
+  onClose: () => void;
+  onSave: (name: string, avatar: string | null) => void;
+}) {
+  const [name, setName] = useState(initialName);
+  const [avatar, setAvatar] = useState<string | null>(initialAvatar ?? null);
   return (
-    <Sheet open onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="p-0 flex flex-col gap-0 sm:max-w-[440px]">
-        <div className="px-5 py-4" style={{ borderBottom: `1px solid ${T.border}` }}>
-          <p style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Gửi thông báo</p>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
-          <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6 }}>
-            Thông báo được gửi qua email, SMS hoặc thông báo trong ứng dụng, và hiển thị trên trang
-            sự kiện với những người đủ điều kiện.
-          </p>
-
-          <div className="flex flex-col gap-1.5">
-            <Label>Người nhận</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="h-9 cursor-pointer" style={{ fontSize: T.sm }}><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                  <SelectItem value="going">Sẽ tham dự</SelectItem>
-                  <SelectItem value="checked-in">Đã check-in</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={tier} onValueChange={setTier}>
-                <SelectTrigger className="h-9 cursor-pointer" style={{ fontSize: T.sm }}><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả hạng vé</SelectItem>
-                  {TICKET_TIERS.map((t) => <SelectItem key={t.name} value={t.name}>{t.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-[420px]" aria-describedby={undefined}>
+        <div className="flex flex-col gap-4">
+          <div>
+            <DialogTitle style={{ fontSize: T.lg, fontWeight: T.fw_semi, color: T.foreground }}>Đơn vị tổ chức</DialogTitle>
+            <p style={{ fontSize: T.sm, color: T.mutedFg, marginTop: 4, lineHeight: 1.6 }}>
+              Ảnh đại diện và tên hiển thị ở mục Đơn vị tổ chức trên trang sự kiện.
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <OrganizerAvatarPicker value={avatar} name={name} onChange={setAvatar} size={64} />
+            <div className="flex flex-col gap-1">
+              <span style={{ fontSize: T.xs, color: T.mutedFg }}>Bấm vào ảnh để tải lên. Nên dùng ảnh vuông.</span>
+              {avatar && (
+                <button type="button" data-pill="off" onClick={() => setAvatar(null)}
+                  className="self-start cursor-pointer transition-opacity hover:opacity-70"
+                  style={{ background: "none", border: "none", padding: 0, fontSize: T.xs, color: T.destructive }}>
+                  Gỡ ảnh
+                </button>
+              )}
             </div>
           </div>
-
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="blast-subject">Tiêu đề (không bắt buộc)</Label>
-            <Input id="blast-subject" placeholder={`Thông báo mới từ ${eventName}`}
-              value={subject} onChange={(e) => setSubject(e.target.value)} />
+            <Label htmlFor="org-name">Tên đơn vị</Label>
+            <Input id="org-name" value={name} onChange={(e) => setName(e.target.value)}
+              placeholder="Tên công ty, tổ chức hoặc cá nhân tổ chức" />
           </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="blast-message">Nội dung</Label>
-            <Textarea id="blast-message" rows={10} placeholder="Nhắn gì đó tới người tham dự..."
-              value={message} onChange={(e) => setMessage(e.target.value)} />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>Hủy</Button>
+            <Button onClick={() => { onSave(name.trim(), avatar); onClose(); }}>Lưu</Button>
           </div>
         </div>
-
-        <div className="flex items-center justify-between gap-2 px-5 py-4" style={{ borderTop: `1px solid ${T.border}` }}>
-          <div className="flex items-center gap-2">
-            <Button disabled={!message.trim()} onClick={onClose}>
-              <Send className="size-3.5" /> Gửi
-            </Button>
-            <Button variant="outline" disabled={!message.trim()}>
-              <CalendarClock className="size-3.5" /> Hẹn giờ
-            </Button>
-          </div>
-          <Button variant="ghost" disabled={!message.trim()} style={{ fontSize: T.xs }}>Xem trước</Button>
-        </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -633,11 +622,24 @@ export function EventDashboard() {
   const [hosts, setHosts] = useState<Host[]>(HOSTS);
   const [hostDialog, setHostDialog] = useState<{ mode: "add" | "edit"; host?: Host } | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [blastOpen, setBlastOpen]   = useState(false);
+  const [orgOpen, setOrgOpen] = useState(false);
+  const { event: currentEvent, setEvent: setCurrentEvent } = useCurrentEvent();
+  const orgName = currentEvent.organizer?.trim() || "NetSpace";
+  const isPrivate  = currentEvent.visibility === "private";
+  const visibility = VISIBILITY_OPTIONS.find((o) => o.id === currentEvent.visibility) ?? VISIBILITY_OPTIONS[0];
+  // Ngày giờ, địa điểm lấy theo sự kiện đang xem; sự kiện demo giữ địa chỉ chi tiết mẫu.
+  const isDemoEvent = currentEvent.id === "t1";
+  const isOnline    = currentEvent.format === "online";
+  const date        = dateParts(currentEvent.startDate);
+  const multiDay    = !!currentEvent.endDate && currentEvent.endDate !== currentEvent.startDate;
+  const timeLabel   = currentEvent.startTime
+    ? `${currentEvent.startTime} – ${currentEvent.endTime} GMT+7${multiDay ? ` · đến ${shortDateVi(currentEvent.endDate)}` : ""}`
+    : "";
+  const locPrimary   = isDemoEvent ? "NetSpace — Tòa nhà MIPEC"
+    : isOnline ? "Sự kiện trực tuyến" : (currentEvent.location?.trim() || "Chưa có địa điểm");
+  const locSecondary = isDemoEvent ? "Tòa nhà MIPEC, Tây Sơn, Hà Nội"
+    : isOnline ? "Link tham gia gửi qua email sau khi đăng ký" : "";
   const navigate = useNavigate();
-
-  const [emails, setEmails] = useState({ confirm: true, remind: false, thanks: false });
-  const setEmail = (k: keyof typeof emails) => (v: boolean) => setEmails((e) => ({ ...e, [k]: v }));
 
   // Lấy từ TICKET_TIERS để số ở cột phải khớp với phần "Vé và doanh thu".
   const totalRegistered = TICKET_TIERS.reduce((n, t) => n + t.sold, 0);
@@ -677,15 +679,47 @@ export function EventDashboard() {
 
                 {/* Cover image — fills card height */}
                 <div style={{ position: "relative", flex: 1, minHeight: 260,
-                  background: "linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #3b82f6 100%)",
+                  background: currentEvent.coverImage
+                    ? `center / cover no-repeat url("${currentEvent.coverImage}")`
+                    : "linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #3b82f6 100%)",
                   display: "flex", flexDirection: "column", padding: 12 }}>
 
                   {/* Top row: status badge + Thay đổi ảnh */}
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", zIndex: 1 }}>
-                    <span style={{ fontSize: T.xs, fontWeight: T.fw_semi, padding: "2px 8px", borderRadius: "999px",
-                      backgroundColor: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
-                      {cfg.label}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span style={{ fontSize: T.xs, fontWeight: T.fw_semi, padding: "2px 8px", borderRadius: "999px",
+                        backgroundColor: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
+                        {cfg.label}
+                      </span>
+                      {/* Công khai / riêng tư: nhãn cạnh trạng thái sự kiện, bấm để đổi.
+                          Trang sự kiện đọc cùng giá trị này. */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button type="button" aria-label="Đổi chế độ hiển thị"
+                            className="inline-flex items-center gap-1 cursor-pointer transition-opacity hover:opacity-85"
+                            style={{ fontSize: T.xs, fontWeight: T.fw_semi, padding: "2px 8px",
+                              backgroundColor: isPrivate ? "#fdf2f8" : "#ecfdf5",
+                              color: isPrivate ? "#be185d" : "#047857",
+                              border: `1px solid ${isPrivate ? "#fbcfe8" : "#a7f3d0"}` }}>
+                            <visibility.icon className="size-3" /> {visibility.label}
+                            <ChevronDown className="size-3" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-72">
+                          {VISIBILITY_OPTIONS.map((o) => (
+                            <DropdownMenuItem key={o.id} className="items-start gap-3 py-2 cursor-pointer"
+                              onSelect={() => setCurrentEvent({ ...currentEvent, visibility: o.id })}>
+                              <o.icon className="size-4 mt-0.5 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{o.label}</p>
+                                <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>{o.desc}</p>
+                              </div>
+                              {visibility.id === o.id && <Check className="size-4 mt-0.5 shrink-0" style={{ color: T.primary }} />}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                     <button style={{ display: "flex", alignItems: "center", gap: 5, fontSize: T.xs,
                       fontWeight: T.fw_medium, padding: "4px 10px", borderRadius: 10,
                       backgroundColor: "rgba(255,255,255,0.18)", backdropFilter: "blur(6px)",
@@ -700,7 +734,9 @@ export function EventDashboard() {
                   <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px",
                     borderRadius: 10, backgroundColor: "rgba(0,0,0,0.9)", backdropFilter: "blur(6px)",
                     border: "1px solid rgba(255,255,255,0.12)" }}>
-                    <Globe className="size-3" style={{ color: "white", flexShrink: 0 }} />
+                    {isPrivate
+                      ? <Lock className="size-3" style={{ color: "white", flexShrink: 0 }} />
+                      : <Globe className="size-3" style={{ color: "white", flexShrink: 0 }} />}
                     <span style={{ fontSize: T.xs, color: "white", fontWeight: T.fw_medium,
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
                       netevent.vn/demo-conference-2026
@@ -744,12 +780,14 @@ export function EventDashboard() {
                   <div style={{ width: 56, height: 56, borderRadius: 12, border: `1px solid ${T.border}`,
                     display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontSize: "9px", color: T.primary, fontWeight: T.fw_bold,
-                      textTransform: "uppercase", letterSpacing: "0.05em", lineHeight: 1 }}>THÁNG 8</span>
-                    <span style={{ fontSize: T.xl, fontWeight: T.fw_bold, color: T.foreground, lineHeight: 1.1 }}>01</span>
+                      textTransform: "uppercase", letterSpacing: "0.05em", lineHeight: 1 }}>THÁNG {date?.month ?? "–"}</span>
+                    <span style={{ fontSize: T.xl, fontWeight: T.fw_bold, color: T.foreground, lineHeight: 1.1 }}>{date?.day ?? "--"}</span>
                   </div>
                   <div>
-                    <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>Thứ Sáu, 01 tháng 8</p>
-                    <p style={{ fontSize: T.xs, color: T.mutedFg }}>09:00 – 17:00 GMT+7</p>
+                    <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>
+                      {date ? `${date.weekday}, ${date.day} tháng ${date.month}` : "Chưa có ngày"}
+                    </p>
+                    <p style={{ fontSize: T.xs, color: T.mutedFg }}>{timeLabel}</p>
                   </div>
                 </div>
 
@@ -758,31 +796,42 @@ export function EventDashboard() {
                   <div className="flex items-start gap-4 mb-2">
                     <div style={{ width: 56, height: 56, borderRadius: 12, border: `1px solid ${T.border}`,
                       display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <MapPin className="size-5" style={{ color: T.mutedFg }} />
+                      {isOnline
+                        ? <Video className="size-5" style={{ color: T.mutedFg }} />
+                        : <MapPin className="size-5" style={{ color: T.mutedFg }} />}
                     </div>
-                    <div className="pt-1">
+                    <div className="pt-1 min-w-0">
                       <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground,
                         display: "flex", alignItems: "center", gap: 4 }}>
-                        NetSpace — Tòa nhà MIPEC
-                        <ExternalLink className="size-3 shrink-0" style={{ color: T.mutedFg }} />
+                        {locPrimary}
+                        {!isOnline && <ExternalLink className="size-3 shrink-0" style={{ color: T.mutedFg }} />}
                       </p>
-                      <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>
-                        Tòa nhà MIPEC, Tây Sơn, Hà Nội
-                      </p>
+                      {locSecondary && (
+                        <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>
+                          {locSecondary}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <p style={{ fontSize: T.xs, color: T.mutedFg }}>
-                    Địa chỉ sẽ được hiển thị công khai trên trang sự kiện.
+                    {isOnline
+                      ? "Link tham gia chỉ gửi cho người đã đăng ký."
+                      : isPrivate
+                        ? "Địa chỉ chỉ hiển thị với người có link sự kiện."
+                        : "Địa chỉ sẽ được hiển thị công khai trên trang sự kiện."}
                   </p>
                 </div>
 
-                {/* Hai nút đồng cấp, chia đôi hàng: Chỉnh sửa trái, Check-in phải */}
+                {/* Hai nút đồng cấp, chia đôi hàng: Chỉnh sửa trái, Check-in phải.
+                    Check-in mở tab riêng: màn quét mã + danh sách khách. */}
                 <div className="grid grid-cols-2 gap-2 mt-auto">
                   <Button variant="outline" className="w-full min-w-0" style={{ fontSize: T.sm }}>
                     <Pencil className="size-4" /> Chỉnh sửa
                   </Button>
-                  <Button variant="outline" className="w-full min-w-0" style={{ fontSize: T.sm }}>
-                    <QrCode className="size-4" /> Check-in
+                  <Button variant="outline" className="w-full min-w-0" style={{ fontSize: T.sm }} asChild>
+                    <a href={`/check-in?event=${currentEvent.id}`} target="_blank" rel="noreferrer">
+                      <QrCode className="size-4" /> Check-in
+                    </a>
                   </Button>
                 </div>
               </div>
@@ -952,34 +1001,32 @@ export function EventDashboard() {
             </div>
           </div>
 
-          {/* ── Cấu hình email ── */}
+          {/* ── Cấu hình email: người gửi + ba email tự động (EmailSettings.tsx) ── */}
+          <EmailSettingsCard key={currentEvent.id} event={currentEvent} organizerName={orgName} />
+
+          {/* ── Đơn vị tổ chức — hiển thị trên trang sự kiện ── */}
           <div className="rounded-2xl p-5" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-            <div className="flex items-center justify-between gap-3">
-              <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Cấu hình email</h3>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Đơn vị tổ chức</h3>
               <Button size="sm" variant="outline" className="shrink-0" style={{ fontSize: T.xs }}
-                onClick={() => setBlastOpen(true)}>
-                <Pencil className="size-3.5" /> Nội dung
+                onClick={() => setOrgOpen(true)}>
+                <Pencil className="size-3.5" /> Chỉnh sửa
               </Button>
             </div>
-            <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6, marginTop: 4, marginBottom: 6 }}>
-              Email tự động gửi cho người tham dự.
-            </p>
-            <div className="flex flex-col">
-              {([
-                { key: "confirm" as const, label: "Xác nhận đăng ký",       desc: "Gửi ngay sau khi đăng ký thành công." },
-                { key: "remind"  as const, label: "Nhắc lịch trước sự kiện", desc: "Gửi trước giờ bắt đầu 24 tiếng." },
-                { key: "thanks"  as const, label: "Cảm ơn sau sự kiện",      desc: "Gửi sau khi sự kiện kết thúc." },
-              ]).map((row, i) => (
-                <div key={row.key} className="flex items-start gap-3 py-3"
-                  style={{ borderTop: i === 0 ? "none" : `1px solid ${T.border}` }}>
-                  <div className="flex-1 min-w-0">
-                    <p style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{row.label}</p>
-                    <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2, lineHeight: 1.5 }}>{row.desc}</p>
-                  </div>
-                  <Switch className="shrink-0 mt-0.5"
-                    checked={emails[row.key]} onCheckedChange={setEmail(row.key)} />
-                </div>
-              ))}
+            <div className="flex items-center gap-3">
+              {currentEvent.organizerAvatar ? (
+                <img src={currentEvent.organizerAvatar} alt={orgName}
+                  className="size-10 rounded-full shrink-0" style={{ objectFit: "cover" }} />
+              ) : (
+                <span className="size-10 rounded-full shrink-0 flex items-center justify-center"
+                  style={{ backgroundColor: "rgba(255,134,68,0.12)", color: "#ff8644", fontWeight: T.fw_bold }}>
+                  {orgName[0]?.toUpperCase()}
+                </span>
+              )}
+              <div className="min-w-0">
+                <p className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{orgName}</p>
+                <p style={{ fontSize: T.xs, color: T.mutedFg }}>Hiển thị trên trang sự kiện</p>
+              </div>
             </div>
           </div>
 
@@ -1025,7 +1072,11 @@ export function EventDashboard() {
         </div>{/* end RIGHT column */}
 
         {inviteOpen && <InviteGuestsDialog onClose={() => setInviteOpen(false)} />}
-        {blastOpen && <BlastSheet eventName="NetEvent Demo Conference 2026" onClose={() => setBlastOpen(false)} />}
+        {orgOpen && (
+          <OrganizerDialog name={currentEvent.organizer ?? ""} avatar={currentEvent.organizerAvatar}
+            onClose={() => setOrgOpen(false)}
+            onSave={(n, av) => setCurrentEvent({ ...currentEvent, organizer: n || undefined, organizerAvatar: av || undefined })} />
+        )}
 
         {hostDialog && (
           <HostDialog

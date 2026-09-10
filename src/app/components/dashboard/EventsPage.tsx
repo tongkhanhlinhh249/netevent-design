@@ -2,7 +2,7 @@ import * as React from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import {
-  Plus, Calendar, MapPin, Clock, Globe, Eye, ExternalLink, Copy,
+  Plus, Calendar, MapPin, Clock, Globe, Eye, Lock, ExternalLink, Copy,
   CheckCircle2, Circle, ChevronRight, ChevronLeft, ChevronDown, ArrowLeft,
   Image, Pencil, Share2, Users, FileText, Ticket, Mail, QrCode,
   BarChart3, Settings, X, Upload, ToggleLeft, ToggleRight,
@@ -18,6 +18,8 @@ import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
 import { THEMES } from "../../data/themes";
 import { useCurrentEvent } from "../../data/currentEvent";
+import { downscaleToDataUrl, readImageFile } from "../../data/imageUtils";
+import { OrganizerAvatarPicker } from "./OrganizerAvatarPicker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose } from "../ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "../ui/dialog";
@@ -206,6 +208,12 @@ export interface EventDraft {
   ticketPrice: string;
   /** Ảnh nền trang sự kiện do người dùng tải lên (data URL); có thì phủ lên màu của theme. */
   pageImage?: string;
+  /** Đơn vị tổ chức nhập ở màn tạo; trống thì trang sự kiện dùng tên workspace. */
+  organizer?: string;
+  /** Ảnh đại diện của đơn vị tổ chức (data URL). */
+  organizerAvatar?: string;
+  /** Ảnh cover đã tải lên (data URL). blob: URL lúc xem trước không sống qua tab mới. */
+  coverImage?: string;
   status: "draft" | "published";
   cover: string;
 }
@@ -491,10 +499,6 @@ function StatusPill({ status }: { status: EventStatus }) {
   );
 }
 
-// ── Draft checklist chips ─────────────────────────────────────────────────────
-
-const DRAFT_CHIPS = ["Trang sự kiện", "Kho vé"];
-
 // ── Event Timeline Card ───────────────────────────────────────────────────────
 
 function EventTimelineCard({
@@ -508,11 +512,6 @@ function EventTimelineCard({
   const isDraft     = event.status === "draft";
   const isEnded     = event.status === "ended";
   const isPublished = event.status === "published";
-
-  // New checklist: 4 items total, item[0] (info) is always done = 1
-  // Remaining incomplete: show up to 2 missing chips from DRAFT_CHIPS
-  const completedBeyondInfo = Math.max(0, event.checklistDone - 1);
-  const missingChips = isDraft ? DRAFT_CHIPS.slice(completedBeyondInfo) : [];
 
   return (
     <div
@@ -576,7 +575,7 @@ function EventTimelineCard({
             </div>
           )}
 
-          {/* Draft: progress + missing chips */}
+          {/* Draft: progress */}
           {isDraft && (
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
@@ -588,28 +587,18 @@ function EventTimelineCard({
                   {Math.min(event.checklistDone, 3)}/3 hoàn tất
                 </span>
               </div>
-              {missingChips.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {missingChips.map((chip) => (
-                    <span key={chip} style={{
-                      fontSize: T.xs, color: T.warningText,
-                      backgroundColor: T.warningSubtle,
-                      border: `1px solid rgba(180,83,9,0.25)`,
-                      padding: "2px 8px", borderRadius: "999px",
-                    }}>
-                      Chưa có {chip}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 
           {/* Actions */}
           <div className="flex items-center gap-2 mt-1 flex-wrap">
+            {/* Check-in mở tab riêng (màn quét mã + danh sách khách, không kèm
+                sidebar); id đi qua URL để mở đúng sự kiện của thẻ này. */}
             {isLive && (
-              <Button size="sm" onClick={() => onManage(event)} style={{ backgroundColor: T.primary, color: T.primaryFg }}>
-                <QrCode className="size-3.5" /> Check-in QR
+              <Button size="sm" asChild style={{ backgroundColor: T.primary, color: T.primaryFg }}>
+                <a href={`/check-in?event=${event.id}`} target="_blank" rel="noreferrer">
+                  <QrCode className="size-3.5" /> Check-in QR
+                </a>
               </Button>
             )}
             <Button size="sm" variant="outline" onClick={() => onManage(event)}>
@@ -851,36 +840,15 @@ function CoverUploadCard({ eventName }: { eventName: string }) {
  * nơi sự kiện hiện tại được lưu để tab trang công khai đọc lại — nên thu nhỏ
  * trước khi giữ.
  */
-async function readBackgroundImage(file: File, maxW = 1920): Promise<string> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      // Không dùng `new Image()`: file này import icon `Image` từ lucide-react,
-      // tên đó che mất constructor Image của trình duyệt.
-      const i = document.createElement("img");
-      i.onload = () => resolve(i);
-      i.onerror = reject;
-      i.src = url;
-    });
-    const scale = Math.min(1, maxW / img.naturalWidth);
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(img.naturalWidth * scale);
-    canvas.height = Math.round(img.naturalHeight * scale);
-    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.82);
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-function UnifiedEventPreviewCard({ form, theme, onThemeChange, customBg, onCustomBg }: {
+function UnifiedEventPreviewCard({ form, theme, onThemeChange, customBg, onCustomBg, coverUrl, onCoverChange }: {
   form: { name: string };
   theme: string;
   onThemeChange: (id: string) => void;
   customBg: string | null;
   onCustomBg: (url: string) => void;
+  coverUrl: string | null;
+  onCoverChange: (url: string | null) => void;
 }) {
-  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const [themeOpen, setThemeOpen] = React.useState(false);
   const activeTheme = THEMES.find((t) => t.id === theme);
   const usingImage = theme === "custom" && !!customBg;
@@ -888,7 +856,7 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, customBg, onCusto
 
   const pickFile = async (file?: File) => {
     if (!file || !file.type.startsWith("image/")) return;
-    onCustomBg(await readBackgroundImage(file));
+    onCustomBg(await readImageFile(file, 1920));
     onThemeChange("custom");
     setThemeOpen(false);
   };
@@ -897,8 +865,8 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, customBg, onCusto
     <div className="flex flex-col gap-3">
       {/* Section 1: Cover 16:9 */}
       <EventCoverUpload
-        previewUrl={previewUrl}
-        onPreviewChange={setPreviewUrl}
+        previewUrl={coverUrl}
+        onPreviewChange={onCoverChange}
         eventName={form.name || undefined}
       />
 
@@ -1012,6 +980,8 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   const [loading, setLoading] = useState(false);
   const [theme, setTheme] = useState("gradient");
   const [customBg, setCustomBg] = useState<string | null>(null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [organizerAvatar, setOrganizerAvatar] = useState<string | null>(null);
   const [visibility, setVisibility] = useState("public");
   const [requireApproval, setRequireApproval] = useState(false);
   const [limitAttendees, setLimitAttendees] = useState(false);
@@ -1041,9 +1011,15 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
     && (!needsLocation   || form.location.trim())
     && (!needsOnlineLink || form.onlineLink.trim());
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!isValid) return;
     setLoading(true);
+    // Ảnh cover đang là blob: URL, chỉ sống trong tab này. Đổi sang data URL đã
+    // thu nhỏ để trang sự kiện mở ở tab mới vẫn đọc được qua sessionStorage.
+    let coverImage: string | undefined;
+    if (coverUrl) {
+      try { coverImage = await downscaleToDataUrl(coverUrl, 1200); } catch { coverImage = undefined; }
+    }
     setTimeout(() => {
       const newEvent: EventDraft = {
         id: Date.now().toString(),
@@ -1057,6 +1033,9 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         status: "draft",
         cover: THEMES.find((t) => t.id === theme)?.gradient ?? THEMES[1].gradient,
         pageImage: theme === "custom" && customBg ? customBg : undefined,
+        organizer: form.organizer.trim() || undefined,
+        organizerAvatar: organizerAvatar || undefined,
+        coverImage,
       };
       onCreated(newEvent);
     }, 700);
@@ -1126,7 +1105,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
           <div className="flex gap-0.5 p-0.5 rounded-full shrink-0" style={{ backgroundColor: T.secondary, border: `1px solid ${T.border}` }}>
             {([
               { id: "public",  label: "Công khai", icon: Globe },
-              { id: "private", label: "Riêng tư",  icon: Eye },
+              { id: "private", label: "Riêng tư",  icon: Lock },
             ]).map((v) => {
               const on = visibility === v.id;
               return (
@@ -1155,7 +1134,8 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         {/* ── Left: ảnh cover + giao diện, đứng yên khi form cuộn ── */}
         <div className="flex flex-col gap-0 lg:sticky lg:top-6">
           <UnifiedEventPreviewCard form={form} theme={theme} onThemeChange={setTheme}
-            customBg={customBg} onCustomBg={setCustomBg} />
+            customBg={customBg} onCustomBg={setCustomBg}
+            coverUrl={coverUrl} onCoverChange={setCoverUrl} />
         </div>
 
         {/* ── Right: Form ── */}
@@ -1290,11 +1270,17 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                   value={form.description} onChange={(e) => set("description")(e.target.value)} />
               </div>
 
-              {/* 6. Đơn vị tổ chức */}
+              {/* 6. Đơn vị tổ chức — ảnh đại diện + tên, đúng như khối trên trang sự kiện */}
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="ev-org">Đơn vị tổ chức</Label>
-                <Input id="ev-org" placeholder="Tên công ty, tổ chức hoặc cá nhân tổ chức"
-                  value={form.organizer} onChange={(e) => set("organizer")(e.target.value)} />
+                <div className="flex items-center gap-3">
+                  <OrganizerAvatarPicker value={organizerAvatar} name={form.organizer} onChange={setOrganizerAvatar} />
+                  <Input id="ev-org" className="flex-1" placeholder="Tên công ty, tổ chức hoặc cá nhân tổ chức"
+                    value={form.organizer} onChange={(e) => set("organizer")(e.target.value)} />
+                </div>
+                <p style={{ fontSize: T.xs, color: T.mutedFg }}>
+                  Bấm vào ảnh tròn để tải ảnh đại diện. Ảnh và tên hiển thị ở mục Đơn vị tổ chức trên trang sự kiện.
+                </p>
               </div>
 
               {/* 7. Tùy chọn sự kiện */}

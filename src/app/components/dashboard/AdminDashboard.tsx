@@ -2,6 +2,7 @@ import * as React from "react";
 import { useState, useRef, useEffect } from "react";
 import { Outlet, useLocation, useNavigate, useMatch } from "react-router";
 import { DEMO_EVENT } from "../../data/mockEvent";
+import { useCurrentEvent } from "../../data/currentEvent";
 import { EventsPage } from "./EventsPage";
 import { AccountOverview } from "./AccountOverview";
 import {
@@ -1521,6 +1522,7 @@ export function AdminDashboard({ currentRole, onLogout }: AdminDashboardProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const isEventWorkspace = location.pathname.startsWith("/event");
+  const { event: currentEvent } = useCurrentEvent();
   const [activePage, setActivePage] = useState("events");
 
   const handleNavigate = (id: string) => {
@@ -1631,7 +1633,7 @@ export function AdminDashboard({ currentRole, onLogout }: AdminDashboardProps) {
                     </button>
                     <ChevronRight className="size-3.5 shrink-0" style={{ color: T.mutedFg, opacity: 0.6 }} />
                     <span className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>
-                      {DEMO_EVENT.name}
+                      {currentEvent.name || DEMO_EVENT.name}
                     </span>
                   </>
                 ) : !isEventWorkspace && activePage === "events" && eventsScreen === "create" ? (

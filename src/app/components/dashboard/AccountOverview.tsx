@@ -161,6 +161,15 @@ function buildTodos(events: OvEvent[]): Todo[] {
   return rows.slice(0, 5);
 }
 
+/** Link trang check-in (tab riêng). Sự kiện ở màn này chưa có bản ghi đầy đủ
+    như sự kiện đang xem, nên gửi kèm tên, ngày, giờ để dựng phần đầu trang. */
+function checkInHref(e: OvEvent) {
+  const m = e.startDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  const q = new URLSearchParams({ event: e.id, name: e.name, time: e.startTime });
+  if (m) q.set("date", `${m[3]}-${m[2]}-${m[1]}`);
+  return `/check-in?${q}`;
+}
+
 /** "01/08/2026" -> số so sánh được, để sắp xếp theo ngày. */
 function dateKey(v: string) {
   const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -204,7 +213,10 @@ function LiveEventCard({ event, onManage }: { event: OvEvent; onManage: () => vo
           {event.startTime}{event.location ? ` · ${event.location}` : ""}
         </p>
         <div className="flex items-center gap-2 flex-wrap mt-1">
-          <Button size="sm" onClick={onManage}><QrCode className="size-3.5" /> Check-in QR</Button>
+          {/* Check-in mở tab riêng, như ở danh sách sự kiện */}
+          <Button size="sm" asChild>
+            <a href={checkInHref(event)} target="_blank" rel="noreferrer"><QrCode className="size-3.5" /> Check-in QR</a>
+          </Button>
           <Button size="sm" variant="outline" onClick={onManage}>Quản lý sự kiện →</Button>
         </div>
       </div>

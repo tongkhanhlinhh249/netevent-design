@@ -41,9 +41,9 @@ const T = {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type AttendeeStatus = "valid" | "checked-in" | "cancelled" | "invalid";
+export type AttendeeStatus = "valid" | "checked-in" | "cancelled" | "invalid";
 
-interface Attendee {
+export interface Attendee {
   id: string; name: string; email: string; phone: string;
   tier: string; price: string; ticketCode: string;
   status: AttendeeStatus; checkedIn: boolean;
@@ -55,7 +55,7 @@ interface EventDraft { id: string; name: string; status: string; [k: string]: an
 
 // ── Mock data ─────────────────────────────────────────────────────────────────
 
-const MOCK_ATTENDEES: Attendee[] = [
+export const MOCK_ATTENDEES: Attendee[] = [
   { id: "a1", name: "Nguyễn Văn A",  email: "nguyenvana@gmail.com", phone: "098xxxxxxx", tier: "VIP",        price: "499.000đ", ticketCode: "VIP-000124", status: "valid",      checkedIn: false, registeredAt: "30/06/2026 09:30", company: "Công ty ABC",    title: "CTO" },
   { id: "a2", name: "Trần Minh B",   email: "tranminhb@gmail.com",  phone: "097xxxxxxx", tier: "Standard",   price: "Miễn phí", ticketCode: "STD-000087", status: "checked-in", checkedIn: true,  registeredAt: "30/06/2026 10:15", checkinTime: "08:45, 01/07/2026", company: "Startup XYZ", title: "Developer" },
   { id: "a3", name: "Lê Hoàng C",   email: "lehoangc@gmail.com",   phone: "096xxxxxxx", tier: "Early Bird", price: "299.000đ", ticketCode: "EB-000045",  status: "valid",      checkedIn: false, registeredAt: "29/06/2026 16:20" },
@@ -254,9 +254,10 @@ function AttendeeDetailDrawer({ attendee, open, onClose, onCheckin }: {
 // ── Main AttendeesTab ─────────────────────────────────────────────────────────
 
 export function AttendeesTab({ event }: { event: EventDraft }) {
-  const isDraft      = event.status === "draft";
-  const isPublished  = !isDraft;
-  const hasAttendees = isPublished; // demo: show data when published
+  // Sự kiện không còn bước publish — chỉ Công khai / Riêng tư. Sự kiện mới tạo
+  // (status "draft") chưa có ai đăng ký; sự kiện mẫu có sẵn danh sách.
+  const hasAttendees = event.status !== "draft";
+  const isPrivate    = event.visibility === "private";
 
   const [attendees, setAttendees]     = useState<Attendee[]>(hasAttendees ? MOCK_ATTENDEES : []);
   const [search, setSearch]           = useState("");
@@ -314,52 +315,9 @@ export function AttendeesTab({ event }: { event: EventDraft }) {
     rate: attendees.length > 0 ? Math.round((attendees.filter((a) => a.checkedIn).length / attendees.length) * 100) : 0,
   };
 
-  // ── State 1: Draft ────────────────────────────────────────────────────────
+  // ── Chưa có người đăng ký ────────────────────────────────────────────────
 
-  if (isDraft) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center max-w-lg mx-auto">
-        <div className="size-16 rounded-2xl flex items-center justify-center mb-5"
-          style={{ backgroundColor: `rgba(30,170,255,0.08)` }}>
-          <UserX className="size-8" style={{ color: T.mutedFg }} />
-        </div>
-        <h3 style={{ fontSize: T.xl, fontWeight: T.fw_semi, color: T.foreground, marginBottom: "8px" }}>
-          Chưa có người tham dự
-        </h3>
-        <p style={{ fontSize: T.sm, color: T.mutedFg, lineHeight: 1.7, marginBottom: "20px" }}>
-          Danh sách người tham dự sẽ xuất hiện sau khi sự kiện được Publish và có người đăng ký qua Landing Page.
-        </p>
-        <div className="w-full rounded-xl p-4 text-left mb-6"
-          style={{ backgroundColor: T.secondary, border: `1px solid ${T.border}` }}>
-          <p style={{ fontSize: T.xs, fontWeight: T.fw_semi, color: T.mutedFg, marginBottom: "10px" }}>
-            Để nhận đăng ký, bạn cần hoàn tất:
-          </p>
-          {[
-            "Tạo Landing Page",
-            "Thiết lập Form đăng ký",
-            "Cấu hình Kho vé (nếu có)",
-            "Publish sự kiện",
-          ].map((item, i) => (
-            <div key={i} className="flex items-center gap-2 py-1.5">
-              <div className="size-4 rounded-full border-2 shrink-0" style={{ borderColor: T.border }} />
-              <span style={{ fontSize: T.sm, color: T.mutedFg }}>{item}</span>
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-3">
-          <Button>Kiểm tra điều kiện Publish</Button>
-          <Button variant="outline">Quay lại Tổng quan</Button>
-        </div>
-        <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: "12px", fontStyle: "italic" }}>
-          Bản nháp chưa thể nhận đăng ký công khai.
-        </p>
-      </div>
-    );
-  }
-
-  // ── State 2: Published, no registrations ─────────────────────────────────
-
-  if (isPublished && attendees.length === 0) {
+  if (attendees.length === 0) {
     return (
       <div className="flex flex-col gap-6">
         {/* Zero stats */}
@@ -387,7 +345,7 @@ export function AttendeesTab({ event }: { event: EventDraft }) {
             Chưa có người đăng ký
           </h3>
           <p style={{ fontSize: T.sm, color: T.mutedFg, lineHeight: 1.7, marginBottom: "20px" }}>
-            Sự kiện đã được Publish. Chia sẻ Landing Page để bắt đầu nhận đăng ký.
+            Chia sẻ trang sự kiện để bắt đầu nhận đăng ký.
           </p>
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl w-full mb-4"
             style={{ backgroundColor: T.secondary, border: `1px solid ${T.border}` }}>
@@ -395,13 +353,17 @@ export function AttendeesTab({ event }: { event: EventDraft }) {
               netevent.vn/e/{(event.name || "su-kien").toLowerCase().replace(/\s+/g, "-").slice(0, 30)}
             </span>
             <span style={{ fontSize: T.xs, padding: "1px 6px", borderRadius: "999px",
-              backgroundColor: T.successSubtle, color: T.successText }}>Đang public</span>
+              backgroundColor: isPrivate ? "#fdf2f8" : T.successSubtle, color: isPrivate ? "#be185d" : T.successText }}>
+              {isPrivate ? "Riêng tư" : "Công khai"}
+            </span>
           </div>
           <div className="flex gap-3 flex-wrap justify-center">
             <Button onClick={() => navigator.clipboard?.writeText("netevent.vn/e/...")}>
               <Copy className="size-4" /> Sao chép link
             </Button>
-            <Button variant="outline"><ExternalLink className="size-4" /> Xem Landing Page</Button>
+            <Button variant="outline" asChild>
+              <a href="/demo" target="_blank" rel="noreferrer"><ExternalLink className="size-4" /> Xem trang sự kiện</a>
+            </Button>
             <Button variant="ghost"><Mail className="size-4" /> Gửi email mời</Button>
           </div>
         </div>
@@ -409,7 +371,7 @@ export function AttendeesTab({ event }: { event: EventDraft }) {
     );
   }
 
-  // ── State 3: Has attendees ────────────────────────────────────────────────
+  // ── Có người tham dự ────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col gap-6">
