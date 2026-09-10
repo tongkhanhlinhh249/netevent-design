@@ -189,8 +189,8 @@ function LiveEventCard({ event, onManage }: { event: OvEvent; onManage: () => vo
   return (
     <div className="rounded-2xl p-5 flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6"
       style={{ backgroundColor: T.background, border: `1px solid rgba(248,104,128,0.35)` }}>
-      {/* Khối này chiếm hết bề ngang nên bày ngang: thông tin bên trái, hành
-          động bên phải, thay vì xếp dọc rồi bỏ trống nửa màn. */}
+      {/* Khối chiếm hết bề ngang nên bày ngang: thông tin và hành động bên
+          trái, tiến độ check-in bên phải. */}
       <div className="flex-1 min-w-0 flex flex-col gap-2">
         <span className="inline-flex items-center gap-1.5 self-start" style={{
           fontSize: T.xs, fontWeight: T.fw_semi, padding: "2px 8px", borderRadius: 999,
@@ -203,6 +203,10 @@ function LiveEventCard({ event, onManage }: { event: OvEvent; onManage: () => vo
         <p style={{ fontSize: T.sm, color: T.mutedFg }}>
           {event.startTime}{event.location ? ` · ${event.location}` : ""}
         </p>
+        <div className="flex items-center gap-2 flex-wrap mt-1">
+          <Button size="sm" onClick={onManage}><QrCode className="size-3.5" /> Check-in QR</Button>
+          <Button size="sm" variant="outline" onClick={onManage}>Quản lý sự kiện →</Button>
+        </div>
       </div>
 
       {/* Tiến độ check-in — con số cần nhìn nhất trong lúc sự kiện đang chạy */}
@@ -219,10 +223,6 @@ function LiveEventCard({ event, onManage }: { event: OvEvent; onManage: () => vo
         </div>
       </div>
 
-      <div className="shrink-0 flex items-center gap-2 flex-wrap">
-        <Button size="sm" onClick={onManage}><QrCode className="size-3.5" /> Check-in QR</Button>
-        <Button size="sm" variant="outline" onClick={onManage}>Quản lý sự kiện →</Button>
-      </div>
     </div>
   );
 }
@@ -325,11 +325,6 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
         </Section>
       )}
 
-      {/* Hai cột: trái là việc phải làm ngay, phải là thông tin tham khảo.
-          Dồn hết vào một cột full-width khiến mỗi khối bị kéo giãn hết bề ngang. */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start">
-      <div className="flex flex-col gap-6 min-w-0">
-
       {/* Tất cả sự kiện đã khép lại */}
       {allClosed && (
         <div className="rounded-2xl p-5 flex items-center justify-between gap-3 flex-wrap"
@@ -339,6 +334,12 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
         </div>
       )}
 
+      {/* Hàng giữa: việc cần làm đứng cạnh lịch sắp tới — hai khối cao xấp xỉ
+          nhau nên hai cột cân. Nếu không có sự kiện sắp tới thì Cần xử lý chiếm
+          hết hàng, không để trống cột phải. */}
+      {!allClosed && (
+        <div className={`grid grid-cols-1 ${upcoming.length > 0 ? "xl:grid-cols-[1fr_360px]" : ""} gap-6 items-start`}>
+          <div className="flex flex-col gap-6 min-w-0">
       {/* ── Khối 2 — Cần xử lý ── */}
       {!allClosed && (
         <Section title="Cần xử lý">
@@ -363,32 +364,9 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
         </Section>
       )}
 
-      {/* ── Khối 4 — Hoạt động gần đây ── */}
-      <Section title="Hoạt động gần đây">
-        <div className="rounded-2xl overflow-hidden"
-          style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-          {ACTIVITY_LOG.map((a, i) => (
-            <button key={`${a.actor}-${a.time}`} data-pill="off" onClick={() => onGoToEvents?.()}
-              className="w-full flex items-start gap-3 px-4 py-3 text-left cursor-pointer transition-opacity hover:opacity-80"
-              style={{ background: "none", borderTop: i === 0 ? "none" : `1px solid ${T.border}`,
-                borderLeft: "none", borderRight: "none", borderBottom: "none" }}>
-              <Activity className="size-4 shrink-0 mt-0.5" style={{ color: T.mutedFg }} />
-              <span className="flex-1 min-w-0">
-                <span style={{ fontSize: T.sm, color: T.foreground }}>
-                  <strong style={{ fontWeight: T.fw_medium }}>{a.actor}</strong> {a.action}{" "}
-                  <strong style={{ fontWeight: T.fw_medium }}>{a.target}</strong>
-                </span>
-                <span className="block" style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>{a.time}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      </Section>
-
-      </div>{/* hết cột trái */}
-
-      <div className="flex flex-col gap-6 min-w-0">
-
+          </div>
+          {upcoming.length > 0 && (
+            <div className="flex flex-col gap-6 min-w-0">
       {/* ── Khối 3 — Sắp diễn ra (tối đa 3, nối sang màn Sự kiện) ── */}
       {!allClosed && upcoming.length > 0 && (
         <Section title="Sắp diễn ra" action={
@@ -421,8 +399,32 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
         </Section>
       )}
 
-      </div>{/* hết cột phải */}
-      </div>{/* hết lưới hai cột */}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Hoạt động gần đây — full width bên dưới, đủ chỗ để mỗi dòng nằm gọn một hàng */}
+      {/* ── Khối 4 — Hoạt động gần đây ── */}
+      <Section title="Hoạt động gần đây">
+        <div className="rounded-2xl overflow-hidden"
+          style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+          {ACTIVITY_LOG.map((a, i) => (
+            <button key={`${a.actor}-${a.time}`} data-pill="off" onClick={() => onGoToEvents?.()}
+              className="w-full flex items-start gap-3 px-4 py-3 text-left cursor-pointer transition-opacity hover:opacity-80"
+              style={{ background: "none", borderTop: i === 0 ? "none" : `1px solid ${T.border}`,
+                borderLeft: "none", borderRight: "none", borderBottom: "none" }}>
+              <Activity className="size-4 shrink-0 mt-0.5" style={{ color: T.mutedFg }} />
+              <span className="flex-1 min-w-0" style={{ fontSize: T.sm, color: T.foreground }}>
+                <strong style={{ fontWeight: T.fw_medium }}>{a.actor}</strong> {a.action}{" "}
+                <strong style={{ fontWeight: T.fw_medium }}>{a.target}</strong>
+              </span>
+              <span className="shrink-0 mt-0.5" style={{ fontSize: T.xs, color: T.mutedFg, whiteSpace: "nowrap" }}>{a.time}</span>
+            </button>
+          ))}
+        </div>
+      </Section>
+
     </div>
   );
 }
