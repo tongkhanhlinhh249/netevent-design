@@ -10,6 +10,7 @@ import { MiniGameRoute } from "./pages/event/MiniGameRoute";
 import { ThongTinChiTietRoute } from "./pages/event/ThongTinChiTietRoute";
 import { AttendeesRoute } from "./pages/event/AttendeesRoute";
 import { CheckInRoute } from "./pages/event/CheckInRoute";
+import { DrawProjectorRoute } from "./pages/DrawProjectorRoute";
 import { KhoVeRoute } from "./pages/event/KhoVeRoute";
 import { LichSuHoatDongRoute } from "./pages/event/LichSuHoatDongRoute";
 import { ThanhVienRoute } from "./pages/event/ThanhVienRoute";
@@ -55,6 +56,11 @@ export const router = createBrowserRouter([
   {
     path: "/check-in",
     Component: CheckInRoute,
+  },
+  // Màn chiếu bốc thăm mở ở tab riêng (máy chiếu), đồng bộ với màn hình quay.
+  {
+    path: "/man-chieu",
+    Component: DrawProjectorRoute,
   },
   {
     path: "*",
