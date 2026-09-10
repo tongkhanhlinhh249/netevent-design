@@ -34,7 +34,7 @@ const T = {
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
-type GuestStatus = "going" | "checked-in" | "cancelled";
+type GuestStatus = "going" | "checked-in";
 
 interface Guest {
   id: string; name: string; email: string; tier: string; ticketCode: string;
@@ -43,9 +43,10 @@ interface Guest {
 
 /** Sự kiện mẫu dùng đúng danh sách của tab Người tham dự, để hai nơi khớp nhau. */
 function demoGuests(): Guest[] {
-  return MOCK_ATTENDEES.filter((a) => a.status !== "invalid").map((a) => ({
+  // Check-in chỉ có hai trạng thái: chưa check-in và đã check-in.
+  return MOCK_ATTENDEES.filter((a) => a.status === "valid" || a.status === "checked-in").map((a) => ({
     id: a.id, name: a.name, email: a.email, tier: a.tier, ticketCode: a.ticketCode,
-    status: a.status === "checked-in" ? "checked-in" : a.status === "cancelled" ? "cancelled" : "going",
+    status: a.status === "checked-in" ? "checked-in" : "going",
     checkinTime: a.checkinTime?.split(",")[0],
   }));
 }
@@ -53,17 +54,16 @@ function demoGuests(): Guest[] {
 const nowHHMM = () => new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
 
 type ScanResult =
-  | { kind: "success" | "confirm" | "already" | "cancelled"; guest: Guest }
+  | { kind: "success" | "confirm" | "already"; guest: Guest }
   | { kind: "invalid"; code: string };
 
 /** Thứ tự kết quả của nút "Mô phỏng quét mã", để thử đủ các trạng thái vé. */
-const SCAN_SEQUENCE: Array<GuestStatus | "invalid"> = ["going", "checked-in", "going", "invalid", "cancelled"];
+const SCAN_SEQUENCE: Array<GuestStatus | "invalid"> = ["going", "checked-in", "going", "invalid"];
 
 const RESULT_CFG = {
   success:   { color: "#16a34a", bg: "rgba(22,163,74,0.1)",  frame: "#22c55e", icon: CheckCircle2 },
   confirm:   { color: "#0284c7", bg: "rgba(2,132,199,0.1)",  frame: "#38bdf8", icon: QrCode },
   already:   { color: "#d97706", bg: "rgba(217,119,6,0.1)",  frame: "#f59e0b", icon: AlertTriangle },
-  cancelled: { color: "#dc2626", bg: "rgba(220,38,38,0.1)",  frame: "#ef4444", icon: XCircle },
   invalid:   { color: "#dc2626", bg: "rgba(220,38,38,0.1)",  frame: "#ef4444", icon: XCircle },
 } as const;
 
@@ -72,7 +72,6 @@ function resultTitle(r: ScanResult) {
     case "success":   return "Check-in thành công";
     case "confirm":   return "Vé hợp lệ";
     case "already":   return `Đã check-in lúc ${r.guest.checkinTime ?? "trước đó"}`;
-    case "cancelled": return "Vé đã bị huỷ";
     case "invalid":   return "Mã QR không hợp lệ";
   }
 }
@@ -107,7 +106,7 @@ const SCANLINE_CSS = `
  * camera + tiến độ check-in).
  *
  * Bản prototype không mở camera thật: nút "Mô phỏng quét mã" lần lượt trả về
- * vé hợp lệ, vé đã check-in, mã lạ và vé đã huỷ.
+ * vé hợp lệ, vé đã check-in và mã lạ.
  */
 export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft; sampleGuests?: boolean }) {
   const [guests, setGuests] = useState<Guest[]>(() => (sampleGuests ? demoGuests() : []));
@@ -129,16 +128,16 @@ export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft
   }, [event.name]);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  const going     = guests.filter((g) => g.status !== "cancelled");
+  const waiting   = guests.filter((g) => g.status === "going");
   const checkedIn = guests.filter((g) => g.status === "checked-in");
-  const pct       = going.length ? Math.round((checkedIn.length / going.length) * 100) : 0;
+  const pct       = guests.length ? Math.round((checkedIn.length / guests.length) * 100) : 0;
 
   const day  = dayLabelVi(event.startDate);
   const when = day ? [day, event.startTime && `${event.startTime} GMT+7`].filter(Boolean).join(" · ") : "Chưa có thời gian";
 
   const q = query.trim().toLowerCase();
   const visible = guests
-    .filter((g) => tab === "all" || (tab === "going" ? g.status !== "cancelled" : g.status === "checked-in"))
+    .filter((g) => tab === "all" || g.status === tab)
     .filter((g) => !q || [g.name, g.email, g.ticketCode].some((v) => v.toLowerCase().includes(q)));
 
   const markCheckedIn = (id: string) => {
@@ -160,7 +159,6 @@ export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft
       let r: ScanResult;
       if (!guest) r = { kind: "invalid", code: `NE-${Math.floor(100000 + Math.random() * 900000)}` };
       else if (guest.status === "checked-in") r = { kind: "already", guest };
-      else if (guest.status === "cancelled") r = { kind: "cancelled", guest };
       else if (autoCheckIn) r = { kind: "success", guest: { ...guest, status: "checked-in", checkinTime: markCheckedIn(guest.id) } };
       else r = { kind: "confirm", guest };
       setResult(r);
@@ -230,7 +228,7 @@ export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft
             <div className="max-w-[880px] mx-auto px-4 sm:px-6 flex gap-6 overflow-x-auto">
               {([
                 { id: "all" as const,        label: "Tất cả khách" },
-                { id: "going" as const,      label: "Đã đăng ký",  count: going.length },
+                { id: "going" as const,      label: "Chưa check-in", count: waiting.length },
                 { id: "checked-in" as const, label: "Đã check-in", count: checkedIn.length },
               ]).map((t) => {
                 const on = tab === t.id;
@@ -252,11 +250,19 @@ export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft
 
           <main className="flex-1 max-w-[880px] w-full mx-auto px-4 sm:px-6">
             {visible.length > 0 ? (
-              <ul>
-                {visible.map((g) => (
-                  <GuestRow key={g.id} guest={g} onCheckIn={() => markCheckedIn(g.id)} onUndo={() => undoCheckIn(g.id)} />
-                ))}
-              </ul>
+              <>
+                <div className={`hidden sm:grid items-center gap-4 ${GUEST_COLS} pt-4 pb-2`}
+                  style={{ borderBottom: `1px solid ${T.border}`, fontSize: T.xs, fontWeight: T.fw_medium, color: T.mutedFg }}>
+                  <span>Khách</span>
+                  <span>Hạng vé</span>
+                  <span className="text-right">Trạng thái</span>
+                </div>
+                <ul>
+                  {visible.map((g) => (
+                    <GuestRow key={g.id} guest={g} onCheckIn={() => markCheckedIn(g.id)} onUndo={() => undoCheckIn(g.id)} />
+                  ))}
+                </ul>
+              </>
             ) : guests.length === 0 ? (
               <EmptyState icon={<Users className="size-8" />} title="Chưa có khách nào"
                 desc="Chia sẻ trang sự kiện để nhận đăng ký."
@@ -272,8 +278,8 @@ export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft
               <EmptyState icon={<UserCheck className="size-8" />} title="Chưa ai check-in"
                 desc="Quét mã QR trên vé, hoặc bấm Check-in ở từng khách trong danh sách." />
             ) : (
-              <EmptyState icon={<Users className="size-8" />} title="Chưa có khách đăng ký"
-                desc="Khách đã huỷ vé không nằm trong danh sách này." />
+              <EmptyState icon={<UserCheck className="size-8" />} title="Tất cả khách đã check-in"
+                desc="Không còn khách nào chờ check-in." />
             )}
           </main>
         </>
@@ -305,7 +311,7 @@ export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft
                 <span style={{ fontSize: T.xl, fontWeight: T.fw_semi }}>{checkedIn.length}</span>
                 <span style={{ fontSize: T.sm, marginLeft: 6 }}>Đã check-in</span>
               </p>
-              <p style={{ fontSize: T.sm, color: T.mutedFg }}>{going.length} đã đăng ký</p>
+              <p style={{ fontSize: T.sm, color: T.mutedFg }}>{guests.length} đã đăng ký</p>
             </div>
             <div className="h-1.5 rounded-full overflow-hidden mt-3" style={{ backgroundColor: "rgba(0,0,0,0.08)" }}>
               <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: T.successText }} />
@@ -324,28 +330,32 @@ export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft
 
 // ── Pieces ───────────────────────────────────────────────────────────────────
 
+/** Cột cố định để hạng vé (căn trái) và trạng thái (căn phải) thẳng hàng giữa các dòng. */
+const GUEST_COLS = "grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_120px_210px]";
+
 function GuestRow({ guest: g, onCheckIn, onUndo }: { guest: Guest; onCheckIn: () => void; onUndo: () => void }) {
-  const cancelled = g.status === "cancelled";
   return (
-    <li className="flex items-center gap-3 py-3" style={{ borderBottom: `1px solid ${T.border}` }}>
-      <span className="size-9 rounded-full flex items-center justify-center shrink-0"
-        style={{ backgroundColor: "rgba(30,170,255,0.12)", color: T.primary, fontSize: T.sm,
-          fontWeight: T.fw_semi, opacity: cancelled ? 0.5 : 1 }}>
-        {g.name.trim().split(/\s+/).pop()?.[0]?.toUpperCase()}
-      </span>
-      <div className="flex-1 min-w-0">
-        <p className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: cancelled ? T.mutedFg : T.foreground }}>{g.name}</p>
-        <p className="truncate" style={{ fontSize: T.xs, color: T.mutedFg }}>{g.email} · {g.ticketCode}</p>
+    <li className={`grid items-center gap-4 ${GUEST_COLS} py-3`} style={{ borderBottom: `1px solid ${T.border}` }}>
+      <div className="flex items-center gap-3 min-w-0">
+        <span className="size-9 rounded-full flex items-center justify-center shrink-0"
+          style={{ backgroundColor: "rgba(30,170,255,0.12)", color: T.primary, fontSize: T.sm, fontWeight: T.fw_semi }}>
+          {g.name.trim().split(/\s+/).pop()?.[0]?.toUpperCase()}
+        </span>
+        <div className="min-w-0">
+          <p className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{g.name}</p>
+          <p className="truncate" style={{ fontSize: T.xs, color: T.mutedFg }}>{g.email} · {g.ticketCode}</p>
+        </div>
       </div>
-      <span className="hidden sm:inline shrink-0"
-        style={{ fontSize: T.xs, color: T.mutedFg, padding: "2px 8px", borderRadius: 999, border: `1px solid ${T.border}` }}>
-        {g.tier}
-      </span>
-      <div className="shrink-0 flex items-center justify-end gap-1" style={{ minWidth: 150 }}>
-        {g.status === "going" && (
+      <div className="hidden sm:block">
+        <span className="whitespace-nowrap"
+          style={{ fontSize: T.xs, color: T.mutedFg, padding: "2px 8px", borderRadius: 999, border: `1px solid ${T.border}` }}>
+          {g.tier}
+        </span>
+      </div>
+      <div className="flex items-center justify-end gap-1">
+        {g.status === "going" ? (
           <Button size="sm" variant="outline" onClick={onCheckIn}><UserCheck className="size-3.5" /> Check-in</Button>
-        )}
-        {g.status === "checked-in" && (
+        ) : (
           <>
             <span className="flex items-center gap-1.5 whitespace-nowrap"
               style={{ fontSize: T.xs, fontWeight: T.fw_medium, color: T.successText, backgroundColor: T.successSubtle,
@@ -358,12 +368,6 @@ function GuestRow({ guest: g, onCheckIn, onUndo }: { guest: Guest; onCheckIn: ()
               <Undo2 className="size-3.5" />
             </button>
           </>
-        )}
-        {cancelled && (
-          <span className="whitespace-nowrap"
-            style={{ fontSize: T.xs, color: T.mutedFg, backgroundColor: T.secondary, padding: "4px 10px", borderRadius: 999 }}>
-            Đã huỷ vé
-          </span>
         )}
       </div>
     </li>
