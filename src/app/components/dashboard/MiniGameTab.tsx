@@ -1,12 +1,12 @@
 import * as React from "react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   ChevronLeft, Plus, Trophy, Users, Lock,
   Play, RotateCcw, CheckCircle2, BarChart3,
   Download, Search, Check, X, AlertCircle,
   Maximize2, Award, Trash2, UserCheck, Gamepad2,
   ClipboardList, Minimize2, Zap, Settings,
-  ChevronDown, Pencil, Upload, Info, SlidersHorizontal, CalendarCheck, ArrowRight
+  ChevronDown, Pencil, Upload, Info, SlidersHorizontal, CalendarCheck, ArrowRight, MoreHorizontal, ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
@@ -17,6 +17,9 @@ import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { cn } from "../ui/utils";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "../ui/sheet";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { publishDraw } from "../../data/drawSync";
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
@@ -53,8 +56,6 @@ const T = {
 
 type MgStatus = "draft" | "ready" | "scheduled" | "live" | "paused" | "ended";
 type MgView   = "list" | "setup" | "manage" | "operate";
-type ManageSubTab = "overview" | "operate" | "results" | "config" | "audit";
-type SpinState    = "idle" | "spinning" | "result" | "absent";
 type WinnerDisplay = "full" | "partial" | "code";
 
 // Hạng vé là bộ lọc trên danh sách sự kiện chứ không phải một nguồn riêng, nên
@@ -80,16 +81,12 @@ interface Prize {
   status: "pending" | "active" | "done";
 }
 
-interface Participant {
-  id: string; name: string; ticketCode: string; ticketType: string;
-  checkedIn: boolean; excluded: boolean;
-}
-
+/** Một lượt quay đã ghi nhận — kết quả tự lưu, không có bước xác nhận riêng. */
 interface SpinResult {
-  id: string; time: string; prize: string;
+  id: string; time: string;
+  prizeId: string; prize: string;
   winner: string; ticketCode: string;
-  status: "pending" | "confirmed" | "absent" | "delivered" | "cancelled";
-  operator: string; confirmedBy?: string;
+  operator: string;
 }
 
 interface MiniGame {
@@ -149,34 +146,19 @@ const MOCK_PRIZES: Prize[] = [
   { id: "p5", rank: "Giải may mắn",     name: "Sticker NetEvent",     count: 10,remaining: 10,status: "pending" },
 ];
 
-const MOCK_PARTICIPANTS: Participant[] = [
-  { id: "u1", name: "Nguyễn Văn Bình", ticketCode: "NE-2025-00142", ticketType: "VIP",      checkedIn: true,  excluded: false },
-  { id: "u2", name: "Trần Thị Cúc",   ticketCode: "NE-2025-00089", ticketType: "Standard", checkedIn: true,  excluded: false },
-  { id: "u3", name: "Lê Minh Đức",    ticketCode: "NE-2025-00201", ticketType: "Standard", checkedIn: true,  excluded: false },
-  { id: "u4", name: "Phạm Thị Hoa",   ticketCode: "NE-2025-00317", ticketType: "VIP",      checkedIn: true,  excluded: false },
-  { id: "u5", name: "Vũ Quốc Hùng",   ticketCode: "NE-2025-00005", ticketType: "Standard", checkedIn: true,  excluded: true  },
-  { id: "u6", name: "Đỗ Thị Lan",     ticketCode: "NE-2025-00223", ticketType: "Standard", checkedIn: true,  excluded: false },
-  { id: "u7", name: "Hoàng Văn Minh", ticketCode: "NE-2025-00415", ticketType: "VIP",      checkedIn: false, excluded: false },
-];
-
+// Hai lượt đã quay của chương trình mẫu — cùng nguồn với tiến độ giải
+// (Giải nhất 1/1, Giải nhì 1/2), nên mọi màn đều ra 2 người thắng · 2/21 suất.
 const MOCK_RESULTS: SpinResult[] = [
-  { id: "r1", time: "18:15", prize: "Giải nhất – iPhone 16 Pro Max",     winner: "Nguyễn Văn Bình", ticketCode: "NE-2025-00142", status: "delivered",  operator: "Trần Staff A", confirmedBy: "Admin" },
-  { id: "r2", time: "18:32", prize: "Giải nhì – Apple Watch Series 10",  winner: "Trần Thị Cúc",   ticketCode: "NE-2025-00089", status: "confirmed",  operator: "Trần Staff A" },
-  { id: "r3", time: "18:48", prize: "Giải nhì – Apple Watch Series 10",  winner: "Lê Minh Đức",    ticketCode: "NE-2025-00201", status: "absent",     operator: "Nguyễn Staff B" },
+  { id: "r2", time: "18:32", prizeId: "p2", prize: "Giải nhì · Apple Watch Series 10", winner: "Trần Thị Cúc",    ticketCode: "NE-2025-00089", operator: "Trần Staff A" },
+  { id: "r1", time: "18:15", prizeId: "p1", prize: "Giải nhất · iPhone 16 Pro Max",     winner: "Nguyễn Văn Bình", ticketCode: "NE-2025-00142", operator: "Trần Staff A" },
 ];
 
-const MOCK_AUDIT = [
-  { id: "a1",  action: "Tạo chương trình bốc thăm",                       user: "Admin",          time: "14:00 · 29/06" },
-  { id: "a2",  action: "Sửa cấu hình giải thưởng",                         user: "Admin",          time: "14:25 · 29/06" },
-  { id: "a3",  action: "Lưu chương trình",                                  user: "Admin",          time: "14:30 · 29/06" },
-  { id: "a4",  action: "Tự động chốt danh sách khi bắt đầu quay (138 người)", user: "Hệ thống",     time: "18:14 · 29/06" },
-  { id: "a5",  action: "Bắt đầu bốc thăm – Giải nhất",                     user: "Trần Staff A",   time: "18:14 · 29/06" },
-  { id: "a6",  action: "Xác nhận người thắng – Nguyễn Văn Bình",           user: "Trần Staff A",   time: "18:15 · 29/06" },
-  { id: "a7",  action: "Xác nhận đã trao quà – iPhone 16 Pro Max",         user: "Admin",          time: "18:20 · 29/06" },
-  { id: "a8",  action: "Bắt đầu bốc thăm – Giải nhì (lượt 1)",            user: "Trần Staff A",   time: "18:31 · 29/06" },
-  { id: "a9",  action: "Xác nhận người thắng – Trần Thị Cúc",             user: "Trần Staff A",   time: "18:32 · 29/06" },
-  { id: "a10", action: "Bắt đầu bốc thăm – Giải nhì (lượt 2)",            user: "Nguyễn Staff B", time: "18:47 · 29/06" },
-  { id: "a11", action: "Đánh dấu không có mặt – Lê Minh Đức",             user: "Nguyễn Staff B", time: "18:49 · 29/06" },
+// Lịch sử trước khi quay của chương trình mẫu. Phần chốt danh sách và từng lượt
+// quay dựng từ dữ liệu của chương trình (historyOf).
+const MOCK_AUDIT_BASE = [
+  { action: "Tạo chương trình bốc thăm", user: "Admin", time: "14:00 · 29/06" },
+  { action: "Sửa giải thưởng",           user: "Admin", time: "14:25 · 29/06" },
+  { action: "Lưu chương trình",          user: "Admin", time: "14:30 · 29/06" },
 ];
 
 const POOL_NAMES = [
@@ -210,7 +192,7 @@ function audienceLabel(a: Audience): string {
 }
 
 /** Giải cũ có "Hạng giải" riêng; giải tạo mới chỉ có một tên. */
-const prizeLabel = (p: Prize) => (p.rank ? `${p.rank} – ${p.name}` : p.name);
+const prizeLabel = (p: Prize) => (p.rank ? `${p.rank} · ${p.name}` : p.name);
 
 /** Số người danh sách phải có: trúng một lần thì cộng mọi giải, trúng nhiều lần thì chỉ cần đủ cho giải đông nhất. */
 function winnersNeeded(prizes: Prize[], oncePerPerson: boolean): number {
@@ -303,7 +285,7 @@ const STATUS_CFG: Record<MgStatus, { label: string; color: string; bg: string; b
   scheduled: { label: "Đã lên lịch",   color: "#0369a1", bg: "#e0f2fe",              border: "#bae6fd" },
   live:      { label: "Đang diễn ra",  color: "#be123c", bg: "#fff1f2",              border: "#fecdd3" },
   paused:    { label: "Tạm dừng",      color: "#b45309", bg: "var(--warning-subtle)",border: "var(--warning-border)" },
-  ended:     { label: "Đã kết thúc",   color: "#595959", bg: "#f3f4f6",              border: "#e5e7eb" },
+  ended:     { label: "Hoàn tất",      color: "#15803d", bg: "var(--success-subtle)", border: "var(--success-border)" },
 };
 
 function StatusBadge({ status }: { status: MgStatus }) {
@@ -315,913 +297,607 @@ function StatusBadge({ status }: { status: MgStatus }) {
   );
 }
 
-const RESULT_CFG: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  pending:   { label: "Chờ xác nhận",  color: "#b45309", bg: "var(--warning-subtle)",      border: "var(--warning-border)" },
-  confirmed: { label: "Đã xác nhận",   color: "#0369a1", bg: "#e0f2fe",                    border: "#bae6fd" },
-  absent:    { label: "Không có mặt",  color: "#595959", bg: "#f3f4f6",                    border: "#e5e7eb" },
-  delivered: { label: "Đã trao quà",   color: "#15803d", bg: "var(--success-subtle)",       border: "var(--success-border)" },
-  cancelled: { label: "Đã hủy",        color: "#be123c", bg: "#fff1f2",                    border: "#fecdd3" },
-};
+// ── Tiến độ, người tham gia & xuất danh sách ──────────────────────────────────
 
-function ResultBadge({ status }: { status: string }) {
-  const c = RESULT_CFG[status] ?? RESULT_CFG.pending;
+const totalSlots = (prizes: Prize[]) => prizes.reduce((n, p) => n + p.count, 0);
+const drawnSlots = (prizes: Prize[]) => prizes.reduce((n, p) => n + (p.count - p.remaining), 0);
+
+/** Trạng thái suy ra từ dữ liệu, không lưu riêng: thiếu cấu hình → nháp; chưa quay → chưa bắt đầu; còn suất → đang diễn ra; hết suất → hoàn tất. */
+function statusOf(g: MiniGame): MgStatus {
+  const s = g.setup ?? LEGACY_SETUP;
+  if (!isDrawReady(s)) return "draft";
+  if (!g.lockedAt) return "ready";
+  return s.prizes.some(p => p.remaining > 0) ? "live" : "ended";
+}
+
+/** Một cách đọc tiến độ cho mọi màn: "Đã quay 1/2 suất" kèm trạng thái của giải. */
+function prizeProgress(p: Prize) {
+  const drawn = p.count - p.remaining;
+  if (drawn >= p.count) return { text: "Hoàn tất", color: T.successText, bg: T.successSubtle };
+  if (drawn > 0) return { text: `Còn ${p.remaining} suất`, color: T.warningText, bg: T.warningSubtle };
+  return { text: "Chưa quay", color: T.mutedFg, bg: T.secondary };
+}
+
+const SURNAMES = ["Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Vũ", "Đặng", "Bùi", "Đỗ", "Ngô", "Dương", "Lý"];
+const MIDDLES  = ["Văn", "Thị", "Minh", "Quốc", "Thu", "Ngọc", "Hữu", "Thanh"];
+const GIVENS   = ["An", "Bình", "Cúc", "Dũng", "Đức", "Hà", "Hải", "Hoa", "Hùng", "Lan", "Linh", "Mai", "Nam", "Phúc", "Quân", "Thảo", "Trang", "Tú", "Vy", "Yến"];
+
+interface Person { name: string; code: string; tier: string }
+
+/** Danh sách minh hoạ đúng số người của chương trình, mã không trùng. Người đầu danh sách trùng dữ liệu mẫu nên khớp với người đã trúng. */
+function participantsOf(count: number, tiers: string[] = []): Person[] {
+  return Array.from({ length: Math.max(0, count) }, (_, i) => ({
+    name: i < POOL_NAMES.length ? POOL_NAMES[i]
+      : `${SURNAMES[i % SURNAMES.length]} ${MIDDLES[(i * 3) % MIDDLES.length]} ${GIVENS[(i * 7) % GIVENS.length]}`,
+    code: i < POOL_CODES.length ? POOL_CODES[i] : `NE-2025-${String(1000 + i * 13).padStart(5, "0")}`,
+    tier: tiers.length ? tiers[i % tiers.length] : i < 80 ? "Standard" : i < 125 ? "VIP" : "Early Bird",
+  }));
+}
+
+/** Tải CSV người thắng theo thứ tự quay. */
+function exportWinners(g: MiniGame) {
+  const rows = [["Người thắng", "Mã tham gia", "Giải/phần quà", "Thời gian"],
+    ...[...(g.results ?? [])].reverse().map(r => [r.winner, r.ticketCode, r.prize, r.time])];
+  const csv = "﻿" + rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = `nguoi-thang-${g.id}.csv`; a.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast.success("Đã xuất danh sách người thắng");
+}
+
+/** Lịch sử thao tác: phần chốt danh sách và từng lượt quay dựng từ dữ liệu của chương trình. */
+function historyOf(g: MiniGame) {
+  const rows = g.id === MOCK_GAME.id ? [...MOCK_AUDIT_BASE] : [{ action: "Tạo và lưu chương trình", user: "Bạn", time: "" }];
+  if (g.lockedAt) rows.push({ action: `Tự động chốt danh sách khi bắt đầu quay (${g.lockedCount} người)`, user: "Hệ thống", time: g.lockedAt });
+  [...(g.results ?? [])].reverse().forEach(r => rows.push({ action: `Quay ${r.prize}: ${r.winner}`, user: r.operator, time: r.time }));
+  return rows;
+}
+
+const TH: React.CSSProperties = { padding: "10px 20px", textAlign: "left", fontSize: T.xs, fontWeight: T.fw_semi, color: T.mutedFg, whiteSpace: "nowrap" };
+const TD: React.CSSProperties = { padding: "12px 20px", fontSize: T.sm, color: T.foreground };
+
+function SideSheet({ open, onClose, title, description, children }: {
+  open: boolean; onClose: () => void; title: string; description: string; children: React.ReactNode;
+}) {
   return (
-    <span style={{ fontSize: T.xs, fontWeight: T.fw_medium, padding: "2px 10px", borderRadius: "999px", color: c.color, background: c.bg, border: `1px solid ${c.border}` }}>
-      {c.label}
-    </span>
+    <Sheet open={open} onOpenChange={o => !o && onClose()}>
+      <SheetContent className="p-0 flex flex-col gap-0 sm:max-w-[460px]">
+        <div className="px-5 py-4 pr-12" style={{ borderBottom: `1px solid ${T.border}` }}>
+          <SheetTitle style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>{title}</SheetTitle>
+          <SheetDescription style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>{description}</SheetDescription>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
-const PRIZE_STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  pending: { label: "Chưa quay",    color: "#595959", bg: "#f3f4f6" },
-  active:  { label: "Đang quay",    color: "#be123c", bg: "#fff1f2" },
-  done:    { label: "Đã quay đủ",   color: "#15803d", bg: "var(--success-subtle)" },
-};
-
-// ── Public Display ─────────────────────────────────────────────────────────────
-// Màn chiếu công khai phản chiếu đúng màn quay (cùng giải, cùng lượt, cùng việc
-// chốt danh sách) thay vì tự quay riêng — bấm quay ở đây cũng chốt danh sách.
-
-function PublicDisplay({ gameName, prize, poolCount, locked, spinState, lines, blockedText, onSpin, onConfirm, onRespin, onClose }: {
-  gameName: string;
-  prize: string;
-  poolCount: number;
-  locked: boolean;
-  spinState: SpinState;
-  /** Tên + dòng phụ, đã định dạng theo "Hiển thị người thắng". */
-  lines: [string, string];
-  /** Lý do chưa quay được; null = quay được. */
-  blockedText: string | null;
-  onSpin: () => void;
-  onConfirm: () => void;
-  onRespin: () => void;
-  onClose: () => void;
-}) {
+function PeopleList({ people }: { people: Person[] }) {
+  const [q, setQ] = useState("");
+  const query = q.trim().toLowerCase();
+  const shown = query ? people.filter(p => p.name.toLowerCase().includes(query) || p.code.toLowerCase().includes(query)) : people;
   return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 9999,
-      background: "linear-gradient(160deg, #050d1f 0%, #0d1b3e 55%, #14062a 100%)",
-      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between",
-      padding: "48px 64px",
-    }}>
-      <style>{`
-        @keyframes pd-roll { 0%{opacity:0;transform:translateY(-6px)} 40%{opacity:1;transform:translateY(0)} 80%{opacity:1} 100%{opacity:0;transform:translateY(6px)} }
-        @keyframes pd-winner { from{opacity:0;transform:scale(0.92) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
-        @keyframes pd-glow { 0%,100%{box-shadow:0 0 40px rgba(30,170,255,0.25)} 50%{box-shadow:0 0 60px rgba(30,170,255,0.5)} }
-      `}</style>
-
-      <button onClick={onClose} aria-label="Thu nhỏ màn công khai" style={{
-        position: "absolute", top: 20, right: 20,
-        background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)",
-        color: "rgba(255,255,255,0.5)", borderRadius: "50%",
-        width: 36, height: 36, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-      }}>
-        <Minimize2 size={15} />
-      </button>
-
-      {/* Header */}
-      <div style={{ textAlign: "center" }}>
-        <div style={{
-          display: "inline-flex", alignItems: "center", justifyContent: "center",
-          width: 68, height: 68, borderRadius: "18px", marginBottom: 18,
-          background: "linear-gradient(135deg, #1eaaff 0%, #7c3aed 100%)",
-          boxShadow: "0 0 48px rgba(30,170,255,0.35)",
-        }}>
-          <Gamepad2 size={34} color="white" />
-        </div>
-        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}>
-          {gameName}
-        </p>
-        <h1 style={{ color: "#ffffff", fontSize: "clamp(30px, 4vw, 52px)", fontWeight: 700, margin: 0, letterSpacing: "-0.02em" }}>
-          Bốc thăm may mắn
-        </h1>
-        <p style={{ color: "#1eaaff", fontSize: "clamp(15px, 2vw, 22px)", fontWeight: 600, marginTop: 10 }}>
-          {prize}
-        </p>
+    <div className="flex flex-col gap-3">
+      <div style={{ position: "relative" }}>
+        <Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: T.mutedFg } as React.CSSProperties} />
+        <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Tìm theo tên hoặc mã" aria-label="Tìm người tham gia" style={{ paddingLeft: 34 }} />
       </div>
-
-      {/* Center — rolling names or winner */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 32, width: "100%", maxWidth: 560 }}>
-
-        {/* Pool count */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, color: "rgba(255,255,255,0.35)", fontSize: 14 }}>
-          {locked ? <Lock size={15} /> : <Users size={15} />}
-          <span>{poolCount} người {locked ? "trong danh sách đã chốt" : "đủ điều kiện"}</span>
-        </div>
-
-        {/* Rolling box */}
-        <div style={{
-          width: "100%", minHeight: 160,
-          background: "rgba(255,255,255,0.04)",
-          border: `2px solid ${spinState === "result" ? "#1eaaff" : "rgba(255,255,255,0.08)"}`,
-          borderRadius: 20,
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          padding: "32px 40px",
-          animation: spinState === "result" ? "pd-glow 2s ease infinite" : undefined,
-          transition: "border-color 0.4s",
-        }}>
-          {spinState === "idle" && (
-            <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 18, letterSpacing: "0.08em" }}>— Chờ bốc thăm —</p>
-          )}
-          {spinState === "spinning" && (
-            <div style={{ textAlign: "center", overflow: "hidden" }}>
-              <p style={{
-                color: "rgba(255,255,255,0.9)", fontSize: "clamp(22px, 3.5vw, 40px)",
-                fontWeight: 700, animation: "pd-roll 0.14s ease infinite",
-                letterSpacing: "-0.01em",
-              }}>
-                {lines[0]}
-              </p>
-              <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 15, marginTop: 6, fontFamily: "monospace" }}>
-                {lines[1]}
-              </p>
+      <p style={{ fontSize: T.xs, color: T.mutedFg, margin: 0 }}>{shown.length} người</p>
+      <div className="flex flex-col">
+        {shown.map(p => (
+          <div key={p.code} className="flex items-center gap-3 py-2.5" style={{ borderBottom: `1px solid ${T.border}` }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p className="truncate" style={{ fontSize: T.sm, color: T.foreground, margin: 0 }}>{p.name}</p>
+              <p style={{ fontSize: T.xs, color: T.mutedFg, margin: 0, fontFamily: "monospace" }}>{p.code}</p>
             </div>
-          )}
-          {spinState === "result" && (
-            <div style={{ textAlign: "center", animation: "pd-winner 0.5s cubic-bezier(0.16,1,0.3,1)" }}>
-              <p style={{ color: "#1eaaff", fontSize: 14, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12, fontWeight: 600 }}>
-                🎉 Chúc mừng!
-              </p>
-              <p style={{ color: "#ffffff", fontSize: "clamp(26px, 4vw, 48px)", fontWeight: 700, marginBottom: 8, letterSpacing: "-0.02em" }}>
-                {lines[0]}
-              </p>
-              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 18, fontFamily: "monospace" }}>
-                {lines[1]}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* CTAs */}
-        {spinState === "idle" && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-            <button onClick={onSpin} disabled={!!blockedText} style={{
-              background: "linear-gradient(135deg, #1eaaff, #7c3aed)",
-              border: "none", color: "white",
-              padding: "16px 56px", borderRadius: "999px",
-              fontSize: 18, fontWeight: 700, letterSpacing: "0.04em",
-              boxShadow: "0 0 40px rgba(30,170,255,0.4)",
-              opacity: blockedText ? 0.35 : 1,
-              cursor: blockedText ? "not-allowed" : "pointer",
-            }}>
-              {locked ? "QUAY TIẾP" : "BẮT ĐẦU QUAY"}
-            </button>
-            {blockedText ? (
-              <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, margin: 0, textAlign: "center" }}>{blockedText}</p>
-            ) : !locked && (
-              <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
-                <Lock size={13} /> Danh sách người tham gia sẽ được chốt khi bắt đầu quay.
-              </p>
-            )}
+            <span style={{ fontSize: T.xs, color: T.mutedFg, padding: "2px 8px", borderRadius: 999, border: `1px solid ${T.border}`, whiteSpace: "nowrap" }}>{p.tier}</span>
           </div>
-        )}
-        {spinState === "spinning" && (
-          <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
-            <span className="inline-block animate-spin">◌</span>
-            Đang quay...
-          </div>
-        )}
-        {spinState === "result" && (
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
-            <button onClick={onConfirm} style={{
-              background: "linear-gradient(135deg, #1eaaff, #7c3aed)", border: "none",
-              color: "white", padding: "10px 28px", borderRadius: "999px",
-              fontSize: 14, fontWeight: 600, cursor: "pointer",
-            }}>
-              Xác nhận người thắng
-            </button>
-            <button onClick={onRespin} style={{
-              background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
-              color: "rgba(255,255,255,0.7)", padding: "10px 28px", borderRadius: "999px",
-              fontSize: 14, fontWeight: 500, cursor: "pointer",
-            }}>
-              Quay lại người khác
-            </button>
-          </div>
-        )}
+        ))}
+        {shown.length === 0 && <p style={{ fontSize: T.sm, color: T.mutedFg, padding: "24px 0", textAlign: "center" }}>Không tìm thấy người tham gia.</p>}
       </div>
-
-      {/* Footer */}
-      <p style={{ color: "rgba(255,255,255,0.18)", fontSize: 12 }}>
-        Kết quả được ghi nhận trên hệ thống NetEvent
-      </p>
     </div>
   );
 }
 
-// ── Operate View ───────────────────────────────────────────────────────────────
-// Màn hình quay. Mở từ "Mở màn hình quay" thì danh sách chưa chốt và chưa ai trúng.
-// Lần bấm "Bắt đầu quay" đầu tiên hệ thống tự chốt danh sách rồi quay luôn —
-// không có bước "Khóa danh sách" riêng.
+function SettingsSummary({ game }: { game: MiniGame }) {
+  const s = game.setup ?? LEGACY_SETUP;
+  const rows: [string, React.ReactNode][] = [
+    ["Người tham gia", `${audienceLabel(s.audience)} · ${game.lockedCount} người`],
+    ["Chốt danh sách", game.lockedAt ? `Lúc ${game.lockedAt}, khi bắt đầu quay` : "Khi bắt đầu quay"],
+    ["Giải thưởng", (
+      <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {s.prizes.map(p => <span key={p.id}>{prizeLabel(p)} · {p.count} suất</span>)}
+      </span>
+    )],
+    ["Thời gian quay", `${s.spinSeconds} giây`],
+    ["Hiển thị người thắng", WINNER_DISPLAY_LABELS[s.winnerDisplay]],
+    ["Trúng nhiều lần", s.oncePerPerson ? "Mỗi người chỉ trúng một lần" : "Có thể trúng nhiều giải khác nhau"],
+  ];
+  return (
+    <div className="flex flex-col gap-4">
+      <InlineNotice tone="info">Thiết lập đã khóa từ lượt quay đầu tiên để kết quả nhất quán.</InlineNotice>
+      <dl className="flex flex-col gap-3" style={{ margin: 0 }}>
+        {rows.map(([k, v]) => (
+          <div key={k}>
+            <dt style={{ fontSize: T.xs, color: T.mutedFg }}>{k}</dt>
+            <dd style={{ fontSize: T.sm, color: T.foreground, margin: "2px 0 0" }}>{v}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
 
-function OperateView({ game, onBack, backLabel = "Quay lại", onUpdate, onFixPrizes }: {
+function HistoryList({ game }: { game: MiniGame }) {
+  return (
+    <div className="flex flex-col">
+      {historyOf(game).map((h, i) => (
+        <div key={i} className="flex items-start gap-3 py-2.5" style={{ borderBottom: `1px solid ${T.border}` }}>
+          <span style={{ fontSize: T.xs, color: T.mutedFg, width: 92, flexShrink: 0 }}>{h.time || "—"}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: T.sm, color: T.foreground, margin: 0 }}>{h.action}</p>
+            <p style={{ fontSize: T.xs, color: T.mutedFg, margin: "2px 0 0" }}>{h.user}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Màn hình quay ──────────────────────────────────────────────────────────────
+// Tách khỏi trang quản lý và che phần điều hướng sự kiện để tập trung vận hành.
+// Quay theo thứ tự giải đã lưu (không nhảy giải); lượt quay đầu tự chốt danh
+// sách; kết quả tự lưu khi quay xong — không có bước xác nhận hay quay lại.
+// Màn chiếu (tab riêng) nhận trạng thái qua drawSync.
+
+function DrawScreen({ game, onBack, backLabel, onUpdate, onFixPrizes }: {
   game: MiniGame;
   onBack: () => void;
-  backLabel?: string;
-  /** Ghi tiến độ (chốt danh sách, người thắng) về chương trình để màn thiết lập khóa đúng phần. */
-  onUpdate?: (g: MiniGame) => void;
+  backLabel: string;
+  /** Ghi tiến độ (chốt danh sách, người thắng) về chương trình. */
+  onUpdate: (g: MiniGame) => void;
   /** Về màn thiết lập để giảm số người thắng. */
   onFixPrizes?: () => void;
 }) {
   const setup = game.setup ?? LEGACY_SETUP;
-  const [prizes, setPrizes] = useState<Prize[]>(setup.prizes);
-  const [selectedId, setSelectedId] = useState(() => (setup.prizes.find(p => p.status !== "done") ?? setup.prizes[0]).id);
-  const [lockedAt, setLockedAt] = useState(game.lockedAt);
+  const [prizes, setPrizes]           = useState<Prize[]>(setup.prizes);
+  const [results, setResults]         = useState<SpinResult[]>(game.results ?? []);
+  const [lockedAt, setLockedAt]       = useState(game.lockedAt);
   const [lockedCount, setLockedCount] = useState(game.lockedCount);
-  const [spinState, setSpinState] = useState<SpinState>("idle");
-  const [displayName, setDisplayName] = useState("");
-  const [displayCode, setDisplayCode] = useState("");
-  const [results, setResults] = useState<SpinResult[]>(game.results ?? (game.setup ? [] : MOCK_RESULTS));
-  const [showPublic, setShowPublic] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const nameIdx = useRef(0);
+  const [phase, setPhase]             = useState<"idle" | "spinning" | "result">("idle");
+  const [rolling, setRolling]         = useState<Person | null>(null);
+  const [isFull, setIsFull]           = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const tick = useRef<ReturnType<typeof setInterval>>();
+  const stop = useRef<ReturnType<typeof setTimeout>>();
 
-  const selectedPrize = prizes.find(p => p.id === selectedId) ?? prizes[0];
   const locked = !!lockedAt;
-  // Trước khi chốt: số người đủ điều kiện lúc này (vẫn cập nhật). Sau khi chốt: số trong danh sách đã chốt.
   const poolCount = locked ? lockedCount : game.eligibleCount;
+  const pool = useMemo(() => participantsOf(poolCount, setup.audience.tiers), [poolCount, setup.audience.tiers]);
+  // Quay theo thứ tự giải đã lưu — không cho nhảy giải.
+  const current = prizes.find(p => p.remaining > 0) ?? null;
+  const done = !current;
+  const last = results[0] ?? null;
+  // Vừa quay xong thì vẫn hiện giải của người vừa trúng, kể cả khi giải đó đã đủ suất.
+  const shown = phase === "result" && last ? prizes.find(p => p.id === last.prizeId) ?? current : current;
+  const total = totalSlots(prizes);
+  const drawn = drawnSlots(prizes);
   const needed = winnersNeeded(prizes, setup.oncePerPerson);
-  const blocked: "empty" | "shortfall" | null =
-    poolCount === 0 ? "empty" : needed > poolCount ? "shortfall" : null;
-  const prizeDone = selectedPrize.status === "done";
-  const canSpin = !blocked && !prizeDone && spinState === "idle";
+  // Chỉ kiểm tra trước khi chốt; sau khi chốt, danh sách và giải đã cố định.
+  const blocked: "empty" | "shortfall" | null = locked ? null : poolCount === 0 ? "empty" : needed > poolCount ? "shortfall" : null;
+  const canSpin = !done && !blocked && phase !== "spinning";
   const waitingForCheckin = setup.audience.source === "event" && setup.audience.scope === "checkedIn";
-  const blockedText =
-    blocked === "empty"       ? "Chưa có người đủ điều kiện để quay."
-    : blocked === "shortfall" ? `Cần ${needed} người thắng nhưng chỉ có ${poolCount} người đủ điều kiện.`
-    : prizeDone               ? "Giải này đã quay đủ người thắng."
-    : null;
-  const lines = winnerLines(displayName, displayCode, setup.winnerDisplay);
+  const fmt = (name: string, code: string) => winnerLines(name, code, setup.winnerDisplay);
 
-  useEffect(() => () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  useEffect(() => () => { clearInterval(tick.current); clearTimeout(stop.current); }, []);
+  useEffect(() => {
+    const onChange = () => setIsFull(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
 
-  const resetDisplay = () => { setSpinState("idle"); setDisplayName(""); setDisplayCode(""); };
+  useEffect(() => {
+    publishDraw(game.id, {
+      gameName: game.name,
+      prize: shown ? prizeLabel(shown) : "",
+      progress: shown ? `Đã quay ${shown.count - shown.remaining}/${shown.count} suất` : `Đã quay ${drawn}/${total} suất`,
+      phase: phase === "idle" && done ? "done" : phase,
+      winner: phase === "result" && last ? fmt(last.winner, last.ticketCode) : null,
+      names: pool.slice(0, 40).map(p => fmt(p.name, p.code)),
+      winners: [...results].reverse().map(r => ({ prize: r.prize, lines: fmt(r.winner, r.ticketCode) })),
+      poolCount, lockedAt, updatedAt: Date.now(),
+    });
+    // Chỉ phát lại khi trạng thái hoặc kết quả đổi, không phát theo từng khung hình đảo tên.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, results, lockedAt, poolCount]);
 
   const handleSpin = () => {
-    if (!canSpin) return;
+    if (!canSpin || !current) return;
+    const prize = current;
+    let at = lockedAt;
+    let count = lockedCount;
     // Lượt quay đầu tiên: hệ thống chốt danh sách ngay lúc này rồi quay luôn.
-    if (!locked) {
-      const at = nowHHMM();
-      setLockedAt(at);
-      setLockedCount(game.eligibleCount);
-      onUpdate?.({ ...game, status: "live", lockedAt: at, lockedCount: game.eligibleCount });
+    if (!locked) { at = nowHHMM(); count = game.eligibleCount; setLockedAt(at); setLockedCount(count); }
+    // Người thắng được chọn ngay khi bấm; hiệu ứng chỉ để trình bày.
+    const takenAll  = new Set(results.map(r => r.ticketCode));
+    const takenHere = new Set(results.filter(r => r.prizeId === prize.id).map(r => r.ticketCode));
+    const candidates = pool.filter(c => (setup.oncePerPerson ? !takenAll.has(c.code) : !takenHere.has(c.code)));
+    if (candidates.length === 0) {
+      toast.error("Không còn người hợp lệ để quay", { description: "Các kết quả trước vẫn được giữ nguyên." });
+      return;
     }
-    // Mỗi người chỉ trúng một lần: bỏ người đã trúng khỏi lượt quay (dữ liệu giả lập).
-    const taken = new Set(results.filter(r => r.status !== "cancelled").map(r => r.winner));
-    const candidates = POOL_NAMES
-      .map((name, i) => ({ name, code: POOL_CODES[i % POOL_CODES.length] }))
-      .filter(c => !setup.oncePerPerson || !taken.has(c.name));
-    const winner = candidates[Math.floor(Math.random() * candidates.length)] ?? { name: POOL_NAMES[0], code: POOL_CODES[0] };
-
-    setSpinState("spinning");
-    nameIdx.current = 0;
-    intervalRef.current = setInterval(() => {
-      const i = nameIdx.current;
-      setDisplayName(POOL_NAMES[i % POOL_NAMES.length]);
-      setDisplayCode(POOL_CODES[i % POOL_CODES.length]);
-      nameIdx.current = i + 1;
-    }, 80);
-    timeoutRef.current = setTimeout(() => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      setDisplayName(winner.name);
-      setDisplayCode(winner.code);
-      setSpinState("result");
+    const winner = candidates[Math.floor(Math.random() * candidates.length)];
+    setPhase("spinning");
+    let i = 0;
+    tick.current = setInterval(() => { setRolling(pool[i % pool.length]); i += 1; }, 80);
+    stop.current = setTimeout(() => {
+      clearInterval(tick.current);
+      const result: SpinResult = {
+        id: `r${Date.now()}`, time: nowHHMM(), prizeId: prize.id, prize: prizeLabel(prize),
+        winner: winner.name, ticketCode: winner.code, operator: "Bạn",
+      };
+      const nextResults = [result, ...results];
+      const nextPrizes = prizes.map(p => (p.id !== prize.id ? p : {
+        ...p, remaining: p.remaining - 1, status: (p.remaining - 1 === 0 ? "done" : "active") as Prize["status"],
+      }));
+      setResults(nextResults);
+      setPrizes(nextPrizes);
+      setPhase("result");
+      onUpdate({
+        ...game, status: nextPrizes.some(p => p.remaining > 0) ? "live" : "ended",
+        lockedAt: at, lockedCount: count, results: nextResults, winnerCount: nextResults.length,
+        setup: { ...setup, prizes: nextPrizes },
+      });
     }, setup.spinSeconds * 1000);
   };
 
-  const handleConfirm = () => {
-    const result: SpinResult = {
-      id: `r${Date.now()}`,
-      time: nowHHMM(),
-      prize: prizeLabel(selectedPrize),
-      winner: displayName, ticketCode: displayCode,
-      status: "confirmed", operator: "Bạn (Staff)",
-    };
-    const nextResults = [result, ...results];
-    const nextPrizes = prizes.map(p => p.id !== selectedPrize.id ? p : {
-      ...p,
-      remaining: Math.max(0, p.remaining - 1),
-      status: (p.remaining <= 1 ? "done" : "active") as Prize["status"],
-    });
-    setResults(nextResults);
-    setPrizes(nextPrizes);
-    // Giải vừa quay đủ thì chuyển sang giải kế tiếp còn suất.
-    if (selectedPrize.remaining <= 1) {
-      const next = nextPrizes.find(p => p.status !== "done");
-      if (next) setSelectedId(next.id);
-    }
-    if (game.setup) {
-      onUpdate?.({
-        ...game, status: "live", lockedAt, lockedCount,
-        winnerCount: nextResults.length, results: nextResults,
-        setup: { ...game.setup, prizes: nextPrizes },
-      });
-    }
-    resetDisplay();
+  const toggleFull = () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void rootRef.current?.requestFullscreen().catch(() => {});
   };
 
+  const person = phase === "spinning" ? rolling : phase === "result" && last ? { name: last.winner, code: last.ticketCode } : null;
+  const [line1, line2] = person ? fmt(person.name, person.code) : ["", ""];
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 0, height: "100%" }}>
-      {showPublic && (
-        <PublicDisplay
-          gameName={game.name} prize={prizeLabel(selectedPrize)} poolCount={poolCount} locked={locked}
-          spinState={spinState} lines={lines} blockedText={blockedText}
-          onSpin={handleSpin} onConfirm={handleConfirm} onRespin={resetDisplay}
-          onClose={() => setShowPublic(false)}
-        />
-      )}
+    <div ref={rootRef} className="fixed inset-0 z-50 flex flex-col" style={{ background: T.pageSurface }}>
+      <style>{"@keyframes mg-pop { from { opacity: 0; transform: scale(0.94) } to { opacity: 1; transform: scale(1) } }"}</style>
 
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-          <button data-pill="off" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 5, color: T.primary, background: "none", border: "none", cursor: "pointer", fontSize: T.sm, fontWeight: T.fw_medium, padding: 0, flexShrink: 0 }}>
-            <ChevronLeft size={16} /> {backLabel}
-          </button>
-          <span style={{ color: T.border }}>·</span>
-          <span style={{ fontSize: T.sm, color: T.mutedFg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>Màn hình quay</span>
+      {/* Đầu màn hình: tên chương trình · trở về · màn chiếu · toàn màn hình */}
+      <header className="flex items-center justify-between gap-3 px-4 sm:px-6 shrink-0"
+        style={{ height: 56, background: T.background, borderBottom: `1px solid ${T.border}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+          <button data-pill="off" onClick={onBack} style={LINK_BTN}><ChevronLeft size={16} /> {backLabel}</button>
+          <span style={{ width: 1, height: 18, background: T.border, flexShrink: 0 }} />
+          <p className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground, margin: 0 }}>{game.name}</p>
         </div>
-        <button onClick={() => setShowPublic(true)} style={{
-          display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
-          background: T.foreground, color: T.background,
-          border: "none", padding: "8px 16px", borderRadius: 10, cursor: "pointer", fontSize: T.sm, fontWeight: T.fw_medium,
-        }}>
-          <Maximize2 size={14} /> Mở màn công khai
-        </button>
-      </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" asChild>
+            <a href={`/man-chieu?game=${encodeURIComponent(game.id)}`} target="_blank" rel="noreferrer">
+              <ExternalLink size={13} /> Mở màn chiếu
+            </a>
+          </Button>
+          <Button variant="outline" size="sm" onClick={toggleFull}>
+            {isFull ? <Minimize2 size={13} /> : <Maximize2 size={13} />} {isFull ? "Thu nhỏ" : "Toàn màn hình"}
+          </Button>
+        </div>
+      </header>
 
-      {/* Split layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-5 items-start">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-5 p-4 sm:p-6 mx-auto" style={{ maxWidth: 1180 }}>
 
-        {/* LEFT — Controls */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-
-          {/* Prize list */}
-          <Card style={{ padding: 0, overflow: "hidden" }}>
-            <div style={{ padding: "14px 16px", borderBottom: `1px solid ${T.border}` }}>
-              <SectionLabel>Danh sách giải thưởng</SectionLabel>
+          {/* Trái: các giải theo thứ tự quay, đánh dấu giải hiện tại */}
+          <Card style={{ padding: 0, overflow: "hidden", alignSelf: "start" }}>
+            <div style={{ padding: "14px 16px 4px", borderBottom: `1px solid ${T.border}` }}>
+              <SectionLabel>Giải thưởng · Đã quay {drawn}/{total} suất</SectionLabel>
             </div>
             {prizes.map(p => {
-              const cfg = PRIZE_STATUS_CFG[p.status];
-              const active = selectedPrize.id === p.id;
+              const isCurrent = !done && current?.id === p.id;
+              const complete = p.remaining === 0;
               return (
                 <div key={p.id} style={{
-                  borderLeft: `3px solid ${active ? T.primary : "transparent"}`,
-                  borderBottom: `1px solid ${T.border}`,
+                  display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
+                  borderBottom: `1px solid ${T.border}`, borderLeft: `3px solid ${isCurrent ? T.primary : "transparent"}`,
+                  background: isCurrent ? `color-mix(in srgb, ${T.primary} 6%, ${T.background})` : T.background,
                 }}>
-                  <button
-                    data-pill="off"
-                    onClick={() => spinState === "idle" && p.status !== "done" && setSelectedId(p.id)}
-                    style={{
-                      width: "100%", display: "flex", alignItems: "center", gap: 12,
-                      padding: "12px 16px", textAlign: "left", border: "none",
-                      background: active ? `color-mix(in srgb, ${T.primary} 6%, ${T.background})` : T.background,
-                      cursor: spinState !== "idle" || p.status === "done" ? "not-allowed" : "pointer",
-                      opacity: p.status === "done" ? 0.5 : 1,
-                    }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {p.rank && <p style={{ fontSize: T.xs, color: T.mutedFg, margin: 0 }}>{p.rank}</p>}
-                      <p style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground, margin: p.rank ? "2px 0 0" : 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{p.name}</p>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                      <span style={{ fontSize: T.xs, padding: "1px 8px", borderRadius: "999px", color: cfg.color, background: cfg.bg }}>{cfg.label}</span>
-                      <span style={{ fontSize: T.xs, color: T.mutedFg }}>{p.remaining}/{p.count}</span>
-                    </div>
-                  </button>
+                  {complete
+                    ? <CheckCircle2 size={15} style={{ color: T.successText, flexShrink: 0 } as React.CSSProperties} />
+                    : <Trophy size={15} style={{ color: isCurrent ? T.primary : T.mutedFg, flexShrink: 0 } as React.CSSProperties} />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p className="truncate" style={{ fontSize: T.sm, fontWeight: isCurrent ? T.fw_semi : T.fw_medium, color: complete ? T.mutedFg : T.foreground, margin: 0 }}>{prizeLabel(p)}</p>
+                    <p style={{ fontSize: T.xs, color: isCurrent ? T.primary : T.mutedFg, margin: "2px 0 0" }}>
+                      Đã quay {p.count - p.remaining}/{p.count} suất{isCurrent ? " · Đang quay giải này" : ""}
+                    </p>
+                  </div>
                 </div>
               );
             })}
           </Card>
 
-          {/* Main CTA — giải đang chọn, số người đủ điều kiện và nút quay nằm cạnh nhau */}
-          <Card>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Trophy size={14} style={{ color: T.primary, flexShrink: 0 } as React.CSSProperties} />
-                  <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{prizeLabel(selectedPrize)}</span>
-                  <span style={{ fontSize: T.xs, color: T.mutedFg, marginLeft: "auto", flexShrink: 0 }}>{selectedPrize.count} người thắng</span>
+          {/* Giữa: giải đang quay, hiệu ứng và người thắng — nút quay ngay bên dưới */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+            <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18, padding: "32px 24px", textAlign: "center" }}>
+              {done && phase !== "result" ? (
+                <p style={{ fontSize: T.lg, fontWeight: T.fw_semi, color: T.foreground, margin: 0 }}>Đã hoàn tất bốc thăm</p>
+              ) : shown && (
+                <div>
+                  <p style={{ fontSize: T.xs, color: T.mutedFg, margin: 0 }}>{phase === "result" ? "Kết quả" : "Giải đang quay"}</p>
+                  <p style={{ fontSize: T.xl, fontWeight: T.fw_semi, color: T.foreground, margin: "4px 0 0" }}>{prizeLabel(shown)}</p>
+                  <p style={{ fontSize: T.xs, color: T.mutedFg, margin: "4px 0 0" }}>Đã quay {shown.count - shown.remaining}/{shown.count} suất</p>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {locked
-                    ? <Lock size={14} style={{ color: T.mutedFg, flexShrink: 0 } as React.CSSProperties} />
-                    : <Users size={14} style={{ color: T.primary, flexShrink: 0 } as React.CSSProperties} />}
-                  <span style={{ fontSize: T.sm, color: T.foreground }}>
-                    <strong style={{ fontWeight: T.fw_semi }}>{poolCount}</strong> người đủ điều kiện
-                  </span>
-                  <span style={{
-                    marginLeft: "auto", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5,
-                    fontSize: T.xs, padding: "2px 8px", borderRadius: "999px",
-                    background: locked ? T.secondary : T.successSubtle, color: locked ? T.mutedFg : T.successText,
-                  }}>
-                    {!locked && <span style={{ width: 6, height: 6, borderRadius: "50%", background: T.successText }} />}
-                    {locked ? `Đã chốt lúc ${lockedAt}` : "Đang cập nhật"}
-                  </span>
-                </div>
-                <p style={{ fontSize: T.xs, color: T.mutedFg, margin: 0, paddingLeft: 22 }}>{audienceLabel(setup.audience)}</p>
+              )}
+
+              <div style={{
+                width: "100%", maxWidth: 460, minHeight: 150, borderRadius: 18, padding: "28px 24px",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                background: T.pageSurface, border: `2px solid ${phase === "result" ? T.primary : T.border}`, transition: "border-color 0.3s",
+              }}>
+                {phase === "spinning" ? (
+                  <>
+                    <p style={{ fontSize: T["2xl"], fontWeight: T.fw_bold, color: T.foreground, margin: 0 }}>{line1}</p>
+                    <p style={{ fontSize: T.sm, color: T.mutedFg, margin: "4px 0 0", fontFamily: "monospace" }}>{line2}</p>
+                  </>
+                ) : phase === "result" ? (
+                  <div style={{ animation: "mg-pop 0.35s ease-out" }}>
+                    <p style={{ fontSize: T.xs, color: T.mutedFg, margin: 0 }}>Người thắng</p>
+                    <p style={{ fontSize: T["2xl"], fontWeight: T.fw_bold, color: T.foreground, margin: "6px 0 0" }}>{line1}</p>
+                    <p style={{ fontSize: T.sm, color: T.primary, fontWeight: T.fw_medium, margin: "4px 0 0", fontFamily: "monospace" }}>{line2}</p>
+                  </div>
+                ) : (
+                  <p style={{ fontSize: T.sm, color: T.mutedFg, margin: 0 }}>{done ? `Đã quay đủ ${total} suất.` : "— Chờ bốc thăm —"}</p>
+                )}
               </div>
+
+              {phase === "result" && current && shown && current.id !== shown.id && (
+                <p style={{ fontSize: T.xs, color: T.mutedFg, margin: 0 }}>
+                  Đã quay đủ giải này. Tiếp theo: <strong style={{ color: T.foreground, fontWeight: T.fw_semi }}>{prizeLabel(current)}</strong>
+                </p>
+              )}
 
               {blocked === "empty" && (
-                <InlineNotice tone="info">
-                  <strong style={{ fontWeight: T.fw_semi }}>Chưa có người đủ điều kiện để quay.</strong>{" "}
-                  {waitingForCheckin
-                    ? "Chưa có ai check-in — màn hình tự cập nhật khi có người check-in."
-                    : "Danh sách tự cập nhật khi có người đăng ký hợp lệ."}
-                </InlineNotice>
+                <div style={{ width: "100%", maxWidth: 460, textAlign: "left" }}>
+                  <InlineNotice tone="info">
+                    <strong style={{ fontWeight: T.fw_semi }}>Chưa có người đủ điều kiện.</strong>{" "}
+                    {waitingForCheckin
+                      ? "Bạn có thể chờ người tham gia check-in hoặc thay đổi danh sách."
+                      : "Danh sách tự cập nhật khi có người đăng ký hợp lệ."}
+                  </InlineNotice>
+                </div>
               )}
               {blocked === "shortfall" && (
-                <InlineNotice tone="warning">
-                  Cần {needed} người thắng nhưng chỉ có {poolCount} người đủ điều kiện. Giảm số người thắng để bắt đầu quay.
-                  {onFixPrizes && (
-                    <button data-pill="off" onClick={onFixPrizes} style={{ display: "block", marginTop: 6, padding: 0, background: "none", border: "none", cursor: "pointer", fontSize: T.xs, fontWeight: T.fw_semi, color: T.warningText, textDecoration: "underline" }}>
-                      Sửa số người thắng
-                    </button>
-                  )}
-                </InlineNotice>
+                <div style={{ width: "100%", maxWidth: 460, textAlign: "left" }}>
+                  <InlineNotice tone="warning">
+                    Hiện có {poolCount} người, cần ít nhất {needed} người theo cấu hình giải thưởng.
+                    {onFixPrizes && (
+                      <button data-pill="off" onClick={onFixPrizes} style={{ display: "block", marginTop: 6, padding: 0, background: "none", border: "none", cursor: "pointer", fontSize: T.xs, fontWeight: T.fw_semi, color: T.warningText, textDecoration: "underline" }}>
+                        Sửa số người thắng
+                      </button>
+                    )}
+                  </InlineNotice>
+                </div>
               )}
 
-              {spinState === "result" ? (
-                <>
-                  <button onClick={handleConfirm} style={{
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                    background: T.successText, color: "#fff", border: "none", borderRadius: 12, padding: "13px",
-                    fontSize: T.sm, fontWeight: T.fw_semi, cursor: "pointer",
-                  }}>
-                    <CheckCircle2 size={15} /> Xác nhận người thắng
-                  </button>
-                  <button onClick={resetDisplay} style={{
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                    background: "none", color: T.mutedFg, border: `1px solid ${T.border}`, borderRadius: 12, padding: "10px",
-                    fontSize: T.sm, cursor: "pointer",
-                  }}>
-                    <RotateCcw size={13} /> Quay lại người khác
-                  </button>
-                </>
+              {done ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                  <p style={{ fontSize: T.sm, color: T.foreground, margin: 0 }}>Đã hoàn tất bốc thăm. Xem danh sách người thắng bên dưới.</p>
+                  <div className="flex gap-2 flex-wrap justify-center">
+                    {phase === "result" && <Button variant="outline" onClick={() => setPhase("idle")}>Chiếu danh sách người thắng</Button>}
+                    <Button onClick={onBack}>{backLabel}</Button>
+                  </div>
+                </div>
               ) : (
-                <>
-                  <button onClick={handleSpin} disabled={!canSpin} style={{
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                    background: canSpin ? T.primary : T.muted,
-                    color: canSpin ? T.primaryFg : T.mutedFg,
-                    border: "none", borderRadius: 12, padding: "14px",
-                    fontSize: T.base, fontWeight: T.fw_semi,
-                    cursor: canSpin ? "pointer" : "not-allowed",
-                  }}>
-                    {spinState === "spinning"
-                      ? <><span className="inline-block animate-spin">◌</span> Đang quay...</>
-                      : <><Play size={15} /> {locked ? "Quay tiếp" : "Bắt đầu quay"}</>}
-                  </button>
-                  {/* Ghi chú ngay cạnh nút — thay cho bước "Khóa danh sách" riêng */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", maxWidth: 360 }}>
+                  <Button size="lg" className="w-full" disabled={!canSpin} onClick={handleSpin}>
+                    {phase === "spinning" ? "Đang quay…" : <><Play size={15} /> {locked ? "Quay người tiếp theo" : "Bắt đầu quay"}</>}
+                  </Button>
                   {!locked && (
-                    <p style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: T.xs, color: T.mutedFg, margin: 0, lineHeight: 1.5 }}>
-                      <Lock size={12} style={{ flexShrink: 0, marginTop: 2 } as React.CSSProperties} />
-                      Danh sách người tham gia sẽ được chốt khi bắt đầu quay.
+                    <p style={{ display: "flex", alignItems: "center", gap: 6, fontSize: T.xs, color: T.mutedFg, margin: 0 }}>
+                      <Lock size={12} /> Danh sách người tham gia sẽ được chốt khi bắt đầu quay.
                     </p>
                   )}
-                  {prizeDone && !blocked && (
-                    <p style={{ fontSize: T.xs, color: T.mutedFg, margin: 0 }}>Giải này đã quay đủ. Chọn giải khác trong danh sách.</p>
-                  )}
-                </>
+                </div>
               )}
-            </div>
-          </Card>
 
-          {/* Recent results */}
-          {results.length > 0 && (
-            <Card>
-              <SectionLabel>Lịch sử lượt quay</SectionLabel>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {results.slice(0, 5).map(r => (
-                  <div key={r.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "9px 12px", borderRadius: 10, background: T.pageSurface }}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: RESULT_CFG[r.status]?.color ?? T.mutedFg, flexShrink: 0, marginTop: 5 }} />
+              <p style={{ display: "flex", alignItems: "center", gap: 6, fontSize: T.xs, color: T.mutedFg, margin: 0 }}>
+                {locked ? <Lock size={12} /> : <Users size={12} />}
+                {poolCount} người trong danh sách · {locked ? `Đã chốt lúc ${lockedAt}` : "Đang cập nhật"}
+              </p>
+            </Card>
+
+            {results.length > 0 && (
+              <Card style={{ padding: 0, overflow: "hidden" }}>
+                <div style={{ padding: "14px 20px 4px", borderBottom: `1px solid ${T.border}` }}>
+                  <SectionLabel>Người thắng · {results.length}</SectionLabel>
+                </div>
+                {results.map(r => (
+                  <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", borderBottom: `1px solid ${T.border}` }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: T.xs, fontWeight: T.fw_medium, color: T.foreground, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{r.winner}</p>
-                      <p style={{ fontSize: T.xs, color: T.mutedFg, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{r.prize}</p>
+                      <p className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground, margin: 0 }}>{r.winner}</p>
+                      <p className="truncate" style={{ fontSize: T.xs, color: T.mutedFg, margin: 0 }}>{r.prize}</p>
                     </div>
-                    <span style={{ fontSize: T.xs, color: T.mutedFg, flexShrink: 0 }}>{r.time}</span>
+                    <span style={{ fontSize: T.xs, color: T.mutedFg, fontFamily: "monospace" }}>{r.ticketCode}</span>
+                    <span style={{ fontSize: T.xs, color: T.mutedFg, width: 44, textAlign: "right" }}>{r.time}</span>
                   </div>
                 ))}
-              </div>
-            </Card>
-          )}
+              </Card>
+            )}
+          </div>
         </div>
-
-        {/* RIGHT — Preview */}
-        <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 28, minHeight: 500, background: T.pageSurface }}>
-
-          {/* Preview header */}
-          <div style={{ textAlign: "center" }}>
-            <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 52, height: 52, borderRadius: 14, marginBottom: 12, background: `linear-gradient(135deg, ${T.primary}, #7c3aed)` }}>
-              <Gamepad2 size={26} color="white" />
-            </div>
-            <p style={{ fontSize: T.xs, color: T.mutedFg, margin: 0 }}>{game.name}</p>
-            <p style={{ fontSize: T.lg, fontWeight: T.fw_semi, color: T.foreground, marginTop: 6, marginBottom: 0 }}>
-              {prizeLabel(selectedPrize)}
-            </p>
-            <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 4 }}>Còn lại: {selectedPrize.remaining}/{selectedPrize.count} suất</p>
-          </div>
-
-          {/* Rolling display */}
-          <div style={{
-            width: "100%", maxWidth: 380, minHeight: 120,
-            border: `2px solid ${spinState === "result" ? T.primary : T.border}`,
-            borderRadius: 16, background: T.background,
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-            padding: "28px 32px", textAlign: "center",
-            transition: "border-color 0.3s",
-          }}>
-            {spinState === "idle" && (
-              <p style={{ fontSize: T.sm, color: T.mutedFg }}>— Chờ bốc thăm —</p>
-            )}
-            {spinState === "spinning" && (
-              <>
-                <p style={{ fontSize: T.xl, fontWeight: T.fw_bold, color: T.foreground, margin: 0 }}>{lines[0]}</p>
-                <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 4, fontFamily: "monospace" }}>{lines[1]}</p>
-              </>
-            )}
-            {spinState === "result" && (
-              <>
-                <p style={{ fontSize: T.xs, color: T.mutedFg, marginBottom: 8 }}>Người thắng</p>
-                <p style={{ fontSize: T["2xl"], fontWeight: T.fw_bold, color: T.foreground, marginBottom: 4 }}>{lines[0]}</p>
-                <p style={{ fontSize: T.sm, color: T.primary, fontWeight: T.fw_medium, fontFamily: "monospace" }}>{lines[1]}</p>
-              </>
-            )}
-          </div>
-
-          {/* Status */}
-          <div style={{
-            padding: "6px 18px", borderRadius: "999px", fontSize: T.xs, fontWeight: T.fw_medium,
-            background: spinState === "spinning" ? "#fff1f2" : spinState === "result" ? T.successSubtle : T.secondary,
-            color: spinState === "spinning" ? "#be123c" : spinState === "result" ? T.successText : T.mutedFg,
-          }}>
-            {spinState === "idle" ? "Đang chờ" : spinState === "spinning" ? "Đang quay" : "Chờ xác nhận"}
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 6, color: T.mutedFg, fontSize: T.xs }}>
-            {locked ? <Lock size={12} /> : <Users size={12} />}
-            <span>{poolCount} người · Danh sách {locked ? "đã chốt" : "chưa chốt"}</span>
-          </div>
-        </Card>
       </div>
     </div>
   );
 }
 
-// ── Manage sub-tabs ────────────────────────────────────────────────────────────
+// ── Trang quản lý chương trình ─────────────────────────────────────────────────
+// Một trang thay cho 5 tab cũ: tóm tắt + hành động, bảng giải kèm tiến độ, bảng
+// người thắng. Người tham gia, thiết lập đã khóa và lịch sử mở ở drawer bên cạnh.
 
-function OverviewSubTab({ game }: { game: MiniGame }) {
-  const stats = [
-    { label: "Số người tham gia",  value: game.eligibleCount, color: T.primary },
-    { label: "Tổng giải thưởng",   value: game.prizeCount,    color: "#d97706" },
-    { label: "Người đã trúng",     value: game.winnerCount,   color: T.successText },
-  ];
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {stats.map(s => (
-          <Card key={s.label}>
-            <p style={{ fontSize: T.xs, color: T.mutedFg, marginBottom: 6 }}>{s.label}</p>
-            <p style={{ fontSize: T["2xl"], fontWeight: T.fw_bold, color: s.color }}>{s.value}</p>
-          </Card>
-        ))}
+function ManageView({ game, onBack, onOpenDraw, onSetup }: {
+  game: MiniGame; onBack: () => void; onOpenDraw: () => void; onSetup: () => void;
+}) {
+  const setup = game.setup ?? LEGACY_SETUP;
+  const status = statusOf(game);
+  const results = game.results ?? [];
+  const locked = !!game.lockedAt;
+  const poolCount = locked ? game.lockedCount : game.eligibleCount;
+  const total = totalSlots(setup.prizes);
+  const drawn = drawnSlots(setup.prizes);
+  const people = useMemo(() => participantsOf(poolCount, setup.audience.tiers), [poolCount, setup.audience.tiers]);
+  const [sheet, setSheet] = useState<"people" | "settings" | "history" | null>(null);
+  const [query, setQuery] = useState("");
+  const [prizeFilter, setPrizeFilter] = useState("all");
+
+  const q = query.trim().toLowerCase();
+  const visible = results.filter(r =>
+    (prizeFilter === "all" || r.prizeId === prizeFilter)
+    && (!q || r.winner.toLowerCase().includes(q) || r.ticketCode.toLowerCase().includes(q)));
+
+  // Nút chính đổi theo trạng thái chương trình.
+  const primary =
+    status === "draft" ? { label: "Hoàn thiện thiết lập", icon: Pencil,   onClick: onSetup }
+    : status === "ready" ? { label: "Mở màn hình quay",   icon: Play,     onClick: onOpenDraw }
+    : status === "live"  ? { label: "Tiếp tục quay",      icon: Play,     onClick: onOpenDraw }
+    : { label: "Xuất danh sách", icon: Download, onClick: () => exportWinners(game) };
+
+  const prizeCard = (
+    <Card style={{ padding: 0, overflow: "hidden" }}>
+      <div style={{ padding: "14px 20px", borderBottom: `1px solid ${T.border}` }}>
+        <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground, margin: 0 }}>Giải thưởng và tiến độ</p>
       </div>
-      <Card>
-        <SectionLabel>Giải thưởng</SectionLabel>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {MOCK_PRIZES.map(p => {
-            const cfg = PRIZE_STATUS_CFG[p.status];
-            return (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 10, background: T.pageSurface }}>
-                <Trophy size={14} style={{ color: T.primary, flexShrink: 0 } as React.CSSProperties} />
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground, margin: 0 }}>{p.rank} · {p.name}</p>
-                </div>
-                <span style={{ fontSize: T.xs, color: T.mutedFg }}>{p.remaining}/{p.count}</span>
-                <span style={{ fontSize: T.xs, fontWeight: T.fw_medium, padding: "2px 10px", borderRadius: "999px", color: cfg.color, background: cfg.bg }}>{cfg.label}</span>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function ResultsSubTab() {
-  const [results, setResults] = useState<SpinResult[]>(MOCK_RESULTS);
-  const [search, setSearch] = useState("");
-  const [filterPrize, setFilterPrize] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [confirmModal, setConfirmModal] = useState<SpinResult | null>(null);
-
-  const filtered = results.filter(r => {
-    const matchSearch = !search || r.winner.toLowerCase().includes(search.toLowerCase()) || r.ticketCode.includes(search);
-    const matchPrize  = filterPrize === "all" || r.prize.includes(filterPrize);
-    const matchStatus = filterStatus === "all" || r.status === filterStatus;
-    return matchSearch && matchPrize && matchStatus;
-  });
-
-  const handleDeliver = (id: string) => {
-    setResults(prev => prev.map(r => r.id === id ? { ...r, status: "delivered" as const, confirmedBy: "Bạn (Admin)" } : r));
-    setConfirmModal(null);
-  };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {confirmModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Card style={{ maxWidth: 420, width: "100%", margin: "0 16px" }}>
-            <h3 style={{ fontSize: T.lg, fontWeight: T.fw_semi, color: T.foreground, marginBottom: 8 }}>Xác nhận đã trao quà</h3>
-            <p style={{ fontSize: T.sm, color: T.mutedFg, marginBottom: 20 }}>
-              Bạn chắc chắn đã trao <strong>{confirmModal.prize}</strong> cho <strong>{confirmModal.winner}</strong>?
-            </p>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <Button variant="outline" onClick={() => setConfirmModal(null)}>Hủy</Button>
-              <Button onClick={() => handleDeliver(confirmModal.id)}>Xác nhận đã trao</Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-        <div style={{ position: "relative", flex: 1 }}>
-          <Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: T.mutedFg } as React.CSSProperties} />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tên người thắng, mã vé..." style={{ paddingLeft: 34 }} />
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <select value={filterPrize} onChange={e => setFilterPrize(e.target.value)} style={{ fontSize: T.sm, color: T.foreground, background: T.background, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 12px", cursor: "pointer", flex: 1 }}>
-            <option value="all">Tất cả giải</option>
-            {MOCK_PRIZES.map(p => <option key={p.id} value={p.name}>{p.rank}</option>)}
-          </select>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ fontSize: T.sm, color: T.foreground, background: T.background, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 12px", cursor: "pointer", flex: 1 }}>
-            <option value="all">Tất cả trạng thái</option>
-            <option value="pending">Chờ xác nhận</option>
-            <option value="confirmed">Đã xác nhận</option>
-            <option value="absent">Không có mặt</option>
-            <option value="delivered">Đã trao quà</option>
-            <option value="cancelled">Đã hủy</option>
-          </select>
-          <Button variant="outline" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Download size={13} /> Export CSV
-          </Button>
-        </div>
-      </div>
-
-      <Card style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 480 }}>
           <thead>
             <tr style={{ borderBottom: `1px solid ${T.border}` }}>
-              {["Thời gian", "Giải thưởng", "Người thắng", "Mã vé", "Vận hành"].map(h => (
-                <th key={h} style={{ padding: "10px 16px", textAlign: "left" as const, fontSize: T.xs, fontWeight: T.fw_semi, color: T.mutedFg, whiteSpace: "nowrap" as const }}>{h}</th>
-              ))}
+              <th style={TH}>Giải/phần quà</th>
+              <th style={{ ...TH, textAlign: "right" }}>Đã quay</th>
+              <th style={{ ...TH, width: 160 }}>Trạng thái</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
-              <tr><td colSpan={5} style={{ padding: "32px 16px", textAlign: "center" as const, fontSize: T.sm, color: T.mutedFg }}>Không có kết quả</td></tr>
-            ) : filtered.map((r, i) => (
-              <tr key={r.id} style={{ borderBottom: i < filtered.length - 1 ? `1px solid ${T.border}` : "none" }}>
-                <td style={{ padding: "11px 16px", fontSize: T.xs, color: T.mutedFg, whiteSpace: "nowrap" as const }}>{r.time}</td>
-                <td style={{ padding: "11px 16px", fontSize: T.xs, color: T.foreground, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{r.prize}</td>
-                <td style={{ padding: "11px 16px", fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground, whiteSpace: "nowrap" as const }}>{r.winner}</td>
-                <td style={{ padding: "11px 16px", fontSize: T.xs, color: T.mutedFg, fontFamily: "monospace" }}>{r.ticketCode}</td>
-                <td style={{ padding: "11px 16px", fontSize: T.xs, color: T.mutedFg, whiteSpace: "nowrap" as const }}>{r.operator}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function ConfigSubTab() {
-  const [participants, setParticipants] = useState(MOCK_PARTICIPANTS);
-  const [prizes, setPrizes] = useState(MOCK_PRIZES);
-  const [search, setSearch] = useState("");
-  const [editingPrize, setEditingPrize] = useState<Prize | null>(null);
-  const [editDraft, setEditDraft] = useState<Prize | null>(null);
-  const filtered = search ? participants.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.ticketCode.includes(search)) : participants;
-  const eligible = participants.filter(p => !p.excluded).length;
-
-  const addPrize = () => setPrizes(prev => [...prev, { id: `np${Date.now()}`, rank: `Giải ${prev.length + 1}`, name: "", count: 1, remaining: 1, status: "pending" as const }]);
-  const removePrize = (id: string) => setPrizes(prev => prev.filter(p => p.id !== id));
-
-  const openEdit = (p: Prize) => { setEditingPrize(p); setEditDraft({ ...p }); };
-  const saveEdit = () => {
-    if (!editDraft) return;
-    setPrizes(prev => prev.map(p => p.id === editDraft.id ? editDraft : p));
-    setEditingPrize(null); setEditDraft(null);
-  };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Participants */}
-      <Card>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground, margin: 0 }}>Người tham gia</p>
-        </div>
-        <div style={{ position: "relative", marginBottom: 12, maxWidth: 320 }}>
-          <Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: T.mutedFg } as React.CSSProperties} />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm theo tên hoặc mã vé..." style={{ paddingLeft: 34 }} />
-        </div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${T.border}` }}>
-                {["Người tham dự", "Mã vé", "Hạng vé"].map(h => (
-                  <th key={h} style={{ padding: "8px 14px", textAlign: "left" as const, fontSize: T.xs, fontWeight: T.fw_semi, color: T.mutedFg, whiteSpace: "nowrap" as const }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p, i) => (
-                <tr key={p.id} style={{ borderBottom: i < filtered.length - 1 ? `1px solid ${T.border}` : "none" }}>
-                  <td style={{ padding: "10px 14px", fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{p.name}</td>
-                  <td style={{ padding: "10px 14px", fontSize: T.xs, color: T.mutedFg, fontFamily: "monospace" }}>{p.ticketCode}</td>
-                  <td style={{ padding: "10px 14px" }}>
-                    <span style={{ fontSize: T.xs, padding: "2px 8px", borderRadius: "999px", background: T.secondary, color: T.foreground }}>{p.ticketType}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {/* Prizes */}
-      <Card>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground, margin: 0 }}>Giải thưởng</p>
-          <Button variant="outline" onClick={() => {
-            const np = { id: `np${Date.now()}`, rank: `Giải ${prizes.length + 1}`, name: "", count: 1, remaining: 1, status: "pending" as const };
-            setPrizes(prev => [...prev, np]);
-            setEditingPrize(np);
-            setEditDraft({ ...np });
-          }} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Plus size={13} /> Thêm giải
-          </Button>
-        </div>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ borderBottom: `1px solid ${T.border}` }}>
-              {["Hạng giải", "Phần thưởng", "Số lượng", "Trạng thái", ""].map((h, i) => (
-                <th key={i} style={{ padding: "8px 14px", textAlign: "left" as const, fontSize: T.xs, fontWeight: T.fw_semi, color: T.mutedFg, ...(i === 4 ? { width: "1%", whiteSpace: "nowrap" as const } : {}) }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {prizes.map((p, i) => {
-              const cfg = PRIZE_STATUS_CFG[p.status];
+            {setup.prizes.map((p, i) => {
+              const pr = prizeProgress(p);
               return (
-                <tr key={p.id} style={{ borderBottom: i < prizes.length - 1 ? `1px solid ${T.border}` : "none" }}>
-                  <td style={{ padding: "11px 14px", fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{p.rank}</td>
-                  <td style={{ padding: "11px 14px", fontSize: T.sm, color: T.foreground }}>{p.name || <span style={{ color: T.mutedFg }}>—</span>}</td>
-                  <td style={{ padding: "11px 14px", fontSize: T.sm, color: T.foreground }}>{p.count}</td>
-                  <td style={{ padding: "11px 14px" }}>
-                    <span style={{ fontSize: T.xs, fontWeight: T.fw_medium, padding: "2px 10px", borderRadius: "999px", color: cfg.color, background: cfg.bg }}>{cfg.label}</span>
-                  </td>
-                  <td style={{ padding: "11px 14px", width: "1%", whiteSpace: "nowrap" as const }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <button onClick={() => openEdit(p)} style={{ fontSize: T.xs, padding: "4px 12px", borderRadius: 7, border: `1px solid ${T.border}`, background: T.background, color: T.foreground, cursor: "pointer" }}>
-                        Chỉnh sửa
-                      </button>
-                      {prizes.length > 1 && (
-                        <button onClick={() => removePrize(p.id)} style={{ background: "none", border: "none", cursor: "pointer", color: T.mutedFg }}><Trash2 size={13} /></button>
-                      )}
-                    </div>
+                <tr key={p.id} style={{ borderBottom: i < setup.prizes.length - 1 ? `1px solid ${T.border}` : "none" }}>
+                  <td style={TD}>{prizeLabel(p)}</td>
+                  <td style={{ ...TD, textAlign: "right", whiteSpace: "nowrap" }}>{p.count - p.remaining}/{p.count} suất</td>
+                  <td style={TD}>
+                    <span style={{ fontSize: T.xs, fontWeight: T.fw_medium, padding: "2px 10px", borderRadius: 999, color: pr.color, background: pr.bg, whiteSpace: "nowrap" }}>{pr.text}</span>
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-      </Card>
-
-      {/* Edit prize modal */}
-      {editingPrize && editDraft && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
-          onClick={e => { if (e.target === e.currentTarget) { setEditingPrize(null); setEditDraft(null); } }}>
-          <div style={{ background: T.background, borderRadius: 18, padding: 28, width: 420, boxShadow: "0 16px 48px rgba(0,0,0,0.18)", display: "flex", flexDirection: "column", gap: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <p style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground, margin: 0 }}>Chỉnh sửa giải thưởng</p>
-              <button onClick={() => { setEditingPrize(null); setEditDraft(null); }} style={{ background: "none", border: "none", cursor: "pointer", color: T.mutedFg, padding: 4 }}><X size={16} /></button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div>
-                <Label>Hạng giải</Label>
-                <Input value={editDraft.rank} onChange={e => setEditDraft(d => d ? { ...d, rank: e.target.value } : d)} style={{ marginTop: 6 }} />
-              </div>
-              <div>
-                <Label>Tên phần thưởng</Label>
-                <Input value={editDraft.name} onChange={e => setEditDraft(d => d ? { ...d, name: e.target.value } : d)} placeholder="Tên phần thưởng" style={{ marginTop: 6 }} />
-              </div>
-              <div>
-                <Label>Số lượng người thắng</Label>
-                <Input type="number" min={1} value={editDraft.count} onChange={e => setEditDraft(d => d ? { ...d, count: Number(e.target.value) } : d)} style={{ marginTop: 6, maxWidth: 120 }} />
-              </div>
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
-              <Button variant="outline" onClick={() => { setEditingPrize(null); setEditDraft(null); }}>Hủy</Button>
-              <Button onClick={saveEdit}>Lưu</Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AuditSubTab() {
-  return (
-    <Card style={{ padding: 0, overflow: "hidden" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ borderBottom: `1px solid ${T.border}` }}>
-            {["Thời gian", "Hành động", "Người thực hiện"].map(h => (
-              <th key={h} style={{ padding: "10px 16px", textAlign: "left" as const, fontSize: T.xs, fontWeight: T.fw_semi, color: T.mutedFg }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {MOCK_AUDIT.map((a, i) => (
-            <tr key={a.id} style={{ borderBottom: i < MOCK_AUDIT.length - 1 ? `1px solid ${T.border}` : "none" }}>
-              <td style={{ padding: "11px 16px", fontSize: T.xs, color: T.mutedFg, whiteSpace: "nowrap" as const }}>{a.time}</td>
-              <td style={{ padding: "11px 16px", fontSize: T.sm, color: T.foreground }}>{a.action}</td>
-              <td style={{ padding: "11px 16px", fontSize: T.sm, color: T.mutedFg }}>{a.user}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      </div>
     </Card>
   );
-}
 
-// ── Manage View ────────────────────────────────────────────────────────────────
-
-const MANAGE_TABS: { id: ManageSubTab; label: string; icon: React.FC<{ size?: number }> }[] = [
-  { id: "overview", label: "Tổng quan",  icon: BarChart3 },
-  { id: "operate",  label: "Vận hành",   icon: Play },
-  { id: "results",  label: "Kết quả",    icon: Award },
-  { id: "config",   label: "Cấu hình",   icon: Settings },
-  { id: "audit",    label: "Nhật ký",    icon: ClipboardList },
-];
-
-function ManageView({ game, onBack, onOperate }: { game: MiniGame; onBack: () => void; onOperate: () => void }) {
-  const [subTab, setSubTab] = useState<ManageSubTab>("overview");
+  const winnersCard = (
+    <Card style={{ padding: 0, overflow: "hidden" }}>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3" style={{ padding: "12px 20px", borderBottom: `1px solid ${T.border}` }}>
+        <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground, margin: 0, flex: 1 }}>
+          Người thắng <span style={{ color: T.mutedFg, fontWeight: T.fw_normal }}>{results.length}</span>
+        </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div style={{ position: "relative", width: 220 }}>
+            <Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: T.mutedFg } as React.CSSProperties} />
+            <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Tìm tên hoặc mã" aria-label="Tìm người thắng" style={{ paddingLeft: 34 }} />
+          </div>
+          {setup.prizes.length > 1 && (
+            <Select value={prizeFilter} onValueChange={setPrizeFilter}>
+              <SelectTrigger className="w-[190px]" aria-label="Lọc theo giải"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả giải</SelectItem>
+                {setup.prizes.map(p => <SelectItem key={p.id} value={p.id}>{prizeLabel(p)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          {status !== "ended" && (
+            <Button variant="outline" size="sm" disabled={results.length === 0} onClick={() => exportWinners(game)}>
+              <Download size={13} /> Xuất danh sách
+            </Button>
+          )}
+        </div>
+      </div>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560 }}>
+          <thead>
+            <tr style={{ borderBottom: `1px solid ${T.border}` }}>
+              <th style={TH}>Người thắng</th>
+              <th style={TH}>Mã tham gia</th>
+              <th style={TH}>Giải/phần quà</th>
+              <th style={{ ...TH, textAlign: "right" }}>Thời gian</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.length === 0 ? (
+              <tr><td colSpan={4} style={{ ...TD, padding: "28px 20px", textAlign: "center", color: T.mutedFg }}>
+                {results.length === 0 ? "Chưa có người thắng." : "Không tìm thấy người thắng."}
+              </td></tr>
+            ) : visible.map((r, i) => (
+              <tr key={r.id} style={{ borderBottom: i < visible.length - 1 ? `1px solid ${T.border}` : "none" }}>
+                <td style={{ ...TD, fontWeight: T.fw_medium }}>{r.winner}</td>
+                <td style={{ ...TD, fontSize: T.xs, color: T.mutedFg, fontFamily: "monospace" }}>{r.ticketCode}</td>
+                <td style={TD}>{r.prize}</td>
+                <td style={{ ...TD, fontSize: T.xs, color: T.mutedFg, textAlign: "right" }}>{r.time}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-        <div>
-          <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 5, color: T.primary, background: "none", border: "none", cursor: "pointer", fontSize: T.sm, fontWeight: T.fw_medium, marginBottom: 8, padding: 0 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* A. Thông tin và hành động */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div style={{ minWidth: 0 }}>
+          <button data-pill="off" onClick={onBack} style={{ ...LINK_BTN, marginBottom: 8 }}>
             <ChevronLeft size={15} /> Danh sách mini game
           </button>
-          <h2 style={{ fontSize: T.xl, fontWeight: T.fw_semi, color: T.foreground, margin: 0 }}>{game.name}</h2>
-          <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 4 }}>{game.startTime} – {game.endTime}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <h2 style={{ fontSize: T.xl, fontWeight: T.fw_semi, color: T.foreground, margin: 0 }}>{game.name}</h2>
+            <StatusBadge status={status} />
+          </div>
+          <p style={{ fontSize: T.sm, color: T.mutedFg, margin: "6px 0 0" }}>
+            <button data-pill="off" onClick={() => setSheet("people")} style={{ ...LINK_BTN, display: "inline", fontSize: T.sm }}>
+              {poolCount} người tham gia
+            </button>
+            {" · "}{setup.prizes.length} nhóm giải · Đã quay {drawn}/{total} suất
+          </p>
         </div>
-        <Button onClick={onOperate} style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0, background: T.successSubtle, color: T.successText, border: `1px solid ${T.successBorder}` }}>
-          <Zap size={14} /> Vận hành
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {!locked && (
+            <Button variant="outline" onClick={onSetup}><Settings size={14} /> Chỉnh thiết lập</Button>
+          )}
+          <Button onClick={primary.onClick}><primary.icon size={14} /> {primary.label}</Button>
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="Thêm thao tác"><MoreHorizontal size={16} /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {locked && <DropdownMenuItem onSelect={() => setSheet("settings")}>Xem thiết lập</DropdownMenuItem>}
+              <DropdownMenuItem onSelect={() => setSheet("history")}>Lịch sử thao tác</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
-      {/* Sub-tabs */}
-      <div style={{ display: "flex", gap: 2, borderBottom: `1px solid ${T.border}`, overflowX: "auto", scrollbarWidth: "none" }}>
-        {MANAGE_TABS.map(tab => {
-          const Icon = tab.icon;
-          const active = subTab === tab.id;
-          return (
-            <div key={tab.id} style={{
-              borderBottom: `2px solid ${active ? T.primary : "transparent"}`,
-              marginBottom: -1,
-            }}>
-              <button onClick={() => setSubTab(tab.id)} style={{
-                display: "flex", alignItems: "center", gap: 6, padding: "8px 14px",
-                border: "none",
-                color: active ? T.primary : T.mutedFg,
-                fontWeight: active ? T.fw_medium : T.fw_normal,
-                fontSize: T.sm, background: "none", cursor: "pointer",
-                whiteSpace: "nowrap" as const,
-              }}>
-                <Icon size={14} /> {tab.label}
-              </button>
-            </div>
-          );
-        })}
-      </div>
+      {/* B + C. Hoàn tất thì đưa người thắng lên trước để đối chiếu */}
+      {status === "ended" ? <>{winnersCard}{prizeCard}</> : <>{prizeCard}{winnersCard}</>}
 
-      {subTab === "overview" && <OverviewSubTab game={game} />}
-      {subTab === "operate"  && <OperateView game={game} onBack={() => setSubTab("overview")} />}
-      {subTab === "results"  && <ResultsSubTab />}
-      {subTab === "config"   && <ConfigSubTab />}
-      {subTab === "audit"    && <AuditSubTab />}
+      <SideSheet open={sheet === "people"} onClose={() => setSheet(null)} title={`${poolCount} người tham gia`}
+        description={locked ? `${audienceLabel(setup.audience)} · Danh sách đã chốt lúc ${game.lockedAt}` : `${audienceLabel(setup.audience)} · Danh sách tiếp tục cập nhật đến khi bắt đầu quay`}>
+        <PeopleList people={people} />
+      </SideSheet>
+      <SideSheet open={sheet === "settings"} onClose={() => setSheet(null)} title="Thiết lập" description="Chỉ xem — không sửa được sau khi đã bắt đầu quay.">
+        <SettingsSummary game={game} />
+      </SideSheet>
+      <SideSheet open={sheet === "history"} onClose={() => setSheet(null)} title="Lịch sử thao tác" description={game.name}>
+        <HistoryList game={game} />
+      </SideSheet>
     </div>
   );
 }
@@ -1425,7 +1101,8 @@ function SetupPage({ game, eventName, pool, focus, onBack, onSave, onOpenDraw }:
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 760 }}>
+    // Cột form căn giữa — không để trống một bên như khi dồn trái.
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 760, width: "100%", margin: "0 auto" }}>
 
       {/* Page header — tên chương trình tự đặt theo sự kiện, sửa ngay tại chỗ */}
       <div style={{ marginBottom: 4 }}>
@@ -1715,11 +1392,10 @@ function SetupPage({ game, eventName, pool, focus, onBack, onSave, onOpenDraw }:
 
 // ── List View ──────────────────────────────────────────────────────────────────
 
-function MgListView({ games, onCreate, onManage, onOperate, onSetup }: {
+function MgListView({ games, onCreate, onManage, onSetup }: {
   games: MiniGame[];
   onCreate: () => void;
   onManage: (g: MiniGame) => void;
-  onOperate: (g: MiniGame) => void;
   onSetup: (g: MiniGame) => void;
 }) {
   return (
@@ -1752,15 +1428,18 @@ function MgListView({ games, onCreate, onManage, onOperate, onSetup }: {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {games.map(game => {
-            // Chương trình tạo theo luồng mới: sửa ở màn thiết lập, quay ở màn hình quay.
-            const fromSetup = !!game.setup;
-            const meta = ["Bốc thăm may mắn", game.participantSource, fromSetup ? `${game.prizeCount} giải` : game.startTime]
-              .filter(Boolean).join(" · ");
+            const setup = game.setup ?? LEGACY_SETUP;
+            const status = statusOf(game);
+            // Chưa bắt đầu: chỉ "Thiết lập" (mở màn quay từ đó). Đã quay: vào trang quản lý.
+            const started = status === "live" || status === "ended";
+            const meta = [
+              audienceLabel(setup.audience),
+              `${setup.prizes.length} nhóm giải`,
+              started ? `Đã quay ${drawnSlots(setup.prizes)}/${totalSlots(setup.prizes)} suất` : `${totalSlots(setup.prizes)} suất`,
+            ].join(" · ");
             return (
               <Card key={game.id} style={{ padding: "14px 16px" }}>
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
-
-                  {/* Identity row (icon + text) */}
                   <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg, ${T.primary}, #7c3aed)` }}>
                       <Gamepad2 size={20} color="white" />
@@ -1768,35 +1447,14 @@ function MgListView({ games, onCreate, onManage, onOperate, onSetup }: {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                         <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{game.name}</p>
-                        <span style={{ flexShrink: 0, whiteSpace: "nowrap" as const }}><StatusBadge status={game.status} /></span>
+                        <span style={{ flexShrink: 0, whiteSpace: "nowrap" as const }}><StatusBadge status={status} /></span>
                       </div>
                       <p style={{ fontSize: T.xs, color: T.mutedFg, margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{meta}</p>
                     </div>
                   </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-2 shrink-0">
-                    {fromSetup ? (
-                      <>
-                        <Button variant="outline" size="sm" onClick={() => onSetup(game)}>
-                          Thiết lập
-                        </Button>
-                        <Button size="sm" onClick={() => onOperate(game)} style={{ background: T.successSubtle, color: T.successText, border: `1px solid ${T.successBorder}` }}>
-                          <Play size={13} /> Mở màn hình quay
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button variant="outline" size="sm" onClick={() => onManage(game)}>
-                          Quản lý
-                        </Button>
-                        <Button size="sm" onClick={() => onOperate(game)} style={{ background: T.successSubtle, color: T.successText, border: `1px solid ${T.successBorder}` }}>
-                          <Zap size={13} /> Vận hành
-                        </Button>
-                      </>
-                    )}
-                  </div>
-
+                  <Button variant="outline" size="sm" className="shrink-0" onClick={() => (started ? onManage(game) : onSetup(game))}>
+                    {started ? "Quản lý" : "Thiết lập"}
+                  </Button>
                 </div>
               </Card>
             );
@@ -1811,14 +1469,14 @@ function MgListView({ games, onCreate, onManage, onOperate, onSetup }: {
 
 export function MiniGameTab({ event }: { event?: { name?: string; status?: string } }) {
   const eventName = event?.name ?? "NetEvent Demo 2026";
-  // Sự kiện nháp chưa có ai đăng ký hay check-in (AttendeesTab cũng chỉ có dữ liệu
-  // khi sự kiện đã xuất bản) — đây là cách xem trường hợp "chưa có ai check-in".
+  // Sự kiện nháp chưa có ai đăng ký hay check-in — đây là cách xem trường hợp "chưa có ai check-in".
   const pool = event?.status === "draft" ? TIER_POOL.map(t => ({ ...t, checkedIn: 0, registered: 0 })) : TIER_POOL;
-  const [games, setGames] = useState<MiniGame[]>([MOCK_GAME]);
+  // Chương trình mẫu dùng chung luồng với chương trình tạo mới: cùng cấu hình, cùng một nguồn kết quả.
+  const [games, setGames] = useState<MiniGame[]>(() => [{ ...MOCK_GAME, setup: LEGACY_SETUP, results: MOCK_RESULTS }]);
   const [view, setView] = useState<MgView>("list");
   const [selectedId, setSelectedId] = useState<string | null>(MOCK_GAME.id);
   const [setupFocus, setSetupFocus] = useState<SetupFocus | undefined>();
-  // Màn quay mở từ đâu thì "Quay lại" về đó.
+  // Màn quay mở từ đâu thì "Quay lại" về đó (khi chưa quay lượt nào).
   const [operateFrom, setOperateFrom] = useState<MgView>("list");
 
   const selected = games.find(g => g.id === selectedId);
@@ -1850,16 +1508,21 @@ export function MiniGameTab({ event }: { event?: { name?: string; status?: strin
     );
   }
   if (view === "manage" && selected) {
-    return <ManageView game={selected} onBack={() => setView("list")} onOperate={() => openDraw(selected, "manage")} />;
+    return (
+      <ManageView game={selected} onBack={() => setView("list")}
+        onOpenDraw={() => openDraw(selected, "manage")} onSetup={() => openSetup(selected)} />
+    );
   }
   if (view === "operate" && selected) {
-    const backToSetup = operateFrom === "setup";
+    // Đã quay lượt nào thì màn quay về trang quản lý; chưa quay thì về nơi đã mở.
+    const started = !!selected.lockedAt;
+    const fromSetup = operateFrom === "setup";
     return (
-      <OperateView
+      <DrawScreen
         key={selected.id}
         game={selected}
-        backLabel={backToSetup ? "Quay lại thiết lập" : "Quay lại"}
-        onBack={() => (backToSetup ? openSetup(selected) : setView(operateFrom))}
+        backLabel={started ? "Trở về quản lý" : fromSetup ? "Quay lại thiết lập" : "Quay lại"}
+        onBack={() => (started ? setView("manage") : fromSetup ? openSetup(selected) : setView(operateFrom))}
         onUpdate={upsert}
         onFixPrizes={selected.setup ? () => openSetup(selected, "prizeCount") : undefined}
       />
@@ -1871,7 +1534,6 @@ export function MiniGameTab({ event }: { event?: { name?: string; status?: strin
       games={games}
       onCreate={() => openSetup(null)}
       onManage={g => { setSelectedId(g.id); setView("manage"); }}
-      onOperate={g => openDraw(g, g.setup ? "list" : "manage")}
       onSetup={g => openSetup(g)}
     />
   );
