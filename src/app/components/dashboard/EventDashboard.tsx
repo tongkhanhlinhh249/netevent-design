@@ -430,14 +430,7 @@ function CheckinSettingsCard({ eventId }: { eventId: string }) {
   ];
   return (
     <div className="rounded-2xl p-5" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-      <div className="flex items-center justify-between gap-3">
-        <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Check-in</h3>
-        <Button size="sm" variant="outline" className="shrink-0" style={{ fontSize: T.xs }} asChild>
-          <a href={`/check-in?event=${encodeURIComponent(eventId)}`} target="_blank" rel="noreferrer">
-            Mở trang check-in <ExternalLink className="size-3" />
-          </a>
-        </Button>
-      </div>
+      <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Check-in</h3>
       <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6, marginTop: 4 }}>Cách người tham dự check-in tại sự kiện.</p>
       <div className="flex flex-col mt-1">
         {rows.map((r, i) => (
