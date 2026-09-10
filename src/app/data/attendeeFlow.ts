@@ -324,6 +324,15 @@ export function claimReward(eventId: string, code: string, staff: string): Claim
   return { status: "ok", reward: next };
 }
 
+/**
+ * Nhân viên báo sự cố quà tặng (vd. quà thực tế không còn tại booth). MVP không
+ * đổi reward sang quà khác — chỉ ghi nhận để Owner/Admin xử lý.
+ */
+export function reportGiftIncident(eventId: string, code: string, staff: string) {
+  const found = lookupReward(eventId, code);
+  logAudit(eventId, staff, `Báo sự cố quà tặng “${found?.gift?.name ?? code}” (mã ${code.trim().toUpperCase()})`, found?.regId);
+}
+
 // ── Phiên người tham dự ────────────────────────────────────────────────────────
 // Sau khi check-in, thiết bị của người tham dự giữ phiên để vào Tổng quan và
 // Minigame mà không phải check-in lại. Không đưa ID người tham dự lên URL.

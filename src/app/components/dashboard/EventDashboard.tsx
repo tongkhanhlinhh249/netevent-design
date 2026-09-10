@@ -6,7 +6,7 @@ import {
   AlertCircle, ChevronRight, ExternalLink,
   Calendar, MapPin, Pencil, BarChart3, Mail, QrCode, Plus,
   Download, Eye, Settings, Copy, Facebook, Twitter, Linkedin, MessageCircle, Image,
-  ArrowLeft, UserPlus, Check, X, Sparkles, AtSign, Search, Lock, ChevronDown, Video
+  ArrowLeft, UserPlus, Check, X, Sparkles, AtSign, Search, Lock, ChevronDown, Video, Smartphone
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
@@ -19,6 +19,9 @@ import { Sheet, SheetContent } from "../ui/sheet";
 import { useCurrentEvent } from "../../data/currentEvent";
 import { OrganizerAvatarPicker } from "./OrganizerAvatarPicker";
 import { EmailSettingsCard } from "./EmailSettings";
+import { PseudoQr } from "../attendee/PseudoQr";
+import { useCheckinConfig } from "../../data/attendeeFlow";
+import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { dateParts, shortDateVi } from "../../data/eventFormat";
 
@@ -404,6 +407,64 @@ function InviteGuestsDialog({ onClose }: { onClose: () => void }) {
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ── Cấu hình check-in ───────────────────────────────────────────────────────────
+
+function CheckinSettingsCard({ eventId }: { eventId: string }) {
+  const [config, setConfig] = useCheckinConfig(eventId);
+  const selfUrl = `/tu-check-in?event=${encodeURIComponent(eventId)}`;
+  const toggle = (key: "qr" | "phone", on: boolean) => {
+    const next = { ...config, [key]: on };
+    // Luôn phải còn ít nhất một cách check-in.
+    if (!next.qr && !next.phone) { toast.error("Cần bật ít nhất một cách check-in."); return; }
+    setConfig(next);
+  };
+  const rows = [
+    { key: "qr" as const,    icon: QrCode,     label: "Quét mã QR trên vé", desc: "Nhân viên quét mã QR trong vé của từng người." },
+    { key: "phone" as const, icon: Smartphone, label: "Nhập số điện thoại", desc: "Người tham dự quét mã QR chung của sự kiện rồi nhập số điện thoại đã đăng ký." },
+  ];
+  return (
+    <div className="rounded-2xl p-5" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+      <div className="flex items-center justify-between gap-3">
+        <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Check-in</h3>
+        <Button size="sm" variant="outline" className="shrink-0" style={{ fontSize: T.xs }} asChild>
+          <a href={`/check-in?event=${encodeURIComponent(eventId)}`} target="_blank" rel="noreferrer">
+            Mở trang check-in <ExternalLink className="size-3" />
+          </a>
+        </Button>
+      </div>
+      <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6, marginTop: 4 }}>Cách người tham dự check-in tại sự kiện.</p>
+      <div className="flex flex-col mt-1">
+        {rows.map((r, i) => (
+          <div key={r.key} className="flex items-start gap-3 py-3" style={{ borderTop: i === 0 ? "none" : `1px solid ${T.border}` }}>
+            <r.icon className="size-4 shrink-0 mt-0.5" style={{ color: T.mutedFg }} />
+            <div className="flex-1 min-w-0">
+              <p style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{r.label}</p>
+              <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2, lineHeight: 1.5 }}>{r.desc}</p>
+            </div>
+            <Switch className="shrink-0 mt-0.5" aria-label={r.label} checked={config[r.key]}
+              onCheckedChange={(v) => toggle(r.key, v)} />
+          </div>
+        ))}
+      </div>
+      {config.phone && (
+        <div className="flex items-center gap-3 rounded-xl p-3" style={{ backgroundColor: T.secondary }}>
+          <PseudoQr value={selfUrl} size={72} />
+          <div className="flex-1 min-w-0">
+            <p style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>Mã QR check-in chung</p>
+            <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2, lineHeight: 1.5 }}>
+              In và đặt ở lối vào — người tham dự quét để tự check-in.
+            </p>
+            <a href={selfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 mt-1.5 hover:underline"
+              style={{ fontSize: T.xs, fontWeight: T.fw_medium, color: T.primary }}>
+              Mở trang tự check-in <ExternalLink className="size-3" />
+            </a>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1000,6 +1061,9 @@ export function EventDashboard() {
                 style={{ width: `${Math.round(totalRegistered / totalCapacity * 100)}%`, backgroundColor: T.successText }} />
             </div>
           </div>
+
+          {/* ── Check-in: bật/tắt quét mã QR và nhập số điện thoại ── */}
+          <CheckinSettingsCard eventId={currentEvent.id} />
 
           {/* ── Cấu hình email: người gửi + ba email tự động (EmailSettings.tsx) ── */}
           <EmailSettingsCard key={currentEvent.id} event={currentEvent} organizerName={orgName} />

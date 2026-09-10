@@ -1,15 +1,20 @@
 import * as React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Search, ScanLine, List, SlidersHorizontal, ArrowUpRight, CheckCircle2,
-  AlertTriangle, XCircle, QrCode, Users, UserCheck, Undo2,
+  AlertTriangle, XCircle, QrCode, Users, UserCheck, Undo2, Smartphone, Gift,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 import { Switch } from "../ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import type { EventDraft } from "../dashboard/EventsPage";
-import { MOCK_ATTENDEES } from "../dashboard/AttendeesTab";
 import { dayLabelVi } from "../../data/eventFormat";
+import {
+  registrationsOf, useCheckins, checkIn, undoCheckIn, useCheckinConfig, useGiftGame, useRewards,
+  lookupReward, claimReward, reportGiftIncident, normalizePhone, maskPhone,
+} from "../../data/attendeeFlow";
 
 // ── Tokens ───────────────────────────────────────────────────────────────────
 
@@ -20,8 +25,11 @@ const T = {
   primary:       "var(--primary)",
   secondary:     "var(--secondary)",
   mutedFg:       "var(--muted-foreground)",
+  destructive:   "var(--destructive)",
   successText:   "var(--success-text)",
   successSubtle: "var(--success-subtle)",
+  warningText:   "var(--warning-text)",
+  warningSubtle: "var(--warning-subtle)",
   fw_normal: "var(--font-weight-normal)",
   fw_medium: "var(--font-weight-medium)",
   fw_semi:   "var(--font-weight-semibold)",
@@ -32,26 +40,26 @@ const T = {
   xl:   "var(--text-xl)",
 };
 
+/** Nhân viên đang trực trang check-in (tài khoản đang đăng nhập). */
+const STAFF = "Nguyễn Thị Lan";
+
 // ── Data ─────────────────────────────────────────────────────────────────────
 
 type GuestStatus = "going" | "checked-in";
 
 interface Guest {
-  id: string; name: string; email: string; tier: string; ticketCode: string;
-  status: GuestStatus; checkinTime?: string;
+  id: string; name: string; email: string; phone: string; tier: string; ticketCode: string;
+  status: GuestStatus; checkinTime?: string; source?: "self" | "staff";
 }
 
-/** Sự kiện mẫu dùng đúng danh sách của tab Người tham dự, để hai nơi khớp nhau. */
-function demoGuests(): Guest[] {
-  // Check-in chỉ có hai trạng thái: chưa check-in và đã check-in.
-  return MOCK_ATTENDEES.filter((a) => a.status === "valid" || a.status === "checked-in").map((a) => ({
-    id: a.id, name: a.name, email: a.email, tier: a.tier, ticketCode: a.ticketCode,
-    status: a.status === "checked-in" ? "checked-in" : "going",
-    checkinTime: a.checkinTime?.split(",")[0],
-  }));
-}
+type Mode = "list" | "scan" | "phone" | "gift";
 
-const nowHHMM = () => new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+const MODES: { id: Mode; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "list",  label: "Danh sách",     icon: List },
+  { id: "scan",  label: "Quét mã",       icon: ScanLine },
+  { id: "phone", label: "Số điện thoại", icon: Smartphone },
+  { id: "gift",  label: "Trao quà",      icon: Gift },
+];
 
 type ScanResult =
   | { kind: "success" | "confirm" | "already"; guest: Guest }
@@ -69,10 +77,10 @@ const RESULT_CFG = {
 
 function resultTitle(r: ScanResult) {
   switch (r.kind) {
-    case "success":   return "Check-in thành công";
-    case "confirm":   return "Vé hợp lệ";
-    case "already":   return `Đã check-in lúc ${r.guest.checkinTime ?? "trước đó"}`;
-    case "invalid":   return "Mã QR không hợp lệ";
+    case "success": return "Check-in thành công";
+    case "confirm": return "Vé hợp lệ";
+    case "already": return `Đã check-in lúc ${r.guest.checkinTime ?? "trước đó"}`;
+    case "invalid": return "Mã QR không hợp lệ";
   }
 }
 
@@ -101,18 +109,36 @@ const SCANLINE_CSS = `
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 /**
- * Trang check-in ở tab riêng, theo bố cục của Luma: chế độ Danh sách (tìm
- * khách, tab Tất cả / Đã đăng ký / Đã check-in) và chế độ Quét mã (khung
- * camera + tiến độ check-in).
+ * Trang check-in của nhân viên, mở ở tab riêng. Các chế độ theo cấu hình check-in
+ * của sự kiện: Danh sách (tìm khách), Quét mã (QR trên vé), Số điện thoại (khách
+ * không mang vé) và Trao quà (xác nhận phần quà của minigame chọn quà).
  *
- * Bản prototype không mở camera thật: nút "Mô phỏng quét mã" lần lượt trả về
- * vé hợp lệ, vé đã check-in và mã lạ.
+ * Trạng thái check-in và phần quà lấy từ attendeeFlow, dùng chung với trang tự
+ * check-in của người tham dự — người tự check-in bằng số điện thoại hiện ngay ở đây.
+ * Bản prototype không mở camera thật: "Mô phỏng quét mã" lần lượt trả về vé hợp
+ * lệ, vé đã check-in và mã lạ.
  */
 export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft; sampleGuests?: boolean }) {
-  const [guests, setGuests] = useState<Guest[]>(() => (sampleGuests ? demoGuests() : []));
-  const [mode, setMode]     = useState<"list" | "scan">("list");
-  const [tab, setTab]       = useState<"all" | "going" | "checked-in">("all");
-  const [query, setQuery]   = useState("");
+  // Sự kiện mẫu ở màn khác (vd. Tổng quan) dùng chung danh sách minh hoạ của sự kiện demo.
+  const dataId = sampleGuests ? "t1" : event.id;
+  const regs = useMemo(() => registrationsOf(dataId).filter((r) => r.valid), [dataId]);
+  const checkins = useCheckins(dataId);
+  const [config] = useCheckinConfig(dataId);
+  const [game] = useGiftGame(dataId);
+  const guests: Guest[] = regs.map((r) => ({
+    id: r.id, name: r.name, email: r.email, phone: r.phone, tier: r.tier, ticketCode: r.ticketCode,
+    status: checkins[r.id] ? "checked-in" : "going", checkinTime: checkins[r.id]?.at, source: checkins[r.id]?.source,
+  }));
+
+  const available = MODES.filter((m) =>
+    m.id === "list" || (m.id === "scan" && config.qr) || (m.id === "phone" && config.phone)
+    || (m.id === "gift" && !!game && game.status !== "draft"));
+  const [modeState, setMode] = useState<Mode>("list");
+  // Cấu hình vừa tắt chế độ đang mở thì quay về danh sách.
+  const mode: Mode = available.some((m) => m.id === modeState) ? modeState : "list";
+
+  const [tab, setTab]     = useState<"all" | "going" | "checked-in">("all");
+  const [query, setQuery] = useState("");
 
   const [scanning, setScanning]       = useState(false);
   const [result, setResult]           = useState<ScanResult | null>(null);
@@ -138,15 +164,10 @@ export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft
   const q = query.trim().toLowerCase();
   const visible = guests
     .filter((g) => tab === "all" || g.status === tab)
-    .filter((g) => !q || [g.name, g.email, g.ticketCode].some((v) => v.toLowerCase().includes(q)));
+    .filter((g) => !q || [g.name, g.email, g.ticketCode, g.phone].some((v) => v.toLowerCase().includes(q)));
 
-  const markCheckedIn = (id: string) => {
-    const time = nowHHMM();
-    setGuests((gs) => gs.map((g) => (g.id === id ? { ...g, status: "checked-in" as const, checkinTime: time } : g)));
-    return time;
-  };
-  const undoCheckIn = (id: string) =>
-    setGuests((gs) => gs.map((g) => (g.id === id ? { ...g, status: "going" as const, checkinTime: undefined } : g)));
+  const markCheckedIn = (id: string) => checkIn(dataId, id, "staff", STAFF).record.at;
+  const undo = (id: string) => undoCheckIn(dataId, id, STAFF);
 
   const simulateScan = () => {
     setScanning(true);
@@ -176,22 +197,31 @@ export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: T.background, color: T.foreground }}>
       <style>{SCANLINE_CSS}</style>
 
-      {/* Header: tên + thời gian sự kiện, nút chuyển giữa Danh sách và Quét mã */}
+      {/* Header: tên + thời gian sự kiện, chuyển chế độ check-in */}
       <header style={{ borderBottom: `1px solid ${T.border}` }}>
         <div className="max-w-[880px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="truncate" style={{ fontSize: T.base, fontWeight: T.fw_semi }}>{event.name || "Sự kiện chưa đặt tên"}</p>
             <p className="truncate" style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>{when}</p>
           </div>
-          {mode === "list" ? (
-            <Button variant="secondary" size="sm" className="shrink-0" onClick={() => setMode("scan")}>
-              <ScanLine className="size-4" /> Quét mã
-            </Button>
-          ) : (
-            <div className="flex items-center gap-2 shrink-0">
-              <Button variant="secondary" size="sm" onClick={() => { setMode("list"); setResult(null); }}>
-                <List className="size-4" /> Danh sách
-              </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="inline-flex gap-0.5 p-0.5 rounded-full" role="tablist" aria-label="Chế độ check-in"
+              style={{ backgroundColor: T.secondary, border: `1px solid ${T.border}` }}>
+              {available.map((m) => {
+                const on = mode === m.id;
+                return (
+                  <button key={m.id} type="button" role="tab" aria-selected={on} title={m.label}
+                    onClick={() => { setMode(m.id); setResult(null); }}
+                    className="flex items-center gap-1.5 px-3 h-8 cursor-pointer transition-colors whitespace-nowrap"
+                    style={{ fontSize: T.xs, fontWeight: on ? T.fw_semi : T.fw_medium,
+                      backgroundColor: on ? T.background : "transparent", color: on ? T.foreground : T.mutedFg,
+                      boxShadow: on ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}>
+                    <m.icon className="size-3.5" /><span className="hidden sm:inline">{m.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {mode === "scan" && (
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="secondary" size="icon" className="size-8" aria-label="Cài đặt quét mã">
@@ -205,19 +235,19 @@ export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft
                     checked={sound} onChange={setSound} />
                 </PopoverContent>
               </Popover>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </header>
 
-      {mode === "list" ? (
+      {mode === "list" && (
         <>
           {/* Tìm khách */}
           <div style={{ backgroundColor: T.secondary }}>
             <label className="max-w-[880px] mx-auto px-4 sm:px-6 h-11 flex items-center gap-3 cursor-text">
               <Search className="size-4 shrink-0" style={{ color: T.mutedFg }} />
               <input value={query} onChange={(e) => setQuery(e.target.value)}
-                placeholder="Tìm khách theo tên, email hoặc mã vé…"
+                placeholder="Tìm khách theo tên, email, số điện thoại hoặc mã vé…"
                 className="flex-1 min-w-0 bg-transparent outline-none"
                 style={{ fontSize: T.sm, color: T.foreground }} />
             </label>
@@ -229,7 +259,7 @@ export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft
               {([
                 { id: "all" as const,        label: "Tất cả khách" },
                 { id: "going" as const,      label: "Chưa check-in", count: waiting.length },
-                { id: "checked-in" as const, label: "Đã check-in", count: checkedIn.length },
+                { id: "checked-in" as const, label: "Đã check-in",   count: checkedIn.length },
               ]).map((t) => {
                 const on = tab === t.id;
                 return (
@@ -259,7 +289,7 @@ export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft
                 </div>
                 <ul>
                   {visible.map((g) => (
-                    <GuestRow key={g.id} guest={g} onCheckIn={() => markCheckedIn(g.id)} onUndo={() => undoCheckIn(g.id)} />
+                    <GuestRow key={g.id} guest={g} onCheckIn={() => markCheckedIn(g.id)} onUndo={() => undo(g.id)} />
                   ))}
                 </ul>
               </>
@@ -283,7 +313,9 @@ export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft
             )}
           </main>
         </>
-      ) : (
+      )}
+
+      {mode === "scan" && (
         <main className="flex-1 max-w-[880px] w-full mx-auto px-4 sm:px-6 py-4 flex flex-col gap-4">
           {/* Khung camera */}
           <div className="relative overflow-hidden flex items-center justify-center"
@@ -303,26 +335,178 @@ export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft
               </button>
             )}
           </div>
-
-          {/* Tiến độ check-in */}
-          <div className="rounded-2xl p-4" style={{ backgroundColor: T.secondary }}>
-            <div className="flex items-baseline justify-between gap-3">
-              <p style={{ color: T.successText }}>
-                <span style={{ fontSize: T.xl, fontWeight: T.fw_semi }}>{checkedIn.length}</span>
-                <span style={{ fontSize: T.sm, marginLeft: 6 }}>Đã check-in</span>
-              </p>
-              <p style={{ fontSize: T.sm, color: T.mutedFg }}>{guests.length} đã đăng ký</p>
-            </div>
-            <div className="h-1.5 rounded-full overflow-hidden mt-3" style={{ backgroundColor: "rgba(0,0,0,0.08)" }}>
-              <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: T.successText }} />
-            </div>
-            <a href="/event" target="_blank" rel="noreferrer"
-              className="inline-flex items-center gap-1 mt-4 hover:underline"
-              style={{ fontSize: T.xs, color: T.mutedFg }}>
-              Quản lý sự kiện <ArrowUpRight className="size-3" />
-            </a>
-          </div>
+          <ProgressCard checkedIn={checkedIn.length} total={guests.length} pct={pct} />
         </main>
+      )}
+
+      {mode === "phone" && (
+        <PhoneCheckin guests={guests} onCheckIn={markCheckedIn} />
+      )}
+
+      {mode === "gift" && (
+        <GiftDesk eventId={dataId} guests={guests} />
+      )}
+    </div>
+  );
+}
+
+// ── Chế độ nhập số điện thoại (khách không mang vé) ─────────────────────────────
+
+function PhoneCheckin({ guests, onCheckIn }: { guests: Guest[]; onCheckIn: (id: string) => string }) {
+  const [value, setValue] = useState("");
+  const [error, setError] = useState("");
+  const [matchIds, setMatchIds] = useState<string[] | null>(null);
+  // Giữ id thay vì bản sao để trạng thái cập nhật ngay khi khách check-in ở nơi khác.
+  const matches = matchIds ? guests.filter((g) => matchIds.includes(g.id)) : null;
+
+  const search = () => {
+    setMatchIds(null);
+    if (!value.trim()) { setError("Vui lòng nhập số điện thoại."); return; }
+    const phone = normalizePhone(value);
+    if (!phone) { setError("Số điện thoại không hợp lệ. Vui lòng kiểm tra lại."); return; }
+    const found = guests.filter((g) => g.phone === phone).map((g) => g.id);
+    if (found.length === 0) { setError("Không tìm thấy đăng ký phù hợp. Vui lòng kiểm tra lại số điện thoại."); return; }
+    setError("");
+    setMatchIds(found);
+  };
+
+  return (
+    <main className="flex-1 max-w-[560px] w-full mx-auto px-4 sm:px-6 py-8 flex flex-col gap-4">
+      <div>
+        <p style={{ fontSize: T.lg, fontWeight: T.fw_semi }}>Check-in bằng số điện thoại</p>
+        <p style={{ fontSize: T.sm, color: T.mutedFg, marginTop: 4 }}>Nhập số điện thoại khách đã dùng khi đăng ký sự kiện.</p>
+      </div>
+      <form className="flex flex-col gap-1.5" onSubmit={(e) => { e.preventDefault(); search(); }}>
+        <div className="flex gap-2">
+          <Input type="tel" inputMode="tel" value={value} placeholder="Ví dụ: 0981 234 567" aria-label="Số điện thoại"
+            aria-invalid={!!error} onChange={(e) => { setValue(e.target.value); setError(""); }} />
+          <Button type="submit" className="shrink-0">Tìm</Button>
+        </div>
+        {error && <p style={{ fontSize: T.xs, color: T.destructive }}>{error}</p>}
+      </form>
+      {matches?.map((g) => (
+        <div key={g.id} className="rounded-2xl p-4 flex items-center gap-3" style={{ border: `1px solid ${T.border}` }}>
+          <Avatar name={g.name} />
+          <div className="flex-1 min-w-0">
+            <p className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_semi }}>{g.name}</p>
+            <p className="truncate" style={{ fontSize: T.xs, color: T.mutedFg }}>{g.phone} · {g.ticketCode} · {g.tier}</p>
+          </div>
+          {g.status === "going" ? (
+            <Button size="sm" onClick={() => { onCheckIn(g.id); toast.success(`Đã check-in cho ${g.name}`); }}>
+              <UserCheck className="size-3.5" /> Check-in
+            </Button>
+          ) : (
+            <CheckedInPill guest={g} />
+          )}
+        </div>
+      ))}
+    </main>
+  );
+}
+
+// ── Chế độ trao quà tại booth ──────────────────────────────────────────────────
+
+function GiftDesk({ eventId, guests }: { eventId: string; guests: Guest[] }) {
+  const rewards = useRewards(eventId);
+  const [value, setValue] = useState("");
+  const [error, setError] = useState("");
+  const [code, setCode] = useState<string | null>(null);
+  // Tra lại mỗi lần rewards đổi, để trạng thái "đã trao" cập nhật ngay.
+  const found = useMemo(() => (code ? lookupReward(eventId, code) : null), [eventId, code, rewards]);
+  const list = Object.values(rewards);
+  const pending = list.filter((r) => r.status === "pending");
+  const claimed = list.length - pending.length;
+
+  const open = (raw: string) => {
+    const text = raw.trim();
+    setError("");
+    if (!text) { setCode(null); setError("Nhập mã nhận quà, số điện thoại, mã đăng ký hoặc họ tên."); return; }
+    if (lookupReward(eventId, text)) { setCode(text.toUpperCase()); return; }
+    // Khách không mở được mã: tìm theo số điện thoại, mã đăng ký hoặc họ tên.
+    const phone = normalizePhone(text);
+    const key = text.toLowerCase();
+    const person = guests.find((g) => (phone && g.phone === phone) || g.ticketCode.toLowerCase() === key || g.name.toLowerCase() === key);
+    const reward = person && rewards[person.id];
+    if (reward) { setCode(reward.code); return; }
+    setCode(null);
+    setError(person ? `${person.name} chưa có phần quà.` : "Không tìm thấy mã nhận quà hợp lệ.");
+  };
+
+  const confirm = () => {
+    if (!found) return;
+    const res = claimReward(eventId, found.reward.code, STAFF);
+    if (res.status === "ok") toast.success(`Đã xác nhận trao “${found.gift?.name ?? "phần quà"}” cho ${found.registration?.name ?? "người tham dự"}.`);
+    else if (res.status === "already") toast.error("Phần quà này đã được trao.");
+    else toast.error("Không thể xác nhận trao quà. Vui lòng thử lại.");
+  };
+
+  return (
+    <main className="flex-1 max-w-[560px] w-full mx-auto px-4 sm:px-6 py-8 flex flex-col gap-4">
+      <div>
+        <p style={{ fontSize: T.lg, fontWeight: T.fw_semi }}>Xác nhận trao quà</p>
+        <p style={{ fontSize: T.sm, color: T.mutedFg, marginTop: 4 }}>
+          Quét hoặc nhập mã nhận quà của khách. Khách không mở được mã thì tìm theo số điện thoại, mã đăng ký hoặc họ tên.
+        </p>
+        <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 8 }}>
+          Chờ nhận <strong style={{ color: T.foreground }}>{pending.length}</strong> · Đã nhận <strong style={{ color: T.foreground }}>{claimed}</strong>
+        </p>
+      </div>
+      <form className="flex flex-col gap-1.5" onSubmit={(e) => { e.preventDefault(); open(value); }}>
+        <div className="flex gap-2">
+          <Input value={value} placeholder="Mã nhận quà, SĐT, mã đăng ký hoặc họ tên" aria-label="Tra cứu phần quà"
+            aria-invalid={!!error} onChange={(e) => { setValue(e.target.value); setError(""); }} />
+          <Button type="submit" className="shrink-0">Kiểm tra</Button>
+        </div>
+        {error && <p style={{ fontSize: T.xs, color: T.destructive }}>{error}</p>}
+      </form>
+      {found && (
+        <RewardCard found={found} onConfirm={confirm}
+          onIncident={() => { reportGiftIncident(eventId, found.reward.code, STAFF); toast("Đã ghi nhận sự cố quà tặng", { description: "Ban tổ chức sẽ xử lý. Phần quà vẫn ở trạng thái Chờ nhận." }); }} />
+      )}
+    </main>
+  );
+}
+
+function RewardCard({ found, onConfirm, onIncident }: {
+  found: NonNullable<ReturnType<typeof lookupReward>>; onConfirm: () => void; onIncident: () => void;
+}) {
+  const { reward, gift, registration } = found;
+  const claimedDone = reward.status === "claimed";
+  const image = gift?.image ?? "🎁";
+  return (
+    <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ border: `1px solid ${claimedDone ? T.border : T.primary}` }}>
+      <div className="flex items-center gap-4">
+        <span className="size-14 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden" style={{ backgroundColor: T.secondary, fontSize: 30 }}>
+          {image.startsWith("data:") ? <img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : image}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p style={{ fontSize: T.xs, color: T.mutedFg }}>Phần quà</p>
+          <p className="truncate" style={{ fontSize: T.lg, fontWeight: T.fw_semi }}>{gift?.name ?? "Phần quà"}</p>
+          <p style={{ fontSize: T.xs, color: T.mutedFg, fontFamily: "monospace" }}>Mã quà {gift?.code ?? "—"} · Mã nhận {reward.code}</p>
+        </div>
+        <span className="shrink-0 whitespace-nowrap" style={{ fontSize: T.xs, fontWeight: T.fw_medium, padding: "3px 10px", borderRadius: 999,
+          color: claimedDone ? T.successText : T.warningText, backgroundColor: claimedDone ? T.successSubtle : T.warningSubtle }}>
+          {claimedDone ? "Đã nhận" : "Chờ nhận"}
+        </span>
+      </div>
+      <dl className="grid grid-cols-2 gap-3" style={{ margin: 0 }}>
+        <Info label="Người nhận" value={registration?.name ?? "—"} />
+        <Info label="Số điện thoại" value={registration ? maskPhone(registration.phone) : "—"} />
+        <Info label="Mã đăng ký" value={registration?.ticketCode ?? "—"} />
+        <Info label="Thời gian chơi" value={reward.playedAt} />
+      </dl>
+      {claimedDone ? (
+        <div className="rounded-xl p-3" style={{ backgroundColor: T.successSubtle }}>
+          <p style={{ fontSize: T.xs, fontWeight: T.fw_semi, color: T.successText, letterSpacing: "0.04em" }}>PHẦN QUÀ ĐÃ ĐƯỢC TRAO</p>
+          <p style={{ fontSize: T.sm, color: T.foreground, marginTop: 4 }}>
+            Thời gian nhận: {reward.claimedAt} · Nhân viên xác nhận: {reward.claimedBy}
+          </p>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button onClick={onConfirm}><CheckCircle2 className="size-4" /> Xác nhận đã trao quà</Button>
+          <Button variant="ghost" onClick={onIncident}>Báo sự cố quà tặng</Button>
+        </div>
       )}
     </div>
   );
@@ -333,14 +517,31 @@ export function CheckInPage({ event, sampleGuests = false }: { event: EventDraft
 /** Cột cố định để hạng vé (căn trái) và trạng thái (căn phải) thẳng hàng giữa các dòng. */
 const GUEST_COLS = "grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_120px_210px]";
 
+function Avatar({ name }: { name: string }) {
+  return (
+    <span className="size-9 rounded-full flex items-center justify-center shrink-0"
+      style={{ backgroundColor: "rgba(30,170,255,0.12)", color: T.primary, fontSize: T.sm, fontWeight: T.fw_semi }}>
+      {name.trim().split(/\s+/).pop()?.[0]?.toUpperCase()}
+    </span>
+  );
+}
+
+function CheckedInPill({ guest: g }: { guest: Guest }) {
+  return (
+    <span className="flex items-center gap-1.5 whitespace-nowrap" title={g.source === "self" ? "Tự check-in bằng số điện thoại" : undefined}
+      style={{ fontSize: T.xs, fontWeight: T.fw_medium, color: T.successText, backgroundColor: T.successSubtle,
+        padding: "4px 10px", borderRadius: 999 }}>
+      {g.source === "self" ? <Smartphone className="size-3.5" /> : <CheckCircle2 className="size-3.5" />}
+      Đã check-in{g.checkinTime ? ` · ${g.checkinTime}` : ""}
+    </span>
+  );
+}
+
 function GuestRow({ guest: g, onCheckIn, onUndo }: { guest: Guest; onCheckIn: () => void; onUndo: () => void }) {
   return (
     <li className={`grid items-center gap-4 ${GUEST_COLS} py-3`} style={{ borderBottom: `1px solid ${T.border}` }}>
       <div className="flex items-center gap-3 min-w-0">
-        <span className="size-9 rounded-full flex items-center justify-center shrink-0"
-          style={{ backgroundColor: "rgba(30,170,255,0.12)", color: T.primary, fontSize: T.sm, fontWeight: T.fw_semi }}>
-          {g.name.trim().split(/\s+/).pop()?.[0]?.toUpperCase()}
-        </span>
+        <Avatar name={g.name} />
         <div className="min-w-0">
           <p className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{g.name}</p>
           <p className="truncate" style={{ fontSize: T.xs, color: T.mutedFg }}>{g.email} · {g.ticketCode}</p>
@@ -357,11 +558,7 @@ function GuestRow({ guest: g, onCheckIn, onUndo }: { guest: Guest; onCheckIn: ()
           <Button size="sm" variant="outline" onClick={onCheckIn}><UserCheck className="size-3.5" /> Check-in</Button>
         ) : (
           <>
-            <span className="flex items-center gap-1.5 whitespace-nowrap"
-              style={{ fontSize: T.xs, fontWeight: T.fw_medium, color: T.successText, backgroundColor: T.successSubtle,
-                padding: "4px 10px", borderRadius: 999 }}>
-              <CheckCircle2 className="size-3.5" /> Đã check-in{g.checkinTime ? ` · ${g.checkinTime}` : ""}
-            </span>
+            <CheckedInPill guest={g} />
             <button type="button" onClick={onUndo} title="Hoàn tác check-in" aria-label={`Hoàn tác check-in của ${g.name}`}
               className="size-7 flex items-center justify-center cursor-pointer transition-colors hover:bg-[var(--secondary)]"
               style={{ color: T.mutedFg }}>
@@ -371,6 +568,37 @@ function GuestRow({ guest: g, onCheckIn, onUndo }: { guest: Guest; onCheckIn: ()
         )}
       </div>
     </li>
+  );
+}
+
+function ProgressCard({ checkedIn, total, pct }: { checkedIn: number; total: number; pct: number }) {
+  return (
+    <div className="rounded-2xl p-4" style={{ backgroundColor: T.secondary }}>
+      <div className="flex items-baseline justify-between gap-3">
+        <p style={{ color: T.successText }}>
+          <span style={{ fontSize: T.xl, fontWeight: T.fw_semi }}>{checkedIn}</span>
+          <span style={{ fontSize: T.sm, marginLeft: 6 }}>Đã check-in</span>
+        </p>
+        <p style={{ fontSize: T.sm, color: T.mutedFg }}>{total} đã đăng ký</p>
+      </div>
+      <div className="h-1.5 rounded-full overflow-hidden mt-3" style={{ backgroundColor: "rgba(0,0,0,0.08)" }}>
+        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: T.successText }} />
+      </div>
+      <a href="/event" target="_blank" rel="noreferrer"
+        className="inline-flex items-center gap-1 mt-4 hover:underline"
+        style={{ fontSize: T.xs, color: T.mutedFg }}>
+        Quản lý sự kiện <ArrowUpRight className="size-3" />
+      </a>
+    </div>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt style={{ fontSize: T.xs, color: T.mutedFg }}>{label}</dt>
+      <dd className="truncate" style={{ fontSize: T.sm, color: T.foreground, margin: "2px 0 0" }}>{value}</dd>
+    </div>
   );
 }
 
