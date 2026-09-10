@@ -88,6 +88,9 @@ const RECENT_ATTENDEES = [
   { name: "Lê Văn Đức",       email: "duc.le***@company.vn",  ticket: "Vé tiêu chuẩn", status: "checkin",    time: "14 phút trước" },
   { name: "Phạm Thu Hà",      email: "ha.pha***@gmail.com",   ticket: "Vé tiêu chuẩn", status: "registered", time: "21 phút trước" },
   { name: "Hoàng Quốc Bảo",  email: "bao.hoa***@firm.vn",    ticket: "Vé VIP",         status: "checkin",    time: "35 phút trước" },
+  { name: "Vũ Thị Lan",       email: "lan.vu***@gmail.com",   ticket: "Vé tiêu chuẩn", status: "registered", time: "48 phút trước" },
+  { name: "Đặng Minh Khoa",   email: "khoa.da***@startup.io", ticket: "Vé VIP",         status: "checkin",    time: "1 giờ trước"   },
+  { name: "Bùi Ngọc Anh",     email: "anh.bui***@gmail.com",  ticket: "Vé tiêu chuẩn", status: "registered", time: "2 giờ trước"   },
 ];
 
 type Host = { name: string; email: string; role: string };
