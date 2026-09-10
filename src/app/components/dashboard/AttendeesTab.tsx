@@ -56,14 +56,14 @@ interface EventDraft { id: string; name: string; status: string; [k: string]: an
 // ── Mock data ─────────────────────────────────────────────────────────────────
 
 export const MOCK_ATTENDEES: Attendee[] = [
-  { id: "a1", name: "Nguyễn Văn A",  email: "nguyenvana@gmail.com", phone: "098xxxxxxx", tier: "VIP",        price: "499.000đ", ticketCode: "VIP-000124", status: "valid",      checkedIn: false, registeredAt: "30/06/2026 09:30", company: "Công ty ABC",    title: "CTO" },
-  { id: "a2", name: "Trần Minh B",   email: "tranminhb@gmail.com",  phone: "097xxxxxxx", tier: "Standard",   price: "Miễn phí", ticketCode: "STD-000087", status: "checked-in", checkedIn: true,  registeredAt: "30/06/2026 10:15", checkinTime: "08:45, 01/07/2026", company: "Startup XYZ", title: "Developer" },
-  { id: "a3", name: "Lê Hoàng C",   email: "lehoangc@gmail.com",   phone: "096xxxxxxx", tier: "Early Bird", price: "299.000đ", ticketCode: "EB-000045",  status: "valid",      checkedIn: false, registeredAt: "29/06/2026 16:20" },
-  { id: "a4", name: "Phạm Thị D",   email: "phamthid@gmail.com",   phone: "095xxxxxxx", tier: "VIP",        price: "499.000đ", ticketCode: "VIP-000125", status: "checked-in", checkedIn: true,  registeredAt: "29/06/2026 14:00", checkinTime: "09:05, 01/07/2026" },
-  { id: "a5", name: "Vũ Hoàng E",   email: "vuhoange@gmail.com",   phone: "094xxxxxxx", tier: "Standard",   price: "Miễn phí", ticketCode: "STD-000088", status: "valid",      checkedIn: false, registeredAt: "28/06/2026 11:30" },
-  { id: "a6", name: "Bùi Thị F",    email: "buithif@gmail.com",    phone: "093xxxxxxx", tier: "Early Bird", price: "299.000đ", ticketCode: "EB-000046",  status: "cancelled",  checkedIn: false, registeredAt: "27/06/2026 09:00" },
-  { id: "a7", name: "Hoàng Văn G",  email: "hoangvang@gmail.com",  phone: "092xxxxxxx", tier: "Standard",   price: "Miễn phí", ticketCode: "STD-000089", status: "checked-in", checkedIn: true,  registeredAt: "27/06/2026 08:00", checkinTime: "09:15, 01/07/2026" },
-  { id: "a8", name: "Ngô Thị H",    email: "ngothih@gmail.com",    phone: "091xxxxxxx", tier: "VIP",        price: "499.000đ", ticketCode: "VIP-000126", status: "valid",      checkedIn: false, registeredAt: "26/06/2026 17:45", company: "ACME Corp", title: "CEO" },
+  { id: "a1", name: "Nguyễn Văn A",  email: "nguyenvana@gmail.com", phone: "0981234567", tier: "VIP",        price: "499.000đ", ticketCode: "VIP-000124", status: "valid",      checkedIn: false, registeredAt: "30/06/2026 09:30", company: "Công ty ABC",    title: "CTO" },
+  { id: "a2", name: "Trần Minh B",   email: "tranminhb@gmail.com",  phone: "0971234568", tier: "Standard",   price: "Miễn phí", ticketCode: "STD-000087", status: "checked-in", checkedIn: true,  registeredAt: "30/06/2026 10:15", checkinTime: "08:45, 01/07/2026", company: "Startup XYZ", title: "Developer" },
+  { id: "a3", name: "Lê Hoàng C",   email: "lehoangc@gmail.com",   phone: "0961234569", tier: "Early Bird", price: "299.000đ", ticketCode: "EB-000045",  status: "valid",      checkedIn: false, registeredAt: "29/06/2026 16:20" },
+  { id: "a4", name: "Phạm Thị D",   email: "phamthid@gmail.com",   phone: "0951234570", tier: "VIP",        price: "499.000đ", ticketCode: "VIP-000125", status: "checked-in", checkedIn: true,  registeredAt: "29/06/2026 14:00", checkinTime: "09:05, 01/07/2026" },
+  { id: "a5", name: "Vũ Hoàng E",   email: "vuhoange@gmail.com",   phone: "0941234571", tier: "Standard",   price: "Miễn phí", ticketCode: "STD-000088", status: "valid",      checkedIn: false, registeredAt: "28/06/2026 11:30" },
+  { id: "a6", name: "Bùi Thị F",    email: "buithif@gmail.com",    phone: "0931234572", tier: "Early Bird", price: "299.000đ", ticketCode: "EB-000046",  status: "cancelled",  checkedIn: false, registeredAt: "27/06/2026 09:00" },
+  { id: "a7", name: "Hoàng Văn G",  email: "hoangvang@gmail.com",  phone: "0921234573", tier: "Standard",   price: "Miễn phí", ticketCode: "STD-000089", status: "checked-in", checkedIn: true,  registeredAt: "27/06/2026 08:00", checkinTime: "09:15, 01/07/2026" },
+  { id: "a8", name: "Ngô Thị H",    email: "ngothih@gmail.com",    phone: "0911234574", tier: "VIP",        price: "499.000đ", ticketCode: "VIP-000126", status: "valid",      checkedIn: false, registeredAt: "26/06/2026 17:45", company: "ACME Corp", title: "CEO" },
 ];
 
 const TIER_BREAKDOWN = [
