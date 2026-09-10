@@ -11,6 +11,7 @@ import { ThongTinChiTietRoute } from "./pages/event/ThongTinChiTietRoute";
 import { AttendeesRoute } from "./pages/event/AttendeesRoute";
 import { CheckInRoute } from "./pages/event/CheckInRoute";
 import { DrawProjectorRoute } from "./pages/DrawProjectorRoute";
+import { SelfCheckInRoute, AttendeeOverviewRoute, GiftBoxRoute } from "./pages/AttendeeRoutes";
 import { KhoVeRoute } from "./pages/event/KhoVeRoute";
 import { LichSuHoatDongRoute } from "./pages/event/LichSuHoatDongRoute";
 import { ThanhVienRoute } from "./pages/event/ThanhVienRoute";
@@ -61,6 +62,19 @@ export const router = createBrowserRouter([
   {
     path: "/man-chieu",
     Component: DrawProjectorRoute,
+  },
+  // Màn của người tham dự (điện thoại): tự check-in qua QR chung, Tổng quan, chọn quà.
+  {
+    path: "/tu-check-in",
+    Component: SelfCheckInRoute,
+  },
+  {
+    path: "/su-kien-cua-toi",
+    Component: AttendeeOverviewRoute,
+  },
+  {
+    path: "/chon-qua",
+    Component: GiftBoxRoute,
   },
   {
     path: "*",
