@@ -1286,7 +1286,8 @@ function LandingPageEditor({ event, settings, onSettingsChange }: {
 
       {/* ── Right canvas ── */}
       <div className="flex-1 min-w-0 overflow-auto">
-        <DemoPublicLandingPage bgStyle={settings.bgStyle} bgColor={settings.bgColor} regMode={settings.regMode} ticketsConfigured={settings.ticketsConfigured} coverUrl={coverUrl} themeBg={themePageBg(event.theme)} />
+        <DemoPublicLandingPage bgStyle={settings.bgStyle} bgColor={settings.bgColor} regMode={settings.regMode} ticketsConfigured={settings.ticketsConfigured} coverUrl={coverUrl} themeBg={themePageBg(event.theme)}
+          themeImage={(event as { pageImage?: string }).pageImage} />
       </div>
 
       {/* ── Popup: Chỉnh sửa giới thiệu sự kiện ── */}
@@ -1512,7 +1513,7 @@ const DEMO_TIERS = [
 // Event brand accent color (separate from platform primary)
 const OG = "#FF8644";
 
-export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfigured = true, coverUrl, themeBg }: { bgStyle?: "light" | "white" | "brand"; bgColor?: string; regMode?: RegMode; ticketsConfigured?: boolean; coverUrl?: string | null; themeBg?: string } = {}) {
+export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfigured = true, coverUrl, themeBg, themeImage }: { bgStyle?: "light" | "white" | "brand"; bgColor?: string; regMode?: RegMode; ticketsConfigured?: boolean; coverUrl?: string | null; themeBg?: string; themeImage?: string } = {}) {
   const showTiers = regMode === "tickets" || regMode === undefined; // default to showing tiers in /demo
   const [step, setStep]         = useState<"select" | "form" | "payment" | "success">("select");
   const [selectedTier, setTier] = useState<string | null>(null);
@@ -1572,6 +1573,12 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
       backgroundColor: bgStyle === "white" ? "#ffffff"
         : bgStyle === "brand" && bgColor ? bgColor + "18"
         : (themeBg ?? "#f6f8fb"),
+      // Ảnh nền do người dùng tải lên phủ lên màu theme, cũng chỉ khi không
+      // chọn tường minh "Trắng" hay "Màu thương hiệu".
+      ...(themeImage && bgStyle !== "white" && !(bgStyle === "brand" && bgColor) ? {
+        backgroundImage: `linear-gradient(rgba(255,255,255,0.35), rgba(255,255,255,0.35)), url("${themeImage}")`,
+        backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed",
+      } : {}),
       transition: "background-color 0.2s",
     }}>
 
