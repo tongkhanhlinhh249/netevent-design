@@ -855,7 +855,7 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange }: {
   return (
     <div className="rounded-2xl overflow-hidden flex flex-col"
       style={{ border: `1px solid ${T.border}`, boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-        backgroundColor: activeTheme?.page ?? T.background, transition: "background-color 0.2s" }}>
+        backgroundColor: T.background }}>
       {/* Section 1: Cover 16:9 */}
       <EventCoverUpload
         previewUrl={previewUrl}
@@ -976,8 +976,28 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
     }, 700);
   };
 
+
+  // Chọn giao diện thì cả trang tạo sự kiện đổi nền theo, như một bản xem
+  // trước sống của trang sự kiện. Màn này nằm trong <main> của AdminDashboard
+  // nên không tự phủ ra được mép panel — tô thẳng lên <main> gần nhất khi đang
+  // mở, và trả lại nền cũ khi rời màn.
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const pageBg = THEMES.find((t) => t.id === theme)?.page ?? "";
+  React.useEffect(() => {
+    const main = rootRef.current?.closest("main") as HTMLElement | null;
+    if (!main) return;
+    const prevBg = main.style.backgroundColor;
+    const prevTransition = main.style.transition;
+    main.style.transition = "background-color 0.25s";
+    main.style.backgroundColor = pageBg;
+    return () => {
+      main.style.backgroundColor = prevBg;
+      main.style.transition = prevTransition;
+    };
+  }, [pageBg]);
+
   return (
-    <div className="w-full flex flex-col" style={{ minHeight: "min(calc(100vh - 180px), 100%)" }}>
+    <div ref={rootRef} className="w-full flex flex-col" style={{ minHeight: "min(calc(100vh - 180px), 100%)" }}>
       {/* Back */}
 
       <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
@@ -1236,7 +1256,8 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
 
       {/* ── Sticky footer ── */}
       <div className="sticky bottom-0 left-0 right-0 mt-6 -mx-8 px-8 py-4 flex items-center justify-between"
-        style={{ backgroundColor: T.background, borderTop: `1px solid ${T.border}`, zIndex: 10 }}>
+        style={{ backgroundColor: pageBg || T.background, borderTop: `1px solid ${T.border}`, zIndex: 10,
+          transition: "background-color 0.25s" }}>
         <p style={{ fontSize: T.xs, color: T.mutedFg }}>
           {!form.name.trim() ? "Vui lòng nhập tên sự kiện." : !isValid ? "Vui lòng điền đầy đủ các trường bắt buộc." : "Sẵn sàng tạo bản nháp."}
         </p>
