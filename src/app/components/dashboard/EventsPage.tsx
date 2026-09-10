@@ -853,9 +853,7 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange }: {
   const activeTheme = THEMES.find((t) => t.id === theme);
 
   return (
-    <div className="rounded-2xl overflow-hidden flex flex-col"
-      style={{ border: `1px solid ${T.border}`, boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-        backgroundColor: T.background }}>
+    <div className="flex flex-col gap-3">
       {/* Section 1: Cover 16:9 */}
       <EventCoverUpload
         previewUrl={previewUrl}
@@ -864,7 +862,7 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange }: {
       />
 
       {/* Section 2: Theme trigger — opens the picker drawer on the right */}
-      <div className="p-4">
+      <div>
         <button type="button" data-pill="off"
           onClick={() => setThemeOpen(true)}
           className="flex items-center gap-3 p-2.5 rounded-xl w-full text-left cursor-pointer transition-opacity hover:opacity-90"
@@ -982,6 +980,18 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   // nên không tự phủ ra được mép panel — tô thẳng lên <main> gần nhất khi đang
   // mở, và trả lại nền cũ khi rời màn.
   const rootRef = React.useRef<HTMLDivElement>(null);
+
+  // Bề mặt trong màn này là trắng trong suốt thay vì trắng đục, để nền theme
+  // xuyên qua các ô nhập. Định nghĩa lại biến ở gốc là đủ cho mọi ô con (Input,
+  // Select, ô cover, pill ngày giờ…). Ghi đè cả dạng --color-* vì utility của
+  // Tailwind có thể đọc qua biến trung gian đã được tính sẵn ở :root. Dialog và
+  // drawer render ở portal ngoài gốc này nên vẫn giữ nền trắng.
+  const GLASS_VARS = {
+    "--background": "rgba(255,255,255,0.72)",       "--color-background": "rgba(255,255,255,0.72)",
+    "--input-background": "rgba(255,255,255,0.6)",  "--color-input-background": "rgba(255,255,255,0.6)",
+    "--secondary": "rgba(255,255,255,0.5)",         "--color-secondary": "rgba(255,255,255,0.5)",
+    "--muted": "rgba(255,255,255,0.35)",            "--color-muted": "rgba(255,255,255,0.35)",
+  } as React.CSSProperties;
   const pageBg = THEMES.find((t) => t.id === theme)?.page ?? "";
   React.useEffect(() => {
     const main = rootRef.current?.closest("main") as HTMLElement | null;
@@ -997,10 +1007,10 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   }, [pageBg]);
 
   return (
-    <div ref={rootRef} className="w-full flex flex-col" style={{ minHeight: "min(calc(100vh - 180px), 100%)" }}>
+    <div ref={rootRef} className="w-full flex flex-col" style={{ minHeight: "min(calc(100vh - 180px), 100%)", ...GLASS_VARS }}>
       {/* Back */}
 
-      <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-6 w-full max-w-[960px] mx-auto">
         <h2 style={{ color: T.foreground, fontSize: T["2xl"], fontWeight: T.fw_semi }}>Tạo sự kiện</h2>
         <div className="flex items-center gap-3">
           {/* Quyền riêng tư */}
@@ -1029,21 +1039,19 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 flex-1">
+      {/* Cột hẹp căn giữa, không card đục: nền theme lộ ra hai bên và xuyên qua
+          các ô nhập trong suốt, như một bản xem trước của trang sự kiện. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 w-full max-w-[960px] mx-auto items-start">
 
-        {/* ── Left: Unified Preview sự kiện card ── */}
-        <div className="lg:col-span-2 flex flex-col gap-0">
+        {/* ── Left: ảnh cover + giao diện, đứng yên khi form cuộn ── */}
+        <div className="flex flex-col gap-0 lg:sticky lg:top-6">
           <UnifiedEventPreviewCard form={form} theme={theme} onThemeChange={setTheme} />
         </div>
 
         {/* ── Right: Form ── */}
-        <div className="lg:col-span-3">
-          <Card className="flex flex-col gap-0 p-0 overflow-hidden">
-            <div className="px-6 py-4 shrink-0" style={{ borderBottom: `1px solid ${T.border}` }}>
-              <p style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Thông tin sự kiện</p>
-            </div>
-
-            <div className="px-6 py-5 flex flex-col gap-5 overflow-y-auto" style={{ maxHeight: "min(calc(100vh - 320px), 60vh)" }}>
+        <div className="min-w-0">
+          <div>
+            <div className="flex flex-col gap-5">
 
               {/* 1. Tên sự kiện */}
               <div className="flex flex-col gap-1.5">
@@ -1249,23 +1257,25 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                 </p>
               </div>
 
+              {/* Hành động nằm cuối cột form như mẫu — không còn thanh footer
+                  full-width cắt ngang nền. */}
+              <div className="flex flex-col gap-2 pt-2">
+                <Button className="w-full h-11" disabled={!isValid || loading} onClick={handleCreate}>
+                  {loading ? "Đang tạo..." : "Tạo sự kiện"}
+                </Button>
+                <div className="flex items-center justify-between gap-3">
+                  <p style={{ fontSize: T.xs, color: T.mutedFg }}>
+                    {!form.name.trim() ? "Vui lòng nhập tên sự kiện." : !isValid ? "Vui lòng điền đầy đủ các trường bắt buộc." : "Sẵn sàng tạo sự kiện."}
+                  </p>
+                  <button type="button" data-pill="off" onClick={onCancel}
+                    className="shrink-0 cursor-pointer transition-opacity hover:opacity-70"
+                    style={{ background: "none", border: "none", padding: 0, fontSize: T.xs, color: T.mutedFg }}>
+                    Hủy
+                  </button>
+                </div>
+              </div>
             </div>
-          </Card>
-        </div>
-      </div>
-
-      {/* ── Sticky footer ── */}
-      <div className="sticky bottom-0 left-0 right-0 mt-6 -mx-8 px-8 py-4 flex items-center justify-between"
-        style={{ backgroundColor: pageBg || T.background, borderTop: `1px solid ${T.border}`, zIndex: 10,
-          transition: "background-color 0.25s" }}>
-        <p style={{ fontSize: T.xs, color: T.mutedFg }}>
-          {!form.name.trim() ? "Vui lòng nhập tên sự kiện." : !isValid ? "Vui lòng điền đầy đủ các trường bắt buộc." : "Sẵn sàng tạo bản nháp."}
-        </p>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={onCancel}>Hủy</Button>
-          <Button disabled={!isValid || loading} onClick={handleCreate}>
-            {loading ? "Đang tạo..." : "Tạo sự kiện"}
-          </Button>
+          </div>
         </div>
       </div>
     </div>
