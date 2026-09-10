@@ -343,6 +343,11 @@ const PERMISSIONS = [
   { id: "guests",   label: "Xem danh sách người tham dự" },
   { id: "members",  label: "Mời và quản lý thành viên" },
   { id: "revenue",  label: "Xem báo cáo doanh thu" },
+  { id: "minigame",        label: "Cấu hình minigame" },
+  { id: "minigameResults", label: "Xem kết quả minigame" },
+  { id: "minigameExport",  label: "Xuất dữ liệu minigame" },
+  { id: "giftStock",       label: "Điều chỉnh kho quà" },
+  { id: "giftClaim",       label: "Xác nhận trao quà" },
 ] as const;
 
 type PermissionId = typeof PERMISSIONS[number]["id"];
@@ -360,17 +365,17 @@ const PRESET_GROUPS: {
   {
     id: "admin", name: "Quản trị sự kiện", icon: Shield, tint: T.primary,
     desc: "Dựng và vận hành sự kiện được giao.",
-    allow: ["event", "publish", "tickets", "checkin", "guests", "revenue"],
+    allow: ["event", "publish", "tickets", "checkin", "guests", "revenue", "minigame", "minigameResults", "giftStock", "giftClaim"],
   },
   {
     id: "staff", name: "Nhân sự sự kiện", icon: UserCog, tint: T.successText,
     desc: "Trực tại sự kiện, chủ yếu lo check-in.",
-    allow: ["checkin", "guests"],
+    allow: ["checkin", "guests", "giftClaim"],
   },
   {
     id: "viewer", name: "Chỉ xem", icon: Eye, tint: T.mutedFg,
     desc: "Theo dõi số liệu, không thay đổi được gì.",
-    allow: ["guests", "revenue"],
+    allow: ["guests", "revenue", "minigameResults"],
   },
 ];
 
