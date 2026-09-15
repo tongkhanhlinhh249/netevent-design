@@ -1061,7 +1061,7 @@ export function EventDashboard() {
           {/* ── Check-in: bật/tắt quét mã QR và nhập số điện thoại ── */}
           <CheckinSettingsCard eventId={currentEvent.id} />
 
-          {/* ── Cấu hình email: người gửi + ba email tự động (EmailSettings.tsx) ── */}
+          {/* ── Email sự kiện: người gửi + bốn email tự động (EmailSettings.tsx) ── */}
           <EmailSettingsCard key={currentEvent.id} event={currentEvent} organizerName={orgName} />
 
           {/* ── Đơn vị tổ chức — hiển thị trên trang sự kiện ── */}

@@ -1,30 +1,32 @@
 import * as React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle, CheckCircle2, ChevronRight, Clock, Copy, Link2, Pencil, Plus, RotateCcw, Send,
+  AlertTriangle, CheckCircle2, Clock, Copy, Link2, Plus, RotateCcw, Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "../ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import type { EventDraft } from "./EventsPage";
 import { shortDateVi } from "../../data/eventFormat";
+import { TokenEditor, type TokenEditorHandle } from "./EmailTokenEditor";
 
 /**
- * Cấu hình email của sự kiện — theo tài liệu nghiệp vụ
- * NetEvent_Nghiep_vu_Cau_hinh_email.md, rút gọn giao diện:
+ * Email sự kiện — theo tài liệu nghiệp vụ NetEvent_Nghiep_vu_Cau_hinh_email.md,
+ * trình bày theo hành trình sự kiện chứ không như công cụ tự động hoá:
  *
- * - Người gửi: chỉ chọn địa chỉ gửi. Mặc định là email NetEvent; "Email của
- *   tôi" chỉ lưu được khi địa chỉ đã xác thực tên miền và xác minh hộp thư.
- *   Đang xác thực thì cấu hình đang chạy giữ nguyên. Tên hiển thị lấy theo đơn
- *   vị tổ chức (sửa ở Thông tin chung); thư trả lời về chính email riêng, hoặc
- *   về email tài khoản khi gửi bằng email NetEvent.
- * - Ba email tự động bật/tắt độc lập, mỗi loại có nội dung riêng.
+ * - Bốn email có sẵn mẫu hoàn chỉnh: xác nhận đăng ký, nhắc tham dự, sắp bắt
+ *   đầu, cảm ơn tham dự. Người dùng chỉ bật/tắt và sửa nội dung khi cần.
+ * - Trình soạn không lộ cú pháp biến: nội dung lưu {{bien}}, người dùng thấy thẻ
+ *   như [Tên sự kiện] và chèn qua "Thêm thông tin tự động" (EmailTokenEditor.tsx).
+ * - Người gửi: mặc định email NetEvent; "Email của tôi" chỉ lưu được khi địa chỉ
+ *   đã xác thực tên miền và xác minh hộp thư. Tên hiển thị lấy theo đơn vị tổ
+ *   chức; thư trả lời về chính email riêng, hoặc về email tài khoản.
  *
  * Địa chỉ gửi riêng lưu ở cấp tài khoản (dùng lại cho mọi sự kiện); lựa chọn
  * người gửi, nội dung và công tắc lưu theo sự kiện.
@@ -76,7 +78,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const isEmail = (v: string) => EMAIL_RE.test(v.trim());
 const norm = (v: string) => v.trim().toLowerCase();
 
-type EmailKind = "confirm" | "remind" | "thanks";
+type EmailKind = "confirm" | "remind" | "starting" | "thanks";
+const KINDS: EmailKind[] = ["confirm", "remind", "starting", "thanks"];
 type Audience = "checked-in" | "all";
 interface Template { subject: string; body: string }
 
@@ -108,9 +111,10 @@ interface EventEmailConfig {
 const isReady = (i?: SenderIdentity) => !!i && i.dnsVerified && i.mailboxVerified;
 
 const KIND_LABEL: Record<EmailKind, string> = {
-  confirm: "Xác nhận đăng ký",
-  remind:  "Nhắc lịch",
-  thanks:  "Cảm ơn",
+  confirm:  "Xác nhận đăng ký",
+  remind:   "Nhắc tham dự",
+  starting: "Sắp bắt đầu",
+  thanks:   "Cảm ơn tham dự",
 };
 
 const AUDIENCE_LABEL: Record<Audience, string> = {
@@ -118,23 +122,51 @@ const AUDIENCE_LABEL: Record<Audience, string> = {
   all:          "Tất cả đăng ký hợp lệ",
 };
 
-/** Chỉ các biến hệ thống thực sự điền được. */
-const VARIABLES = [
+/**
+ * Thông tin tự động chèn được vào email — chỉ những gì hệ thống thực sự điền được.
+ * Lưu dạng {{khoa}}, người dùng chỉ thấy thẻ. Giờ bắt đầu, giờ kết thúc và múi
+ * giờ gộp thành "Thời gian sự kiện"; địa điểm tự thành link tham gia khi sự kiện
+ * trực tuyến; vé hiện thành nút "Xem vé của bạn".
+ */
+const VARIABLES: { key: string; label: string; chip?: string }[] = [
   { key: "ten_nguoi_tham_du", label: "Tên người tham dự" },
   { key: "ten_su_kien",       label: "Tên sự kiện" },
-  { key: "gio_bat_dau",       label: "Giờ bắt đầu" },
-  { key: "gio_ket_thuc",      label: "Giờ kết thúc" },
-  { key: "mui_gio",           label: "Múi giờ" },
-  { key: "dia_diem",          label: "Địa điểm / link tham gia" },
-  { key: "link_ve",           label: "Link vé" },
+  { key: "thoi_gian_su_kien", label: "Thời gian sự kiện" },
+  { key: "dia_diem",          label: "Địa điểm / Link tham gia" },
+  { key: "link_ve",           label: "Vé của người tham dự", chip: "Xem vé của bạn" },
 ];
+const TOKEN_LABELS: Record<string, string> = Object.fromEntries(VARIABLES.map((v) => [v.key, v.chip ?? v.label]));
 const VAR_KEYS = VARIABLES.map((v) => v.key);
+/** Chỉ có nghĩa trong nội dung — bấm chèn khi đang ở ô tiêu đề thì vẫn vào nội dung. */
+const BODY_ONLY = new Set(["link_ve"]);
 const VAR_RE = /\{\{\s*([^{}]*?)\s*\}\}/g;
 const URL_RE = /^https?:\/\/\S+$/i;
-// Link trong nội dung: [chữ hiển thị](https://…) hoặc URL trần.
-const LINK_RE = /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
+// Xem trước: thông tin tự động, link [chữ](https://…) và URL trần.
+const PREVIEW_RE = /\{\{\s*([a-z_]+)\s*\}\}|\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
+const SAMPLE_TICKET_URL = "https://netevent.vn/ve/MINH-HOA";
+const SAMPLE_JOIN_URL = "https://meet.netevent.vn/minh-hoa";
 
 const DEFAULT_TEMPLATES: Record<EmailKind, Template> = {
+  confirm: {
+    subject: "Xác nhận đăng ký: {{ten_su_kien}}",
+    body: "Chào {{ten_nguoi_tham_du}},\n\nĐăng ký tham dự {{ten_su_kien}} của bạn đã được xác nhận.\n\nThời gian: {{thoi_gian_su_kien}}\nĐịa điểm: {{dia_diem}}\n\n{{link_ve}}\n\nHẹn gặp bạn tại sự kiện!",
+  },
+  remind: {
+    subject: "Nhắc lịch: {{ten_su_kien}} diễn ra vào ngày mai",
+    body: "Chào {{ten_nguoi_tham_du}},\n\n{{ten_su_kien}} sẽ diễn ra vào ngày mai. Bạn nhớ sắp xếp thời gian tham dự nhé.\n\nThời gian: {{thoi_gian_su_kien}}\nĐịa điểm: {{dia_diem}}\n\nMang theo vé để check-in nhanh hơn:\n{{link_ve}}\n\nHẹn gặp bạn tại sự kiện!",
+  },
+  starting: {
+    subject: "{{ten_su_kien}} sắp bắt đầu",
+    body: "Chào {{ten_nguoi_tham_du}},\n\n{{ten_su_kien}} sẽ bắt đầu sau 1 giờ nữa.\n\nThời gian: {{thoi_gian_su_kien}}\nĐịa điểm: {{dia_diem}}\n\n{{link_ve}}\n\nHẹn gặp bạn!",
+  },
+  thanks: {
+    subject: "Cảm ơn bạn đã tham dự {{ten_su_kien}}",
+    body: "Chào {{ten_nguoi_tham_du}},\n\nCảm ơn bạn đã dành thời gian tham dự {{ten_su_kien}}. Hy vọng bạn đã có những trải nghiệm đáng nhớ.\n\nHẹn gặp lại bạn ở các sự kiện tiếp theo!",
+  },
+};
+
+/** Mẫu mặc định của bản trước (giờ bắt đầu, giờ kết thúc, múi giờ tách riêng). Chưa sửa thì nâng lên mẫu mới. */
+const LEGACY_DEFAULTS: Partial<Record<EmailKind, Template>> = {
   confirm: {
     subject: "Xác nhận đăng ký: {{ten_su_kien}}",
     body: "Chào {{ten_nguoi_tham_du}},\n\nĐăng ký tham dự {{ten_su_kien}} của bạn đã được xác nhận.\n\nThời gian: {{gio_bat_dau}} – {{gio_ket_thuc}} ({{mui_gio}})\nĐịa điểm: {{dia_diem}}\n\nVé QR của bạn: {{link_ve}}\n\nHẹn gặp bạn tại sự kiện!",
@@ -143,10 +175,6 @@ const DEFAULT_TEMPLATES: Record<EmailKind, Template> = {
     subject: "Nhắc lịch: {{ten_su_kien}} bắt đầu sau 24 giờ",
     body: "Chào {{ten_nguoi_tham_du}},\n\n{{ten_su_kien}} sẽ bắt đầu lúc {{gio_bat_dau}} ({{mui_gio}}).\nĐịa điểm: {{dia_diem}}\n\nNhớ mang theo vé QR để check-in nhanh hơn: {{link_ve}}",
   },
-  thanks: {
-    subject: "Cảm ơn bạn đã tham dự {{ten_su_kien}}",
-    body: "Chào {{ten_nguoi_tham_du}},\n\nCảm ơn bạn đã dành thời gian tham dự {{ten_su_kien}}. Hy vọng bạn đã có những trải nghiệm đáng nhớ.\n\nHẹn gặp lại bạn ở các sự kiện tiếp theo!",
-  },
 };
 
 const initAccount = (): AccountEmail => ({ identities: [] });
@@ -154,19 +182,39 @@ const initAccount = (): AccountEmail => ({ identities: [] });
 const initConfig = (): EventEmailConfig => ({
   mode: "netevent",
   fromEmail: null,
-  automations: { confirm: true, remind: false, thanks: false },
+  automations: { confirm: true, remind: true, starting: false, thanks: true },
   thanksAudience: "checked-in",
   templates: DEFAULT_TEMPLATES,
   testSends: [],
 });
 
+/** Nội dung đã sửa ở bản trước: đưa các biến giờ cũ về [Thời gian sự kiện]. */
+const upgradeTokens = (s: string) => s
+  .replace(/\{\{\s*gio_bat_dau\s*\}\}(?:\s*[–-]\s*\{\{\s*gio_ket_thuc\s*\}\})?(?:\s*\(\s*\{\{\s*mui_gio\s*\}\}\s*\))?/g, "{{thoi_gian_su_kien}}")
+  .replace(/\s*\(\s*\{\{\s*mui_gio\s*\}\}\s*\)|\{\{\s*(?:gio_ket_thuc|mui_gio)\s*\}\}/g, "");
+
+function reviveConfig(raw: Partial<EventEmailConfig>): EventEmailConfig {
+  const base = initConfig();
+  const templates = { ...base.templates };
+  for (const k of KINDS) {
+    const t = raw.templates?.[k];
+    if (!t) continue;
+    const legacy = LEGACY_DEFAULTS[k];
+    templates[k] = legacy && t.subject === legacy.subject && t.body === legacy.body
+      ? DEFAULT_TEMPLATES[k]
+      : { subject: upgradeTokens(t.subject), body: upgradeTokens(t.body) };
+  }
+  return { ...base, ...raw, automations: { ...base.automations, ...raw.automations }, templates };
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function useStored<V extends object>(key: string, init: () => V): [V, React.Dispatch<React.SetStateAction<V>>] {
+function useStored<V extends object>(key: string, init: () => V, revive: (raw: Partial<V>) => V = (raw) => ({ ...init(), ...raw })):
+  [V, React.Dispatch<React.SetStateAction<V>>] {
   const [value, setValue] = useState<V>(() => {
     try {
       const raw = localStorage.getItem(key);
-      return raw ? { ...init(), ...(JSON.parse(raw) as V) } : init();
+      return raw ? revive(JSON.parse(raw) as Partial<V>) : init();
     } catch {
       return init();
     }
@@ -188,64 +236,83 @@ function useNow(ms = 1000) {
 }
 
 const usedVars = (text: string) => Array.from(text.matchAll(VAR_RE), (m) => m[1]);
-const unknownVars = (text: string) => [...new Set(usedVars(text).filter((v) => !VAR_KEYS.includes(v)))];
-const varList = (vars: string[]) => vars.map((v) => `{{${v}}}`).join(", ");
+const hasUnknownVars = (text: string) => usedVars(text).some((v) => !VAR_KEYS.includes(v));
 const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
-
-function templateErrors(t: Template) {
-  const errors: { subject?: string; body?: string } = {};
-  const subject = t.subject.trim();
-  const badSubject = unknownVars(t.subject);
-  const badBody = unknownVars(t.body);
-  if (!subject) errors.subject = "Nhập tiêu đề email.";
-  else if (subject.length > 150) errors.subject = "Tiêu đề tối đa 150 ký tự.";
-  else if (badSubject.length) errors.subject = `Biến không hợp lệ: ${varList(badSubject)}.`;
-  if (!t.body.trim()) errors.body = "Nhập nội dung email.";
-  else if (badBody.length) errors.body = `Biến không hợp lệ: ${varList(badBody)}. Chọn biến trong danh sách bên dưới.`;
-  return errors;
-}
-
-/** Biến cần dữ liệu mà sự kiện chưa có — phải xử lý trước khi bật gửi. */
-function missingData(t: Template, event: EventDraft) {
-  const used = new Set(usedVars(`${t.subject}\n${t.body}`));
-  const missing: string[] = [];
-  if ((used.has("gio_bat_dau") || used.has("gio_ket_thuc")) && !(event.startDate && event.startTime)) missing.push("thời gian");
-  if (used.has("dia_diem") && event.format !== "online" && !event.location?.trim()) missing.push("địa điểm");
-  return missing;
-}
-
-/** Dữ liệu minh họa cho xem trước và gửi thử — tên người nhận và link vé không có thật. */
-function sampleValues(event: EventDraft): Record<string, string> {
-  const start = shortDateVi(event.startDate) ?? "";
-  const end = shortDateVi(event.endDate || event.startDate) ?? "";
-  return {
-    ten_nguoi_tham_du: "Nguyễn Văn A",
-    ten_su_kien: event.name || "Sự kiện của bạn",
-    gio_bat_dau: event.startTime ? `${event.startTime}, ${start}` : "(chưa có)",
-    gio_ket_thuc: event.endTime ? `${event.endTime}, ${end}` : "(chưa có)",
-    mui_gio: "GMT+7",
-    dia_diem: event.format === "online" ? "https://meet.netevent.vn/minh-hoa" : (event.location?.trim() || "(chưa có địa điểm)"),
-    link_ve: "https://netevent.vn/ve/MINH-HOA",
-  };
-}
 
 const fill = (text: string, values: Record<string, string>) =>
   text.replace(VAR_RE, (whole, key: string) => values[key] ?? whole);
 
-/** Xem trước: hiện link trong nội dung như link thật. */
-function renderLinks(text: string) {
+/** Người dùng tự gõ đoạn trong dấu ngoặc nhọn: không phải thông tin tự động, không gửi đi được. */
+const BRACES_ERROR = "Có đoạn trong dấu {{ }} không phải thông tin tự động. Xoá đoạn đó và chèn bằng “Thêm thông tin tự động”.";
+
+function templateErrors(t: Template) {
+  const errors: { subject?: string; body?: string } = {};
+  const subject = t.subject.trim();
+  if (!subject) errors.subject = "Nhập tiêu đề email.";
+  else if (fill(subject, TOKEN_LABELS).length > 150) errors.subject = "Tiêu đề tối đa 150 ký tự.";
+  else if (hasUnknownVars(subject)) errors.subject = BRACES_ERROR;
+  if (!t.body.trim()) errors.body = "Nhập nội dung email.";
+  else if (hasUnknownVars(t.body)) errors.body = BRACES_ERROR;
+  return errors;
+}
+
+/** Thông tin tự động cần dữ liệu mà sự kiện chưa có — phải xử lý trước khi bật gửi. */
+function missingData(t: Template, event: EventDraft) {
+  const used = new Set(usedVars(`${t.subject}\n${t.body}`));
+  const missing: string[] = [];
+  if (used.has("thoi_gian_su_kien") && !(event.startDate && event.startTime)) missing.push("thời gian");
+  if (used.has("dia_diem") && event.format !== "online" && !event.location?.trim()) missing.push("địa điểm");
+  return missing;
+}
+
+/** "09:00 – 17:00, 01/08/2026 (GMT+7)"; kéo dài nhiều ngày thì "09:00 01/08 – 17:00 02/08/2026 (GMT+7)". */
+function eventTime(event: EventDraft) {
+  const start = shortDateVi(event.startDate);
+  if (!start || !event.startTime) return "(chưa có thời gian)";
+  const end = shortDateVi(event.endDate) ?? start;
+  return end === start
+    ? `${event.startTime}${event.endTime ? ` – ${event.endTime}` : ""}, ${start} (GMT+7)`
+    : `${event.startTime} ${start.slice(0, 5)} – ${[event.endTime, end].filter(Boolean).join(" ")} (GMT+7)`;
+}
+
+/** Dữ liệu mẫu cho xem trước và gửi thử: thông tin sự kiện thật, người nhận và vé minh hoạ. */
+function sampleValues(event: EventDraft): Record<string, string> {
+  return {
+    ten_nguoi_tham_du: "Nguyễn Minh Anh",
+    ten_su_kien: event.name || "Sự kiện của bạn",
+    thoi_gian_su_kien: eventTime(event),
+    dia_diem: event.format === "online" ? SAMPLE_JOIN_URL : (event.location?.trim() || "(chưa có địa điểm)"),
+    link_ve: TOKEN_LABELS.link_ve,
+  };
+}
+
+const TICKET_BUTTON: React.CSSProperties = {
+  display: "inline-block", padding: "8px 18px", borderRadius: 8, lineHeight: 1.4,
+  backgroundColor: T.primary, color: "#fff", fontWeight: T.fw_semi, textDecoration: "none",
+};
+
+/** Xem trước như email thật: thông tin tự động thay bằng dữ liệu mẫu, link bấm được, vé thành nút. */
+function renderEmail(text: string, values: Record<string, string>) {
   const parts: React.ReactNode[] = [];
   let last = 0;
-  for (const m of text.matchAll(LINK_RE)) {
+  for (const m of text.matchAll(PREVIEW_RE)) {
+    const [whole, key, linkText, linkUrl, bareUrl] = m;
+    if (key && !(key in values)) continue;
     const at = m.index ?? 0;
     if (at > last) parts.push(text.slice(last, at));
-    const href = m[2] ?? m[3];
-    parts.push(
-      <a key={at} href={href} target="_blank" rel="noreferrer" style={{ color: T.primary, textDecoration: "underline" }}>
-        {m[1] ?? m[3]}
-      </a>,
-    );
-    last = at + m[0].length;
+    last = at + whole.length;
+    const href = key === "link_ve" ? SAMPLE_TICKET_URL : key ? values[key] : (linkUrl ?? bareUrl);
+    if (key === "link_ve") {
+      parts.push(<a key={at} href={href} target="_blank" rel="noreferrer" style={TICKET_BUTTON}>{values.link_ve}</a>);
+    } else if (key && !URL_RE.test(href)) {
+      parts.push(href);
+    } else {
+      parts.push(
+        <a key={at} href={href} target="_blank" rel="noreferrer" style={{ color: T.primary, textDecoration: "underline" }}>
+          {linkText ?? href}
+        </a>,
+      );
+    }
   }
   if (last < text.length) parts.push(text.slice(last));
   return parts;
@@ -253,14 +320,26 @@ function renderLinks(text: string) {
 
 /** Thời điểm gửi. "Đăng ký thành công" theo nghiệp vụ: có duyệt / thanh toán thì chỉ gửi khi đã đủ điều kiện. */
 function whenOf(kind: EmailKind, event: EventDraft) {
-  if (kind === "remind") return "Trước giờ bắt đầu 24 tiếng";
-  if (kind === "thanks") return "Sau khi kết thúc 1 tiếng";
+  if (kind === "remind") return "1 ngày trước sự kiện";
+  if (kind === "starting") return "1 giờ trước sự kiện";
+  if (kind === "thanks") return "Sau khi sự kiện kết thúc";
   const approval = event.requireApproval;
   const paid = Number(event.ticketPrice || 0) > 0;
   if (approval && paid) return "Khi đăng ký được duyệt và thanh toán xong";
-  if (approval) return "Khi ban tổ chức duyệt đăng ký";
+  if (approval) return "Khi đăng ký được duyệt";
   if (paid) return "Khi thanh toán được xác nhận";
-  return "Khi đăng ký được xác nhận";
+  return "Ngay khi đăng ký thành công";
+}
+
+/** Câu mô tả dưới tiêu đề trình soạn. */
+function sentNote(kind: EmailKind, event: EventDraft) {
+  if (kind === "remind") return "Email này được gửi tự động 1 ngày trước khi sự kiện bắt đầu.";
+  if (kind === "starting") return "Email này được gửi tự động 1 giờ trước khi sự kiện bắt đầu.";
+  if (kind === "thanks") return "Email này được gửi tự động sau khi sự kiện kết thúc.";
+  const when = whenOf(kind, event);
+  return when === "Ngay khi đăng ký thành công"
+    ? "Email này được gửi tự động khi khách đăng ký thành công."
+    : `Email này được gửi tự động ${lowerFirst(when)}.`;
 }
 
 function dnsRecords(domain: string) {
@@ -275,13 +354,20 @@ const copy = (v: string) => { navigator.clipboard?.writeText(v).then(() => toast
 
 // ── Card ─────────────────────────────────────────────────────────────────────
 
+/** Cột "Trạng thái": vừa tiêu đề cột, công tắc căn phải. */
+const STATUS_COL = 60;
+/** Tên email giữ trên một dòng; thời điểm gửi xuống dòng khi thẻ hẹp. */
+const EMAIL_COLS = "grid-cols-[126px_minmax(0,1fr)]";
+
 export function EmailSettingsCard({ event, organizerName }: { event: EventDraft; organizerName: string }) {
-  const [config, setConfig]   = useStored<EventEmailConfig>(`netevent_email_v2_${event.id}`, initConfig);
+  const [config, setConfig]   = useStored<EventEmailConfig>(`netevent_email_v2_${event.id}`, initConfig, reviveConfig);
   const [account, setAccount] = useStored<AccountEmail>(ACCOUNT_KEY, initAccount);
   const [senderOpen, setSenderOpen]     = useState(false);
   const [senderPreset, setSenderPreset] = useState<EventEmailConfig["mode"] | undefined>();
   const [editing, setEditing]           = useState<EmailKind | null>(null);
   const openSender = (preset?: EventEmailConfig["mode"]) => { setSenderPreset(preset); setSenderOpen(true); };
+  // Đang dùng email NetEvent thì "Đổi email gửi" mở sẵn phần nhập email của tôi.
+  const changeSender = () => openSender(config.mode === "netevent" ? "custom" : undefined);
 
   const custom = config.mode === "custom" && !!config.fromEmail;
   const from = custom ? config.fromEmail! : NETEVENT_FROM;
@@ -298,7 +384,7 @@ export function EmailSettingsCard({ event, organizerName }: { event: EventDraft;
       const missing = missingData(config.templates[k], event);
       if (missing.length) {
         toast.error(`Chưa bật được email ${label}`, {
-          description: `Sự kiện chưa có ${missing.join(" và ")}. Cập nhật sự kiện hoặc bỏ biến tương ứng trong nội dung.`,
+          description: `Sự kiện chưa có ${missing.join(" và ")}. Cập nhật sự kiện hoặc bỏ thông tin đó khỏi nội dung email.`,
         });
         return;
       }
@@ -306,7 +392,7 @@ export function EmailSettingsCard({ event, organizerName }: { event: EventDraft;
     setConfig((c) => ({ ...c, automations: { ...c.automations, [k]: on } }));
     toast(on ? `Đã bật email ${label}` : `Đã tắt email ${label}`, {
       description: on
-        ? (k === "confirm" ? "Áp dụng cho các đăng ký được xác nhận từ bây giờ." : "Không gửi bù cho các mốc đã qua.")
+        ? (k === "confirm" ? "Áp dụng cho các đăng ký thành công từ bây giờ." : "Không gửi bù cho các mốc đã qua.")
         : "Các email chưa gửi của loại này sẽ bị huỷ.",
     });
   };
@@ -322,46 +408,48 @@ export function EmailSettingsCard({ event, organizerName }: { event: EventDraft;
 
   return (
     <div className="rounded-2xl p-5" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-      <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Cấu hình email</h3>
+      <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Email sự kiện</h3>
       <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6, marginTop: 4 }}>
-        Email tự động gửi cho người tham dự.
+        Tự động gửi cho người tham dự theo từng giai đoạn.
       </p>
 
-      {/* Người gửi: một dòng tóm tắt, bấm để thiết lập */}
-      <button type="button" onClick={() => openSender()} title="Thiết lập người gửi"
-        className="mt-4 w-full rounded-xl px-3 py-2.5 flex items-center gap-3 text-left cursor-pointer transition-opacity hover:opacity-85"
-        style={{ backgroundColor: T.secondary }}>
-        <span className="flex-1 min-w-0">
-          <span className="block" style={{ fontSize: T.xs, color: T.mutedFg }}>Người gửi</span>
-          <span className="block truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{organizerName}</span>
-          <span className="block truncate" style={{ fontSize: T.xs, color: T.mutedFg }}>{from}</span>
-        </span>
-        <ChevronRight className="size-4 shrink-0" style={{ color: T.mutedFg }} />
-      </button>
-      {pending ? (
+      {/* Người gửi dùng chung cho cả bốn email */}
+      <div className="mt-4 rounded-xl px-3 py-2.5" style={{ backgroundColor: T.secondary }}>
+        <div className="flex items-center justify-between gap-2">
+          <span style={{ fontSize: T.xs, color: T.mutedFg }}>Người gửi</span>
+          <LinkButton onClick={changeSender}>Đổi email gửi</LinkButton>
+        </div>
+        <p className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{organizerName}</p>
+        <p className="truncate" style={{ fontSize: T.xs, color: T.mutedFg }}>{from}</p>
+      </div>
+      {pending && (
         <p className="mt-2 flex items-center gap-1.5 min-w-0" style={{ fontSize: T.xs, color: T.warningText }}>
           <Clock className="size-3.5 shrink-0" />
           <span className="truncate">{pending.email} đang chờ xác thực</span>
         </p>
-      ) : config.mode === "netevent" && (
-        <div className="mt-2"><LinkButton onClick={() => openSender("custom")}>Dùng email của tôi</LinkButton></div>
       )}
 
-      {/* Email tự động: bấm vào hàng để sửa nội dung */}
-      <div className="mt-3 flex flex-col">
-        {(["confirm", "remind", "thanks"] as const).map((k, i) => (
-          <div key={k} className="flex items-center gap-3 py-2" style={{ borderTop: i === 0 ? "none" : `1px solid ${T.border}` }}>
-            <button type="button" onClick={() => setEditing(k)} title="Chỉnh nội dung"
-              className="flex-1 min-w-0 text-left rounded-xl -mx-2 px-2 py-1 cursor-pointer transition-colors hover:bg-[var(--secondary)]">
-              <span className="flex items-center gap-1.5" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>
-                {KIND_LABEL[k]} <Pencil className="size-3" style={{ color: T.mutedFg }} />
-              </span>
-              <span className="block truncate" style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>
-                {whenOf(k, event)}{k === "thanks" ? ` · ${AUDIENCE_LABEL[config.thanksAudience]}` : ""}
-              </span>
+      {/* Khi nào gửi → gửi gì → bật/tắt. Bấm vào một email để chỉnh nội dung. */}
+      <div className="mt-4">
+        <div className="flex items-center gap-3 pb-2" style={{ fontSize: T.xs, color: T.mutedFg, borderBottom: `1px solid ${T.border}` }}>
+          <div className={`flex-1 min-w-0 grid ${EMAIL_COLS} gap-3`}>
+            <span>Email</span>
+            <span>Thời điểm gửi</span>
+          </div>
+          <span className="shrink-0 text-right whitespace-nowrap" style={{ width: STATUS_COL }}>Trạng thái</span>
+        </div>
+        {KINDS.map((k, i) => (
+          <div key={k} className="flex items-center gap-3 py-1"
+            style={{ borderBottom: i < KINDS.length - 1 ? `1px solid ${T.border}` : "none" }}>
+            <button type="button" data-pill="off" onClick={() => setEditing(k)} title="Chỉnh email"
+              className={`flex-1 min-w-0 grid ${EMAIL_COLS} gap-3 items-center text-left rounded-xl -mx-2 px-2 py-2 cursor-pointer transition-colors hover:bg-[var(--secondary)]`}>
+              <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground, lineHeight: 1.4 }}>{KIND_LABEL[k]}</span>
+              <span style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.4 }}>{whenOf(k, event)}</span>
             </button>
-            <Switch className="shrink-0" aria-label={`Email ${KIND_LABEL[k].toLowerCase()}`}
-              checked={config.automations[k]} onCheckedChange={(v) => toggle(k, v)} />
+            <div className="shrink-0 flex justify-end" style={{ width: STATUS_COL }}>
+              <Switch aria-label={`Email ${KIND_LABEL[k].toLowerCase()}`}
+                checked={config.automations[k]} onCheckedChange={(v) => toggle(k, v)} />
+            </div>
           </div>
         ))}
       </div>
@@ -369,13 +457,13 @@ export function EmailSettingsCard({ event, organizerName }: { event: EventDraft;
       {editing && (
         <TemplateSheet kind={editing} event={event} config={config} from={from} testBlock={testBlock}
           senderName={organizerName} replyTo={replyTo}
-          onChangeSender={openSender}
+          onChangeSender={changeSender}
           onAudience={(a) => setConfig((c) => ({ ...c, thanksAudience: a }))}
           onSave={(t) => setConfig((c) => ({ ...c, templates: { ...c.templates, [editing]: t } }))}
           onTest={() => sendTest(editing)} onClose={() => setEditing(null)} />
       )}
-      {/* Render sau drawer nội dung: mở từ "Chỉnh nội dung" thì chồng lên trên,
-          đóng lại vẫn giữ nguyên nội dung đang soạn. */}
+      {/* Render sau drawer nội dung: mở từ "Đổi email gửi" trong trình soạn thì chồng
+          lên trên, đóng lại vẫn giữ nguyên nội dung đang soạn. */}
       {senderOpen && (
         <SenderSheet config={config} account={account} setAccount={setAccount} initialMode={senderPreset}
           onSave={(next) => { setConfig((c) => ({ ...c, ...next })); toast.success("Đã cập nhật người gửi cho sự kiện này."); }}
@@ -514,11 +602,11 @@ function SenderSheet({ config, account, setAccount, initialMode, onSave, onClose
   );
 }
 
-// ── Chỉnh nội dung ───────────────────────────────────────────────────────────
+// ── Chỉnh email ──────────────────────────────────────────────────────────────
 
 function TemplateSheet({ kind, event, config, from, senderName, replyTo, testBlock, onChangeSender, onAudience, onSave, onTest, onClose }: {
   kind: EmailKind; event: EventDraft; config: EventEmailConfig; from: string; senderName: string; replyTo: string; testBlock: string;
-  onChangeSender: (preset?: EventEmailConfig["mode"]) => void;
+  onChangeSender: () => void;
   onAudience: (a: Audience) => void;
   onSave: (t: Template) => void; onTest: () => void; onClose: () => void;
 }) {
@@ -526,23 +614,23 @@ function TemplateSheet({ kind, event, config, from, senderName, replyTo, testBlo
   const [subject, setSubject] = useState(saved.subject);
   const [body, setBody]       = useState(saved.body);
   const [view, setView]       = useState<"edit" | "preview">("edit");
-  // Vị trí con trỏ trong ô nội dung, để chèn biến đúng chỗ.
-  const [caret, setCaret]     = useState<number | null>(null);
+  const subjectRef = useRef<TokenEditorHandle>(null);
+  const bodyRef    = useRef<TokenEditorHandle>(null);
+  // Ô vừa đặt con trỏ nhận thông tin chèn vào; chưa chạm ô nào thì chèn vào nội dung.
+  const target = useRef<"subject" | "body">("body");
 
   const errors = templateErrors({ subject, body });
   const hasErrors = !!(errors.subject || errors.body);
   const dirty = subject !== saved.subject || body !== saved.body;
   const isDefault = subject === DEFAULT_TEMPLATES[kind].subject && body === DEFAULT_TEMPLATES[kind].body;
   const values = sampleValues(event);
+  const subjectLength = fill(subject.trim(), TOKEN_LABELS).length;
   // Gửi thử chỉ dùng nội dung đã lưu.
   const testReason = dirty ? "Lưu nội dung trước khi gửi thử." : testBlock;
 
-  const insertText = (token: string) => {
-    // Chưa đặt con trỏ trong ô nội dung thì chèn vào cuối, cách chữ đứng trước một khoảng.
-    const at = caret ?? body.length;
-    const sep = caret === null && body && !/\s$/.test(body) ? " " : "";
-    setBody(body.slice(0, at) + sep + token + body.slice(at));
-    setCaret(at + sep.length + token.length);
+  const insertVariable = (key: string) => {
+    const into = BODY_ONLY.has(key) ? "body" : target.current;
+    (into === "subject" ? subjectRef : bodyRef).current?.insertToken(key);
   };
 
   const [linkOpen, setLinkOpen] = useState(false);
@@ -551,8 +639,8 @@ function TemplateSheet({ kind, event, config, from, senderName, replyTo, testBlo
   const urlOk = URL_RE.test(linkUrl.trim());
   const insertLink = () => {
     if (!urlOk) return;
-    const text = linkText.trim();
-    insertText(text ? `[${text}](${linkUrl.trim()})` : linkUrl.trim());
+    const url = linkUrl.trim();
+    bodyRef.current?.insertLink(linkText.trim() || url, url);
     setLinkOpen(false); setLinkText(""); setLinkUrl("");
   };
 
@@ -561,30 +649,30 @@ function TemplateSheet({ kind, event, config, from, senderName, replyTo, testBlo
       <SheetContent className="p-0 flex flex-col gap-0 sm:max-w-[520px]">
         <div className="px-5 py-4 pr-12" style={{ borderBottom: `1px solid ${T.border}` }}>
           <SheetTitle style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>
-            Chỉnh nội dung · {KIND_LABEL[kind]}
+            Chỉnh email · {KIND_LABEL[kind]}
           </SheetTitle>
           <SheetDescription style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>
-            Gửi {lowerFirst(whenOf(kind, event))}.
+            {sentNote(kind, event)}
           </SheetDescription>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
-          {/* Người gửi dùng chung cho cả ba email — đổi ngay tại đây */}
-          <div className="flex items-center gap-2 min-w-0" style={{ fontSize: T.xs }}>
-            <span className="shrink-0" style={{ color: T.mutedFg }}>Từ</span>
-            <span className="flex-1 min-w-0 truncate" title={`${senderName} <${from}>`} style={{ color: T.foreground }}>
-              {senderName} &lt;{from}&gt;
-            </span>
-            <LinkButton onClick={() => onChangeSender(config.mode === "netevent" ? "custom" : undefined)}>
-              {config.mode === "netevent" ? "Dùng email của tôi" : "Đổi"}
-            </LinkButton>
+          {/* Người gửi dùng chung cho cả bốn email — đổi ngay tại đây */}
+          <div className="flex flex-col gap-1.5">
+            <Label>Người gửi</Label>
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="flex-1 min-w-0 truncate" title={`${senderName} <${from}>`} style={{ fontSize: T.sm, color: T.foreground }}>
+                {senderName} &lt;{from}&gt;
+              </span>
+              <LinkButton onClick={onChangeSender}>Đổi email gửi</LinkButton>
+            </div>
           </div>
           {/* Email cảm ơn phải cho thấy nhóm nhận */}
           {kind === "thanks" && (
-            <div className="flex items-center gap-2">
-              <span className="shrink-0" style={{ fontSize: T.xs, color: T.mutedFg }}>Gửi cho</span>
+            <div className="flex flex-col gap-1.5">
+              <Label>Gửi cho</Label>
               <Select value={config.thanksAudience} onValueChange={(v) => onAudience(v as Audience)}>
-                <SelectTrigger className="h-8 flex-1 min-w-0 cursor-pointer" style={{ fontSize: T.xs }}><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 cursor-pointer"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="checked-in">{AUDIENCE_LABEL["checked-in"]}</SelectItem>
                   <SelectItem value="all">{AUDIENCE_LABEL.all}</SelectItem>
@@ -612,39 +700,40 @@ function TemplateSheet({ kind, event, config, from, senderName, replyTo, testBlo
             <>
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="tpl-subject">Tiêu đề</Label>
-                  <span style={{ fontSize: T.xs, color: subject.trim().length > 150 ? T.destructive : T.mutedFg }}>
-                    {subject.trim().length}/150
-                  </span>
+                  <Label id="tpl-subject-label">Tiêu đề email</Label>
+                  {subjectLength > 120 && (
+                    <span style={{ fontSize: T.xs, color: subjectLength > 150 ? T.destructive : T.mutedFg }}>{subjectLength}/150</span>
+                  )}
                 </div>
-                <Input id="tpl-subject" value={subject} aria-invalid={!!errors.subject}
-                  onChange={(e) => setSubject(e.target.value)} />
+                <TokenEditor ref={subjectRef} singleLine aria-labelledby="tpl-subject-label" tokens={TOKEN_LABELS}
+                  value={subject} onChange={setSubject} invalid={!!errors.subject} placeholder="Ví dụ: Xác nhận đăng ký"
+                  onFocus={() => { target.current = "subject"; }} />
                 {errors.subject && <FieldError>{errors.subject}</FieldError>}
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="tpl-body">Nội dung</Label>
-                <Textarea id="tpl-body" rows={10} value={body} aria-invalid={!!errors.body}
-                  onChange={(e) => { setBody(e.target.value); setCaret(e.target.selectionStart); }}
-                  onSelect={(e) => setCaret(e.currentTarget.selectionStart)} />
+                <Label id="tpl-body-label">Nội dung</Label>
+                <TokenEditor ref={bodyRef} aria-labelledby="tpl-body-label" tokens={TOKEN_LABELS} minHeight={260}
+                  value={body} onChange={setBody} invalid={!!errors.body}
+                  onFocus={() => { target.current = "body"; }} />
                 {errors.body && <FieldError>{errors.body}</FieldError>}
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {VARIABLES.map((v) => (
-                  <button key={v.key} type="button" title={`Chèn {{${v.key}}}`} onClick={() => insertText(`{{${v.key}}}`)}
-                    className="inline-flex items-center gap-1 h-7 px-2.5 cursor-pointer transition-colors hover:bg-[var(--secondary)]"
-                    style={{ fontSize: T.xs, color: T.foreground, border: `1px solid ${T.border}` }}>
-                    <Plus className="size-3" /> {v.label}
-                  </button>
-                ))}
+              <div className="flex flex-wrap items-center gap-2">
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm"><Plus className="size-3.5" /> Thêm thông tin tự động</Button>
+                  </DropdownMenuTrigger>
+                  {/* Giữ con trỏ ở ô soạn sau khi chèn, không trả focus về nút */}
+                  <DropdownMenuContent align="start" className="w-60" onCloseAutoFocus={(e) => e.preventDefault()}>
+                    {VARIABLES.map((v) => (
+                      <DropdownMenuItem key={v.key} onSelect={() => insertVariable(v.key)}>{v.label}</DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Popover open={linkOpen} onOpenChange={setLinkOpen}>
                   <PopoverTrigger asChild>
-                    <button type="button"
-                      className="inline-flex items-center gap-1 h-7 px-2.5 cursor-pointer transition-colors hover:bg-[var(--secondary)]"
-                      style={{ fontSize: T.xs, fontWeight: T.fw_medium, color: T.primary, border: `1px solid ${T.border}` }}>
-                      <Link2 className="size-3" /> Chèn link
-                    </button>
+                    <Button variant="ghost" size="sm" style={{ color: T.primary }}><Link2 className="size-3.5" /> Chèn link</Button>
                   </PopoverTrigger>
-                  <PopoverContent align="start" className="w-72 flex flex-col gap-3">
+                  <PopoverContent align="start" className="w-72 flex flex-col gap-3" onCloseAutoFocus={(e) => e.preventDefault()}>
                     <div className="flex flex-col gap-1.5">
                       <Label htmlFor="link-text">Chữ hiển thị</Label>
                       <Input id="link-text" value={linkText} placeholder="Ví dụ: Xem chương trình"
@@ -675,11 +764,11 @@ function TemplateSheet({ kind, event, config, from, senderName, replyTo, testBlo
                 </div>
                 <div className="px-4 py-4 flex flex-col gap-3">
                   <p style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>{fill(subject, values)}</p>
-                  <p style={{ fontSize: T.sm, color: T.foreground, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{renderLinks(fill(body, values))}</p>
+                  <p style={{ fontSize: T.sm, color: T.foreground, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{renderEmail(body, values)}</p>
                 </div>
               </div>
-              <p style={{ fontSize: T.xs, color: T.mutedFg }}>
-                Dữ liệu minh họa — tên người tham dự và link vé không phải dữ liệu thật.
+              <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.5 }}>
+                Đây là nội dung mẫu. Khi gửi, thông tin sẽ tự động thay đổi theo từng người tham dự.
               </p>
             </>
           )}
