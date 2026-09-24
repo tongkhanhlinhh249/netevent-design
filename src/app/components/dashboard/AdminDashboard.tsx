@@ -25,6 +25,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose }
 import { Checkbox } from "../ui/checkbox";
 import { cn } from "../ui/utils";
 import { Menu } from "lucide-react";
+import { SettingsPage } from "./SenderEmailSettings";
 
 type UserRole = "owner" | "admin" | "staff";
 type MemberStatus = "active" | "invited" | "suspended";
@@ -1530,6 +1531,15 @@ export function AdminDashboard({ currentRole, onLogout }: AdminDashboardProps) {
   const { event: currentEvent } = useCurrentEvent();
   const [activePage, setActivePage] = useState("events");
 
+  // Màn khác điều hướng tới một trang của dashboard qua router state, vd. nút
+  // "Thay đổi" ở Email sự kiện mở thẳng Cài đặt.
+  useEffect(() => {
+    const target = (location.state as { page?: string } | null)?.page;
+    if (!target) return;
+    setActivePage(target);
+    if (target !== "events") setEventsScreen("list");
+  }, [location.state]);
+
   const handleNavigate = (id: string) => {
     setActivePage(id);
     if (id !== "events") setEventsScreen("list");
@@ -1730,6 +1740,8 @@ export function AdminDashboard({ currentRole, onLogout }: AdminDashboardProps) {
                   ? <EventsPage screen={eventsScreen} onScreenChange={setEventsScreen} />
                   : activePage === "notifications"
                   ? <NotificationsPage notifications={notifications} onMarkAllRead={markAllRead} onMarkRead={markRead} onAccept={acceptInvite} onDecline={declineInvite} />
+                  : activePage === "settings"
+                  ? <SettingsPage canEdit={currentRole === "owner" || currentRole === "admin"} />
                   : <EmptyPage page={activePage} />}
               </div>
             )}

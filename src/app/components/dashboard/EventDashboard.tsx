@@ -1183,7 +1183,7 @@ export function EventDashboard() {
           <CheckinSettingsCard eventId={currentEvent.id} />
 
           {/* ── Email sự kiện: người gửi + bốn email tự động (EmailSettings.tsx) ── */}
-          <EmailSettingsCard key={currentEvent.id} event={currentEvent} organizerName={orgName} />
+          <EmailSettingsCard key={currentEvent.id} event={currentEvent} />
 
           {/* ── Đơn vị tổ chức — hiển thị trên trang sự kiện ── */}
           <div className="rounded-2xl p-5" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>

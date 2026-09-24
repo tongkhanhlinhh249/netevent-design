@@ -1,8 +1,7 @@
 import * as React from "react";
 import { useEffect, useRef, useState } from "react";
-import {
-  AlertTriangle, CheckCircle2, Clock, Copy, Link2, Pencil, Plus, RotateCcw, Send,
-} from "lucide-react";
+import { AlertTriangle, Link2, Pencil, Plus, RotateCcw, Send } from "lucide-react";
+import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -15,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import type { EventDraft } from "./EventsPage";
 import { shortDateVi } from "../../data/eventFormat";
 import { TokenEditor, type TokenEditorHandle } from "./EmailTokenEditor";
+import { activeSender, useSenderEmail } from "../../data/senderEmail";
 
 /**
  * Email sự kiện — theo tài liệu nghiệp vụ NetEvent_Nghiep_vu_Cau_hinh_email.md,
@@ -24,15 +24,11 @@ import { TokenEditor, type TokenEditorHandle } from "./EmailTokenEditor";
  *   đầu, cảm ơn tham dự. Người dùng chỉ bật/tắt và sửa nội dung khi cần.
  * - Trình soạn không lộ cú pháp biến: nội dung lưu {{bien}}, người dùng thấy thẻ
  *   như [Tên sự kiện] và chèn qua "Thêm thông tin tự động" (EmailTokenEditor.tsx).
- * - Người gửi: mặc định email NetEvent; "Email của tôi" chỉ lưu được khi địa chỉ
- *   đã xác thực tên miền và xác minh hộp thư. Tên hiển thị lấy theo đơn vị tổ
- *   chức; thư trả lời về chính email riêng, hoặc về email tài khoản.
+ * - Người gửi chỉ đọc ở đây. Theo [Feature Spec] CẤU HÌNH EMAIL GỬI, địa chỉ gửi
+ *   là cấu hình của cả tài khoản, đặt ở Cài đặt → Email gửi; màn này chỉ cho
+ *   biết đang gửi bằng địa chỉ nào và mở thẳng sang đó khi cần đổi.
  *
- * Địa chỉ gửi riêng lưu ở cấp tài khoản (dùng lại cho mọi sự kiện); lựa chọn
- * người gửi, nội dung và công tắc lưu theo sự kiện.
- *
- * Bản prototype không gửi email thật: "Kiểm tra xác thực" mô phỏng lần đầu
- * chưa thấy bản ghi DNS, lần sau thì xác thực xong.
+ * Nội dung và công tắc bật/tắt thì lưu theo sự kiện.
  */
 
 // ── Tokens ───────────────────────────────────────────────────────────────────
@@ -62,53 +58,13 @@ const T = {
 const NETEVENT_FROM = "no-reply@mail.netevent.vn";
 /** Email tài khoản đang đăng nhập: đã xác minh khi tạo tài khoản, là nơi nhận thư gửi thử. */
 const ACCOUNT_EMAIL = "owner@netevent.vn";
-const ACCOUNT_KEY = "netevent_email_account_v2";
 const HOUR = 60 * 60 * 1000;
-
-/** Hộp thư công cộng: NetEvent chưa gửi thay được, chỉ dùng làm Reply-To. */
-const PUBLIC_PROVIDERS: Record<string, string> = {
-  "gmail.com": "Gmail", "googlemail.com": "Gmail",
-  "yahoo.com": "Yahoo", "yahoo.com.vn": "Yahoo",
-  "outlook.com": "Outlook", "hotmail.com": "Outlook", "live.com": "Outlook",
-  "icloud.com": "iCloud",
-};
-
-// Không cho khoảng trắng — kể cả ký tự xuống dòng, vốn có thể chèn thêm header.
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const isEmail = (v: string) => EMAIL_RE.test(v.trim());
-const norm = (v: string) => v.trim().toLowerCase();
 
 type EmailKind = "confirm" | "remind" | "starting" | "thanks";
 const KINDS: EmailKind[] = ["confirm", "remind", "starting", "thanks"];
 type Audience = "checked-in" | "all";
 interface Template { subject: string; body: string }
 
-interface SenderIdentity {
-  email: string;
-  dnsVerified: boolean;
-  mailboxVerified: boolean;
-  /** Số lần bấm "Kiểm tra xác thực" (mô phỏng). */
-  checks: number;
-  /** Lần gửi thư xác minh gần nhất — gửi lại cách nhau ít nhất 60 giây. */
-  sentAt: number;
-}
-
-/** Dữ liệu cấp tài khoản, dùng lại cho mọi sự kiện. */
-interface AccountEmail {
-  identities: SenderIdentity[];
-}
-
-/** Cấu hình theo sự kiện. */
-interface EventEmailConfig {
-  mode: "netevent" | "custom";
-  fromEmail: string | null;
-  automations: Record<EmailKind, boolean>;
-  thanksAudience: Audience;
-  templates: Record<EmailKind, Template>;
-  testSends: number[];
-}
-
-const isReady = (i?: SenderIdentity) => !!i && i.dnsVerified && i.mailboxVerified;
 
 const KIND_LABEL: Record<EmailKind, string> = {
   confirm:  "Xác nhận đăng ký",
@@ -177,11 +133,7 @@ const LEGACY_DEFAULTS: Partial<Record<EmailKind, Template>> = {
   },
 };
 
-const initAccount = (): AccountEmail => ({ identities: [] });
-
 const initConfig = (): EventEmailConfig => ({
-  mode: "netevent",
-  fromEmail: null,
   automations: { confirm: true, remind: true, starting: false, thanks: true },
   thanksAudience: "checked-in",
   templates: DEFAULT_TEMPLATES,
@@ -223,16 +175,6 @@ function useStored<V extends object>(key: string, init: () => V, revive: (raw: P
     try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* bộ nhớ bị chặn — chỉ giữ trong phiên */ }
   }, [key, value]);
   return [value, setValue];
-}
-
-/** Đồng hồ cho bộ đếm "Gửi lại sau …". */
-function useNow(ms = 1000) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), ms);
-    return () => window.clearInterval(id);
-  }, [ms]);
-  return now;
 }
 
 const usedVars = (text: string) => Array.from(text.matchAll(VAR_RE), (m) => m[1]);
@@ -342,16 +284,6 @@ function sentNote(kind: EmailKind, event: EventDraft) {
     : `Email này được gửi tự động ${lowerFirst(when)}.`;
 }
 
-function dnsRecords(domain: string) {
-  return [
-    { type: "CNAME", host: `em7421.${domain}`,         value: "u7421.wl.mail.netevent.vn" },
-    { type: "CNAME", host: `ne1._domainkey.${domain}`, value: "ne1.dkim.mail.netevent.vn" },
-    { type: "TXT",   host: `_dmarc.${domain}`,         value: "v=DMARC1; p=none;" },
-  ];
-}
-
-const copy = (v: string) => { navigator.clipboard?.writeText(v).then(() => toast("Đã sao chép"), () => {}); };
-
 // ── Card ─────────────────────────────────────────────────────────────────────
 
 /** Cột "Trạng thái": vừa tiêu đề cột, công tắc căn phải. */
@@ -359,22 +291,19 @@ const STATUS_COL = 60;
 /** Tên email giữ trên một dòng; thời điểm gửi xuống dòng khi thẻ hẹp. */
 const EMAIL_COLS = "grid-cols-[126px_minmax(0,1fr)]";
 
-export function EmailSettingsCard({ event, organizerName }: { event: EventDraft; organizerName: string }) {
-  const [config, setConfig]   = useStored<EventEmailConfig>(`netevent_email_v2_${event.id}`, initConfig, reviveConfig);
-  const [account, setAccount] = useStored<AccountEmail>(ACCOUNT_KEY, initAccount);
-  const [senderOpen, setSenderOpen]     = useState(false);
-  const [senderPreset, setSenderPreset] = useState<EventEmailConfig["mode"] | undefined>();
-  const [editing, setEditing]           = useState<EmailKind | null>(null);
-  const openSender = (preset?: EventEmailConfig["mode"]) => { setSenderPreset(preset); setSenderOpen(true); };
-  // Đang dùng email NetEvent thì "Đổi email gửi" mở sẵn phần nhập email của tôi.
-  const changeSender = () => openSender(config.mode === "netevent" ? "custom" : undefined);
+export function EmailSettingsCard({ event }: { event: EventDraft }) {
+  const navigate = useNavigate();
+  const [config, setConfig] = useStored<EventEmailConfig>(`netevent_email_v2_${event.id}`, initConfig, reviveConfig);
+  const [sender] = useSenderEmail();
+  const [editing, setEditing] = useState<EmailKind | null>(null);
 
-  const custom = config.mode === "custom" && !!config.fromEmail;
-  const from = custom ? config.fromEmail! : NETEVENT_FROM;
-  // Thư trả lời về chính email riêng; gửi bằng email NetEvent thì về email tài khoản.
-  const replyTo = custom ? config.fromEmail! : ACCOUNT_EMAIL;
-  // Địa chỉ riêng đang chờ xác thực hiển thị tách khỏi cấu hình đang chạy.
-  const pending = account.identities.find((i) => !isReady(i) && i.email !== config.fromEmail);
+  // Người gửi là cấu hình của cả tài khoản; đổi ở Cài đặt → Email gửi.
+  const active = activeSender(sender);
+  const from = active.email;
+  const senderName = active.name;
+  // Thư trả lời về chính địa chỉ gửi; gửi bằng email NetEvent thì về email tài khoản.
+  const replyTo = from === NETEVENT_FROM ? ACCOUNT_EMAIL : from;
+  const openSenderSettings = () => navigate("/", { state: { page: "settings" } });
   const recentTests = config.testSends.filter((t) => Date.now() - t < HOUR);
   const testBlock = recentTests.length >= 5 ? "Đã đạt giới hạn 5 lần gửi thử mỗi giờ." : "";
 
@@ -413,19 +342,20 @@ export function EmailSettingsCard({ event, organizerName }: { event: EventDraft;
         Tự động gửi cho người tham dự theo từng giai đoạn.
       </p>
 
-      {/* Người gửi dùng chung cho cả bốn email */}
+      {/* Người gửi dùng chung cho cả bốn email, quản lý ở Cài đặt */}
       <div className="mt-4 rounded-xl px-3 py-2.5" style={{ backgroundColor: T.secondary }}>
         <div className="flex items-center justify-between gap-2">
           <span style={{ fontSize: T.xs, color: T.mutedFg }}>Người gửi</span>
-          <LinkButton onClick={changeSender}>Đổi email gửi</LinkButton>
+          <LinkButton onClick={openSenderSettings}>Thay đổi</LinkButton>
         </div>
-        <p className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{organizerName}</p>
+        <p className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{senderName}</p>
         <p className="truncate" style={{ fontSize: T.xs, color: T.mutedFg }}>{from}</p>
+        <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 4 }}>Email này được quản lý trong Cài đặt.</p>
       </div>
-      {pending && (
-        <p className="mt-2 flex items-center gap-1.5 min-w-0" style={{ fontSize: T.xs, color: T.warningText }}>
-          <Clock className="size-3.5 shrink-0" />
-          <span className="truncate">{pending.email} đang chờ xác thực</span>
+      {active.fallback && (
+        <p className="mt-2 flex items-start gap-1.5 min-w-0" style={{ fontSize: T.xs, color: T.warningText, lineHeight: 1.5 }}>
+          <AlertTriangle className="size-3.5 shrink-0 mt-0.5" />
+          <span>Email của tổ chức hiện không thể sử dụng. NetEvent đang tạm thời gửi bằng email mặc định.</span>
         </p>
       )}
 
@@ -458,157 +388,19 @@ export function EmailSettingsCard({ event, organizerName }: { event: EventDraft;
 
       {editing && (
         <TemplateSheet kind={editing} event={event} config={config} from={from} testBlock={testBlock}
-          senderName={organizerName} replyTo={replyTo}
-          onChangeSender={changeSender}
+          senderName={senderName} replyTo={replyTo}
           onAudience={(a) => setConfig((c) => ({ ...c, thanksAudience: a }))}
           onSave={(t) => setConfig((c) => ({ ...c, templates: { ...c.templates, [editing]: t } }))}
           onTest={() => sendTest(editing)} onClose={() => setEditing(null)} />
-      )}
-      {/* Render sau drawer nội dung: mở từ "Đổi email gửi" trong trình soạn thì chồng
-          lên trên, đóng lại vẫn giữ nguyên nội dung đang soạn. */}
-      {senderOpen && (
-        <SenderSheet config={config} account={account} setAccount={setAccount} initialMode={senderPreset}
-          onSave={(next) => { setConfig((c) => ({ ...c, ...next })); toast.success("Đã cập nhật người gửi cho sự kiện này."); }}
-          onClose={() => setSenderOpen(false)} />
       )}
     </div>
   );
 }
 
-// ── Thiết lập người gửi ──────────────────────────────────────────────────────
-
-function SenderSheet({ config, account, setAccount, initialMode, onSave, onClose }: {
-  config: EventEmailConfig;
-  account: AccountEmail;
-  setAccount: React.Dispatch<React.SetStateAction<AccountEmail>>;
-  /** Mở sẵn một chế độ, vd. "custom" khi bấm "Dùng email của tôi". */
-  initialMode?: EventEmailConfig["mode"];
-  onSave: (next: Pick<EventEmailConfig, "mode" | "fromEmail">) => void;
-  onClose: () => void;
-}) {
-  const now = useNow();
-  const latest = account.identities[account.identities.length - 1];
-  const [mode, setMode]       = useState(initialMode ?? config.mode);
-  const [email, setEmail]     = useState(config.fromEmail ?? latest?.email ?? "");
-  const [showDns, setShowDns] = useState(false);
-
-  const addr = norm(email);
-  const domain = addr.split("@")[1] ?? "";
-  const provider = isEmail(addr) ? PUBLIC_PROVIDERS[domain] : undefined;
-  const identity = account.identities.find((i) => i.email === addr);
-  const ready = isReady(identity);
-
-  const patchIdentity = (next: SenderIdentity) =>
-    setAccount((a) => ({ ...a, identities: a.identities.map((i) => (i.email === next.email ? next : i)) }));
-  // Địa chỉ mới luôn là một yêu cầu xác minh mới, không kế thừa trạng thái của địa chỉ khác.
-  const startVerification = () => {
-    setAccount((a) => ({ ...a, identities: [...a.identities,
-      { email: addr, dnsVerified: false, mailboxVerified: false, checks: 0, sentAt: Date.now() }] }));
-    toast(`Đã gửi thư xác minh tới ${addr}`);
-  };
-  const checkIdentity = (i: SenderIdentity) => {
-    // Mô phỏng: lần đầu hộp thư đã xác minh nhưng bản ghi DNS chưa cập nhật; lần sau thì xong.
-    const next = { ...i, checks: i.checks + 1, mailboxVerified: true, dnsVerified: i.dnsVerified || i.checks + 1 >= 2 };
-    patchIdentity(next);
-    if (isReady(next)) toast.success(`${i.email} đã sẵn sàng sử dụng`);
-  };
-  const resend = (i: SenderIdentity) => {
-    patchIdentity({ ...i, sentAt: Date.now() });
-    toast(`Đã gửi lại thư xác minh tới ${i.email}`);
-  };
-  const wait = identity ? Math.min(60, Math.max(0, 60 - Math.floor((now - identity.sentAt) / 1000))) : 0;
-
-  const fromError = mode !== "custom" ? ""
-    : !isEmail(addr) ? "Nhập email gửi của tổ chức."
-    : provider ? `NetEvent chưa hỗ trợ gửi từ tài khoản ${provider} cá nhân.`
-    : !ready ? "Xác thực email gửi trước khi lưu." : "";
-  const dirty = mode !== config.mode || (mode === "custom" && addr !== config.fromEmail);
-
-  const save = () => {
-    if (fromError || !dirty) return;
-    onSave({ mode, fromEmail: mode === "custom" ? addr : null });
-    onClose();
-  };
-
-  return (
-    <Sheet open onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="p-0 flex flex-col gap-0 sm:max-w-[440px]">
-        <div className="px-5 py-4 pr-12" style={{ borderBottom: `1px solid ${T.border}` }}>
-          <SheetTitle style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Thiết lập người gửi</SheetTitle>
-          <SheetDescription style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>
-            Chọn địa chỉ dùng để gửi email cho người tham dự.
-          </SheetDescription>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-2" role="radiogroup" aria-label="Gửi từ">
-          <RadioRow on={mode === "netevent"} onClick={() => setMode("netevent")} title="Email NetEvent" sub={NETEVENT_FROM} />
-          <RadioRow on={mode === "custom"} onClick={() => setMode("custom")} title="Email của tôi"
-            sub={mode === "custom" ? undefined : "Địa chỉ thuộc tên miền của tổ chức"} />
-          {/* Ô nhập chỉ hiện khi chọn "Email của tôi" */}
-          {mode === "custom" && (
-            <div className="flex flex-col gap-2 pl-7">
-              <Input type="email" value={email} placeholder="events@tochuc.vn" aria-label="Email gửi"
-                onChange={(e) => { setEmail(e.target.value); setShowDns(false); }} />
-              {provider ? (
-                <Notice>
-                  NetEvent chưa hỗ trợ gửi từ tài khoản {provider} cá nhân. Hãy dùng email thuộc tên miền của tổ chức.
-                </Notice>
-              ) : ready ? (
-                <p className="flex items-center gap-1.5" style={{ fontSize: T.xs, color: T.successText }}>
-                  <CheckCircle2 className="size-3.5" /> Đã xác thực, sẵn sàng sử dụng
-                </p>
-              ) : identity ? (
-                <div className="rounded-xl p-3 flex flex-col gap-2.5" style={{ backgroundColor: T.secondary }}>
-                  <Step ok={identity.dnsVerified} label={`Tên miền ${domain}`}
-                    action={!identity.dnsVerified && (
-                      <LinkButton onClick={() => setShowDns((v) => !v)}>{showDns ? "Ẩn bản ghi" : "Xem bản ghi DNS"}</LinkButton>
-                    )} />
-                  {showDns && !identity.dnsVerified && (
-                    <div className="flex flex-col gap-1.5">
-                      {dnsRecords(domain).map((r) => <DnsRecord key={r.host} {...r} />)}
-                    </div>
-                  )}
-                  <Step ok={identity.mailboxVerified} label="Hộp thư"
-                    action={!identity.mailboxVerified && (
-                      <LinkButton disabled={wait > 0} onClick={() => resend(identity)}>
-                        {wait > 0 ? `Gửi lại sau ${wait}s` : "Gửi lại thư xác minh"}
-                      </LinkButton>
-                    )} />
-                  {identity.checks > 0 && !identity.dnsVerified && (
-                    <p style={{ fontSize: T.xs, color: T.warningText, lineHeight: 1.5 }}>
-                      Tên miền chưa được xác thực. Hoàn tất hướng dẫn hoặc nhờ người quản trị tên miền hỗ trợ.
-                    </p>
-                  )}
-                  <Button size="sm" variant="outline" className="self-start" onClick={() => checkIdentity(identity)}>
-                    Kiểm tra xác thực
-                  </Button>
-                </div>
-              ) : isEmail(addr) ? (
-                <Button size="sm" variant="outline" className="self-start" onClick={startVerification}>
-                  Xác thực địa chỉ này
-                </Button>
-              ) : null}
-            </div>
-          )}
-        </div>
-
-        <div className="px-5 py-4 flex flex-col gap-2" style={{ borderTop: `1px solid ${T.border}` }}>
-          {dirty && fromError && <p style={{ fontSize: T.xs, color: T.warningText }}>{fromError}</p>}
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose}>Hủy</Button>
-            <Button disabled={!dirty || !!fromError} onClick={save}>Lưu thay đổi</Button>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
 // ── Chỉnh email ──────────────────────────────────────────────────────────────
 
-function TemplateSheet({ kind, event, config, from, senderName, replyTo, testBlock, onChangeSender, onAudience, onSave, onTest, onClose }: {
+function TemplateSheet({ kind, event, config, from, senderName, replyTo, testBlock, onAudience, onSave, onTest, onClose }: {
   kind: EmailKind; event: EventDraft; config: EventEmailConfig; from: string; senderName: string; replyTo: string; testBlock: string;
-  onChangeSender: () => void;
   onAudience: (a: Audience) => void;
   onSave: (t: Template) => void; onTest: () => void; onClose: () => void;
 }) {
@@ -659,15 +451,12 @@ function TemplateSheet({ kind, event, config, from, senderName, replyTo, testBlo
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
-          {/* Người gửi dùng chung cho cả bốn email — đổi ngay tại đây */}
+          {/* Người gửi chỉ đọc: đổi ở Cài đặt → Email gửi, không nhập máy chủ tại đây */}
           <div className="flex flex-col gap-1.5">
             <Label>Người gửi</Label>
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="flex-1 min-w-0 truncate" title={`${senderName} <${from}>`} style={{ fontSize: T.sm, color: T.foreground }}>
-                {senderName} &lt;{from}&gt;
-              </span>
-              <LinkButton onClick={onChangeSender}>Đổi email gửi</LinkButton>
-            </div>
+            <span className="truncate" title={`${senderName} <${from}>`} style={{ fontSize: T.sm, color: T.foreground }}>
+              {senderName} &lt;{from}&gt;
+            </span>
           </div>
           {/* Email cảm ơn phải cho thấy nhóm nhận */}
           {kind === "thanks" && (
@@ -799,55 +588,6 @@ function TemplateSheet({ kind, event, config, from, senderName, replyTo, testBlo
 
 // ── Mảnh nhỏ ─────────────────────────────────────────────────────────────────
 
-function RadioRow({ on, onClick, title, sub }: { on: boolean; onClick: () => void; title: string; sub?: string }) {
-  return (
-    <button type="button" role="radio" aria-checked={on} onClick={onClick}
-      className="flex items-center gap-3 w-full text-left rounded-xl px-3 py-2.5 cursor-pointer transition-colors"
-      style={{ border: `1px solid ${on ? T.primary : T.border}`, backgroundColor: on ? "rgba(30,170,255,0.05)" : T.background }}>
-      <span className="size-4 rounded-full shrink-0 flex items-center justify-center"
-        style={{ border: `1.5px solid ${on ? T.primary : T.border}` }}>
-        {on && <span className="size-2 rounded-full" style={{ backgroundColor: T.primary }} />}
-      </span>
-      <span className="flex-1 min-w-0">
-        <span className="block" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{title}</span>
-        {sub && <span className="block truncate" style={{ fontSize: T.xs, color: T.mutedFg }}>{sub}</span>}
-      </span>
-    </button>
-  );
-}
-
-function Step({ ok, label, action }: { ok: boolean; label: string; action?: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-2 min-w-0">
-      {ok
-        ? <CheckCircle2 className="size-4 shrink-0" style={{ color: T.successText }} />
-        : <Clock className="size-4 shrink-0" style={{ color: T.warningText }} />}
-      <span className="truncate" style={{ fontSize: T.sm, color: T.foreground }}>{label}</span>
-      <span className="shrink-0" style={{ fontSize: T.xs, color: ok ? T.successText : T.mutedFg }}>
-        {ok ? "Đã xác thực" : "Chưa xác thực"}
-      </span>
-      {action && <span className="ml-auto shrink-0">{action}</span>}
-    </div>
-  );
-}
-
-function DnsRecord({ type, host, value }: { type: string; host: string; value: string }) {
-  return (
-    <div className="rounded-lg px-3 py-2 flex items-center gap-2" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-      <span className="shrink-0" style={{ width: 40, fontSize: 10, fontWeight: T.fw_semi, color: T.mutedFg }}>{type}</span>
-      <div className="flex-1 min-w-0 font-mono" style={{ fontSize: 11, lineHeight: 1.5 }}>
-        <p className="truncate" style={{ color: T.foreground }} title={host}>{host}</p>
-        <p className="truncate" style={{ color: T.mutedFg }} title={value}>{value}</p>
-      </div>
-      <button type="button" aria-label={`Sao chép giá trị bản ghi ${type}`} onClick={() => copy(value)}
-        className="size-7 shrink-0 flex items-center justify-center cursor-pointer transition-colors hover:bg-[var(--secondary)]"
-        style={{ color: T.mutedFg }}>
-        <Copy className="size-3.5" />
-      </button>
-    </div>
-  );
-}
-
 function PreviewLine({ label, value }: { label: string; value: string }) {
   return (
     <p className="flex gap-2 min-w-0">
@@ -864,15 +604,6 @@ function LinkButton({ onClick, disabled, children }: { onClick: () => void; disa
       style={{ fontSize: T.xs, fontWeight: T.fw_medium, color: T.primary, background: "none", border: "none", padding: 0 }}>
       {children}
     </button>
-  );
-}
-
-function Notice({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl p-3 flex gap-2" style={{ backgroundColor: T.warningSubtle, border: `1px solid ${T.warningBorder}` }}>
-      <AlertTriangle className="size-4 shrink-0" style={{ color: T.warningText }} />
-      <div className="flex-1 min-w-0" style={{ fontSize: T.xs, color: T.warningText, lineHeight: 1.5 }}>{children}</div>
-    </div>
   );
 }
 
