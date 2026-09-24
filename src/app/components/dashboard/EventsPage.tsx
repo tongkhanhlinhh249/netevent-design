@@ -16,7 +16,8 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
-import { THEMES, themePageBg, surfaceVars, DEFAULT_THEME_COLOR } from "../../data/themes";
+import { THEMES, themePageBg, surfaceVars, isAnimatedTheme, DEFAULT_THEME_COLOR } from "../../data/themes";
+import { GalaxyBackground } from "../backgrounds/GalaxyBackground";
 import { useCurrentEvent } from "../../data/currentEvent";
 import { downscaleToDataUrl, readImageFile } from "../../data/imageUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
@@ -974,7 +975,9 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThe
                     border: on ? `2px solid ${T.primary}` : `1px solid ${T.border}`,
                     backgroundColor: on ? `color-mix(in srgb, ${T.primary} 6%, ${T.background})` : T.background,
                   }}>
-                  <div className="w-16 h-11 rounded-lg shrink-0" style={{ background: th.gradient }} />
+                  <div className="w-16 h-11 rounded-lg shrink-0 relative overflow-hidden" style={{ background: th.gradient }}>
+                    {th.animated && <GalaxyBackground fixed={false} />}
+                  </div>
                   <div className="flex flex-col gap-1 min-w-0 flex-1">
                     <span className="flex items-center gap-1.5" style={{ fontSize: T.sm, fontWeight: on ? T.fw_semi : T.fw_medium, color: T.foreground }}>
                       {th.label}
@@ -1110,11 +1113,13 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   }, [pageBg, usingImage, customBg]);
 
   return (
-    <div ref={rootRef} className="w-full flex flex-col"
+    <div ref={rootRef} className="w-full flex flex-col relative"
       style={{ minHeight: "min(calc(100vh - 180px), 100%)", color: "var(--foreground)", ...GLASS_VARS }}>
+      {/* Nền động chạy ngay trong màn tạo, để thấy đúng thứ trang sự kiện sẽ hiện */}
+      {isAnimatedTheme(theme) && !usingImage && <GalaxyBackground />}
       {/* Back */}
 
-      <div className="flex items-center justify-between gap-3 flex-wrap mb-6 w-full max-w-[960px] mx-auto">
+      <div className="relative flex items-center justify-between gap-3 flex-wrap mb-6 w-full max-w-[960px] mx-auto" style={{ zIndex: 1 }}>
         <h2 style={{ color: T.foreground, fontSize: T["2xl"], fontWeight: T.fw_semi }}>Tạo sự kiện</h2>
         <div className="flex items-center gap-3">
           {/* Quyền riêng tư */}
@@ -1145,7 +1150,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
 
       {/* Cột hẹp căn giữa, không card đục: nền theme lộ ra hai bên và xuyên qua
           các ô nhập trong suốt, như một bản xem trước của trang sự kiện. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 w-full max-w-[960px] mx-auto items-start">
+      <div className="relative grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 w-full max-w-[960px] mx-auto items-start" style={{ zIndex: 1 }}>
 
         {/* ── Left: ảnh cover + giao diện, đứng yên khi form cuộn ── */}
         <div className="flex flex-col gap-0 lg:sticky lg:top-6">

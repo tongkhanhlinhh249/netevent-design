@@ -1,5 +1,5 @@
 import * as React from "react";
-import Galaxy from "../backgrounds/Galaxy";
+import { GalaxyBackground } from "../backgrounds/GalaxyBackground";
 import { isAnimatedTheme, isDarkColor } from "../../data/themes";
 import { useState, useEffect } from "react";
 import {
@@ -1289,8 +1289,8 @@ function LandingPageEditor({ event, settings, onSettingsChange }: {
 
       {/* ── Right canvas ── */}
       <div className="flex-1 min-w-0 overflow-auto">
-        <DemoPublicLandingPage bgStyle={settings.bgStyle} bgColor={settings.bgColor} regMode={settings.regMode} ticketsConfigured={settings.ticketsConfigured} coverUrl={coverUrl} themeBg={themePageBg(event.theme)}
-          themeImage={(event as { pageImage?: string }).pageImage}
+        <DemoPublicLandingPage bgStyle={settings.bgStyle} bgColor={settings.bgColor} regMode={settings.regMode} ticketsConfigured={settings.ticketsConfigured} coverUrl={coverUrl} themeBg={themePageBg(event.theme, (event as { themeColor?: string }).themeColor)}
+          themeImage={(event as { pageImage?: string }).pageImage} themeId={event.theme}
           event={event as PublicEvent} />
       </div>
 
@@ -1652,9 +1652,7 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
       ...darkVars,
     }}>
       {animatedBg && (
-        <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }} aria-hidden>
-          <Galaxy density={1.1} glowIntensity={0.35} saturation={0.45} hueShift={250} mouseInteraction={false} transparent={false} />
-        </div>
+        <GalaxyBackground />
       )}
 
       {/* ── Main two-column layout ── */}
