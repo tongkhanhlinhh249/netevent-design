@@ -1219,7 +1219,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
       {isAnimatedTheme(theme) && !usingImage && <EventBackground themeId={theme} colors={effectColors} />}
       {/* Back */}
 
-      <div className="relative flex items-center justify-between gap-3 flex-wrap mb-3 w-full max-w-[960px] mx-auto" style={{ zIndex: 1 }}>
+      <div className="relative flex items-center justify-between gap-3 flex-wrap mb-3 w-full max-w-[1280px] mx-auto" style={{ zIndex: 1 }}>
         <h2 style={{ color: T.foreground, fontSize: T["2xl"], fontWeight: T.fw_semi }}>Tạo sự kiện</h2>
         <div className="flex items-center gap-3">
           {/* Quyền riêng tư */}
