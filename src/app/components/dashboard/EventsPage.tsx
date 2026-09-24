@@ -1185,6 +1185,27 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   const fadeColor = isAnimatedTheme(theme) && !usingImage
     ? null
     : `color-mix(in srgb, ${pageBg} 92%, transparent)`;
+  // Nền phủ kín vùng nội dung nên mắt lấy cả màn hình làm khung, và khối form
+  // căn giữa vùng nội dung sẽ lệch sang phải đúng một nửa bề ngang sidebar.
+  // Kéo lại vào giữa màn hình, nhưng không bao giờ thò ra ngoài vùng nội dung.
+  const [pullLeft, setPullLeft] = useState(0);
+  React.useEffect(() => {
+    const el = rootRef.current;
+    const main = el?.closest("main") as HTMLElement | null;
+    if (!el || !main) return;
+    const measure = () => setPullLeft((prev) => {
+      const m = main.getBoundingClientRect();
+      const offset = (m.left + m.width / 2) - window.innerWidth / 2;
+      // Cộng lại lần kéo trước để ra vị trí gốc, nếu không thì mỗi lần đo lại
+      // tưởng là hết chỗ. Chừa 24px để khối không dính mép panel.
+      const room = el.getBoundingClientRect().left + prev - m.left - 24;
+      return Math.max(0, Math.min(offset, room));
+    });
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
   React.useEffect(() => {
     const main = rootRef.current?.closest("main") as HTMLElement | null;
     if (!main) return;
@@ -1211,7 +1232,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
 
   return (
     <div ref={rootRef} className="w-full flex flex-col relative"
-      style={{ minHeight: "min(calc(100vh - 180px), 100%)", color: "var(--foreground)",
+      style={{ minHeight: "min(calc(100vh - 180px), 100%)", color: "var(--foreground)", left: -pullLeft,
         // Nhãn nằm trực tiếp trên nền động cần một lớp đổ bóng mảnh để không chìm.
         ...(isDarkColor(pageBg) ? { textShadow: "0 1px 2px rgba(0,0,0,0.45)" } : {}),
         ...GLASS_VARS }}>
@@ -1250,7 +1271,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
 
       {/* Cột hẹp căn giữa, không card đục: nền theme lộ ra hai bên và xuyên qua
           các ô nhập trong suốt, như một bản xem trước của trang sự kiện. */}
-      <div className="relative grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 w-full max-w-[960px] mx-auto items-start" style={{ zIndex: 1 }}>
+      <div className="relative grid grid-cols-1 lg:grid-cols-[340px_1fr] xl:grid-cols-[400px_1fr] gap-6 xl:gap-8 w-full max-w-[1280px] mx-auto items-start" style={{ zIndex: 1 }}>
 
         {/* ── Left: ảnh cover + giao diện, đứng yên khi form cuộn ── */}
         <div className="flex flex-col gap-4 lg:sticky lg:top-6">
