@@ -19,8 +19,9 @@ export function EventBackground({ themeId, colors, fixed = true, scrim }: {
   scrim?: number;
 }) {
   const color = (key: EffectColorKey) => colors?.[key] || DEFAULT_EFFECT_COLORS[key];
-  // Ghost Fibers và Particles vốn đã tối nên phủ nhẹ hơn Galaxy.
-  const cover = scrim ?? (themeId === "galaxy" ? 0.55 : 0.3);
+  // Grainient sáng nên cần phủ đậm hơn để chữ trắng còn đọc được; Ghost Fibers
+  // và Particles vốn đã tối nên phủ nhẹ.
+  const cover = scrim ?? (themeId === "galaxy" ? 0.55 : themeId === "grainient" ? 0.5 : 0.3);
   return (
     <div className={`${fixed ? "fixed" : "absolute"} inset-0 pointer-events-none`} style={{ zIndex: 0 }} aria-hidden>
       {themeId === "fibers" ? (

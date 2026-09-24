@@ -1622,18 +1622,19 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
   // Nền tối (màu đậm tự chọn hoặc Galaxy): đảo chữ và đường kẻ sang sáng, còn
   // các thẻ trắng giữ nguyên. Đặt cả `color` vì màu chữ kế thừa từ body là giá
   // trị đã tính, không theo biến ghi đè.
-  const darkPage = !themeImage && bgStyle !== "white" && isDarkColor(animatedBg ? "#06040f" : themeBg);
+  const darkPage = !themeImage && bgStyle !== "white" && (animatedBg || isDarkColor(themeBg));
   const darkVars = darkPage ? {
     color: "#f8fafc",
     "--foreground": "#f8fafc", "--color-foreground": "#f8fafc",
     "--muted-foreground": "rgba(248,250,252,0.72)", "--color-muted-foreground": "rgba(248,250,252,0.72)",
     "--border": "rgba(255,255,255,0.16)", "--color-border": "rgba(255,255,255,0.16)",
-    "--secondary": "rgba(255,255,255,0.10)", "--color-secondary": "rgba(255,255,255,0.10)",
-    // Thẻ cũng chuyển sang trong suốt tối, nếu giữ trắng thì chữ sáng bên trong không đọc được.
-    "--background": "rgba(255,255,255,0.08)", "--color-background": "rgba(255,255,255,0.08)",
-    "--card": "rgba(255,255,255,0.08)", "--color-card": "rgba(255,255,255,0.08)",
-    "--input-background": "rgba(255,255,255,0.10)", "--color-input-background": "rgba(255,255,255,0.10)",
-    "--muted": "rgba(255,255,255,0.06)", "--color-muted": "rgba(255,255,255,0.06)",
+    "--secondary": "rgba(12,10,24,0.38)", "--color-secondary": "rgba(12,10,24,0.38)",
+    // Thẻ là lớp tối trong suốt, không phải trắng mờ: nền động có thể sáng
+    // (Grainient) và khi đó lớp trắng mờ làm chữ sáng mất tương phản.
+    "--background": "rgba(12,10,24,0.55)", "--color-background": "rgba(12,10,24,0.55)",
+    "--card": "rgba(12,10,24,0.55)", "--color-card": "rgba(12,10,24,0.55)",
+    "--input-background": "rgba(12,10,24,0.45)", "--color-input-background": "rgba(12,10,24,0.45)",
+    "--muted": "rgba(12,10,24,0.28)", "--color-muted": "rgba(12,10,24,0.28)",
   } as React.CSSProperties : undefined;
 
   return (

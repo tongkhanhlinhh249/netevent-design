@@ -81,14 +81,16 @@ export function surfaceVars(pageBg: string): Record<string, string> {
   const pair = (vars: Record<string, string>) =>
     Object.fromEntries(Object.entries(vars).flatMap(([k, v]) => [[k, v], [k.replace("--", "--color-"), v]]));
   return isDarkColor(pageBg)
+    // Bề mặt tối trong suốt (không phải trắng mờ): nền động có thể sáng — như
+    // Grainient — và khi đó lớp trắng mờ làm chữ sáng mất tương phản.
     ? pair({
-      "--background": "rgba(255,255,255,0.10)",
-      "--card": "rgba(255,255,255,0.10)",
-      "--input-background": "rgba(255,255,255,0.08)",
-      "--input": "rgba(255,255,255,0.18)",
-      "--secondary": "rgba(255,255,255,0.08)",
-      "--muted": "rgba(255,255,255,0.05)",
-      "--border": "rgba(255,255,255,0.16)",
+      "--background": "rgba(12,10,24,0.55)",
+      "--card": "rgba(12,10,24,0.55)",
+      "--input-background": "rgba(12,10,24,0.45)",
+      "--input": "rgba(255,255,255,0.20)",
+      "--secondary": "rgba(12,10,24,0.38)",
+      "--muted": "rgba(12,10,24,0.28)",
+      "--border": "rgba(255,255,255,0.18)",
       "--foreground": "#f8fafc",
       "--muted-foreground": "rgba(248,250,252,0.62)",
       "--secondary-foreground": "#f8fafc",

@@ -1116,7 +1116,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   // Ô nhập lấy bề mặt theo nền đang chọn: nền sáng thì phủ trắng mờ, nền tối
   // (màu đậm tự chọn hoặc Galaxy) thì phủ trắng nhạt và đảo chữ sang sáng.
   const GLASS_VARS = surfaceVars(pageBg) as React.CSSProperties;
-  const fadeColor = isDarkColor(pageBg) ? "rgba(6,4,15,0.72)" : "rgba(255,255,255,0.82)";
+  const fadeColor = isDarkColor(pageBg) ? "rgba(10,8,20,0.78)" : "rgba(255,255,255,0.85)";
   React.useEffect(() => {
     const main = rootRef.current?.closest("main") as HTMLElement | null;
     if (!main) return;
@@ -1143,7 +1143,10 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
 
   return (
     <div ref={rootRef} className="w-full flex flex-col relative"
-      style={{ minHeight: "min(calc(100vh - 180px), 100%)", color: "var(--foreground)", ...GLASS_VARS }}>
+      style={{ minHeight: "min(calc(100vh - 180px), 100%)", color: "var(--foreground)",
+        // Nhãn nằm trực tiếp trên nền động cần một lớp đổ bóng mảnh để không chìm.
+        ...(isDarkColor(pageBg) ? { textShadow: "0 1px 2px rgba(0,0,0,0.45)" } : {}),
+        ...GLASS_VARS }}>
       {/* Nền động chạy ngay trong màn tạo, để thấy đúng thứ trang sự kiện sẽ hiện */}
       {isAnimatedTheme(theme) && !usingImage && <EventBackground themeId={theme} colors={effectColors} />}
       {/* Back */}
