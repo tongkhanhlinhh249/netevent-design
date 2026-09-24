@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle, CheckCircle2, Clock, Copy, Link2, Plus, RotateCcw, Send,
+  AlertTriangle, CheckCircle2, Clock, Copy, Link2, Pencil, Plus, RotateCcw, Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
@@ -443,7 +443,9 @@ export function EmailSettingsCard({ event, organizerName }: { event: EventDraft;
             style={{ borderBottom: i < KINDS.length - 1 ? `1px solid ${T.border}` : "none" }}>
             <button type="button" data-pill="off" onClick={() => setEditing(k)} title="Chỉnh email"
               className={`flex-1 min-w-0 grid ${EMAIL_COLS} gap-3 items-center text-left rounded-xl -mx-2 px-2 py-2 cursor-pointer transition-colors hover:bg-[var(--secondary)]`}>
-              <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground, lineHeight: 1.4 }}>{KIND_LABEL[k]}</span>
+              <span className="flex items-center gap-1.5 min-w-0" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground, lineHeight: 1.4 }}>
+                {KIND_LABEL[k]} <Pencil className="size-3 shrink-0" style={{ color: T.mutedFg }} />
+              </span>
               <span style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.4 }}>{whenOf(k, event)}</span>
             </button>
             <div className="shrink-0 flex justify-end" style={{ width: STATUS_COL }}>

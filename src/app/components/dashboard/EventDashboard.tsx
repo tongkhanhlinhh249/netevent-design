@@ -15,7 +15,7 @@ import { Label } from "../ui/label";
 import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
 import { Textarea } from "../ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { Sheet, SheetContent } from "../ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "../ui/sheet";
 import { useCurrentEvent } from "../../data/currentEvent";
 import { OrganizerAvatarPicker } from "./OrganizerAvatarPicker";
 import { EmailSettingsCard } from "./EmailSettings";
@@ -418,6 +418,18 @@ function InviteGuestsDialog({ onClose }: { onClose: () => void }) {
 function CheckinSettingsCard({ eventId }: { eventId: string }) {
   const [config, setConfig] = useCheckinConfig(eventId);
   const selfUrl = `/tu-check-in?event=${encodeURIComponent(eventId)}`;
+  const qrRef = React.useRef<HTMLDivElement>(null);
+  // Tải mã QR dạng SVG để in khổ lớn mà không vỡ nét.
+  const downloadQr = () => {
+    const svg = qrRef.current?.querySelector("svg");
+    if (!svg) return;
+    const xml = new XMLSerializer().serializeToString(svg);
+    const url = URL.createObjectURL(new Blob([`<?xml version="1.0" encoding="UTF-8"?>\n${xml}`], { type: "image/svg+xml" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = `ma-qr-check-in-${eventId}.svg`; a.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast.success("Đã tải mã QR check-in");
+  };
   const toggle = (key: "qr" | "phone", on: boolean) => {
     const next = { ...config, [key]: on };
     // Luôn phải còn ít nhất một cách check-in.
@@ -447,9 +459,16 @@ function CheckinSettingsCard({ eventId }: { eventId: string }) {
       </div>
       {config.phone && (
         <div className="flex items-center gap-3 rounded-xl p-3" style={{ backgroundColor: T.secondary }}>
-          <PseudoQr value={selfUrl} size={72} />
+          <div ref={qrRef} className="shrink-0"><PseudoQr value={selfUrl} size={72} /></div>
           <div className="flex-1 min-w-0">
-            <p style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>Mã QR check-in chung</p>
+            <div className="flex items-center justify-between gap-2">
+              <p style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>Mã QR check-in chung</p>
+              <button type="button" data-pill="off" onClick={downloadQr} title="Tải mã QR để in" aria-label="Tải mã QR check-in"
+                className="size-7 shrink-0 flex items-center justify-center cursor-pointer transition-colors hover:bg-[var(--background)]"
+                style={{ borderRadius: 8, background: "none", border: "none", color: T.mutedFg }}>
+                <Download className="size-4" />
+              </button>
+            </div>
             <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2, lineHeight: 1.5 }}>
               In và đặt ở lối vào — người tham dự quét để tự check-in.
             </p>
@@ -461,6 +480,106 @@ function CheckinSettingsCard({ eventId }: { eventId: string }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Chỉnh nhanh thông tin chính của sự kiện: tên, thời gian, hình thức, địa điểm, mô tả. */
+function EventInfoSheet({ event, onClose, onSave }: {
+  event: EventDraft;
+  onClose: () => void;
+  onSave: (patch: Partial<EventDraft>) => void;
+}) {
+  const [form, setForm] = useState({
+    name: event.name ?? "", description: event.description ?? "",
+    startDate: event.startDate ?? "", startTime: event.startTime ?? "",
+    endDate: event.endDate ?? "", endTime: event.endTime ?? "",
+    format: event.format ?? "offline", location: event.location ?? "",
+  });
+  const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const isOnline = form.format === "online";
+  const nameError = !form.name.trim();
+
+  const save = () => {
+    if (nameError) return;
+    onSave({ ...form, name: form.name.trim(), location: form.location.trim() });
+    toast.success("Đã lưu thông tin sự kiện");
+    onClose();
+  };
+
+  return (
+    <Sheet open onOpenChange={(o) => !o && onClose()}>
+      <SheetContent className="p-0 flex flex-col gap-0 sm:max-w-[480px]">
+        <div className="px-5 py-4 pr-12" style={{ borderBottom: `1px solid ${T.border}` }}>
+          <SheetTitle style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Thông tin sự kiện</SheetTitle>
+          <SheetDescription style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>
+            Thông tin hiển thị trên trang sự kiện và trong email gửi người tham dự.
+          </SheetDescription>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="ev-name">Tên sự kiện <span style={{ color: T.destructive }}>*</span></Label>
+            <Input id="ev-name" value={form.name} aria-invalid={nameError}
+              onChange={(e) => set("name")(e.target.value)} placeholder="Tên sự kiện" />
+            {nameError && <p style={{ fontSize: T.xs, color: T.destructive }}>Nhập tên sự kiện.</p>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="ev-start-date">Bắt đầu</Label>
+              <Input id="ev-start-date" type="date" value={form.startDate} onChange={(e) => set("startDate")(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="ev-start-time">Giờ bắt đầu</Label>
+              <Input id="ev-start-time" type="time" value={form.startTime} onChange={(e) => set("startTime")(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="ev-end-date">Kết thúc</Label>
+              <Input id="ev-end-date" type="date" value={form.endDate} onChange={(e) => set("endDate")(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="ev-end-time">Giờ kết thúc</Label>
+              <Input id="ev-end-time" type="time" value={form.endTime} onChange={(e) => set("endTime")(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Hình thức tổ chức</Label>
+            <div className="flex gap-1 p-1 rounded-full" role="group" aria-label="Hình thức tổ chức"
+              style={{ backgroundColor: T.secondary, border: `1px solid ${T.border}` }}>
+              {(["offline", "online"] as const).map((f) => {
+                const on = form.format === f;
+                return (
+                  <button key={f} type="button" aria-pressed={on} onClick={() => set("format")(f)}
+                    className="flex-1 h-8 cursor-pointer transition-colors"
+                    style={{ fontSize: T.sm, fontWeight: on ? T.fw_semi : T.fw_medium,
+                      backgroundColor: on ? T.primary : "transparent", color: on ? "#fff" : T.mutedFg }}>
+                    {f === "offline" ? "Offline" : "Online"}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="ev-location">{isOnline ? "Link tham gia" : "Địa điểm"}</Label>
+            <Input id="ev-location" value={form.location} onChange={(e) => set("location")(e.target.value)}
+              placeholder={isOnline ? "https://meet.example.com/su-kien" : "Tên địa điểm, số nhà, đường, quận"} />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="ev-desc">Mô tả ngắn</Label>
+            <Textarea id="ev-desc" rows={4} value={form.description}
+              onChange={(e) => set("description")(e.target.value)} placeholder="Sự kiện này dành cho ai? Nội dung chính là gì?" />
+          </div>
+        </div>
+
+        <div className="px-5 py-4 flex justify-end gap-2" style={{ borderTop: `1px solid ${T.border}` }}>
+          <Button variant="outline" onClick={onClose}>Hủy</Button>
+          <Button disabled={nameError} onClick={save}>Lưu</Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -680,6 +799,7 @@ export function EventDashboard() {
   const [hostDialog, setHostDialog] = useState<{ mode: "add" | "edit"; host?: Host } | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [orgOpen, setOrgOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const { event: currentEvent, setEvent: setCurrentEvent } = useCurrentEvent();
   const orgName = currentEvent.organizer?.trim() || "NetSpace";
   const isPrivate  = currentEvent.visibility === "private";
@@ -882,7 +1002,8 @@ export function EventDashboard() {
                 {/* Hai nút đồng cấp, chia đôi hàng: Chỉnh sửa trái, Check-in phải.
                     Check-in mở tab riêng: màn quét mã + danh sách khách. */}
                 <div className="grid grid-cols-2 gap-2 mt-auto">
-                  <Button variant="outline" className="w-full min-w-0" style={{ fontSize: T.sm }}>
+                  <Button variant="outline" className="w-full min-w-0" style={{ fontSize: T.sm }}
+                    onClick={() => setInfoOpen(true)}>
                     <Pencil className="size-4" /> Chỉnh sửa
                   </Button>
                   <Button variant="outline" className="w-full min-w-0" style={{ fontSize: T.sm }} asChild>
@@ -1132,6 +1253,10 @@ export function EventDashboard() {
         </div>{/* end RIGHT column */}
 
         {inviteOpen && <InviteGuestsDialog onClose={() => setInviteOpen(false)} />}
+      {infoOpen && (
+        <EventInfoSheet event={currentEvent} onClose={() => setInfoOpen(false)}
+          onSave={(patch) => setCurrentEvent({ ...currentEvent, ...patch })} />
+      )}
         {orgOpen && (
           <OrganizerDialog name={currentEvent.organizer ?? ""} avatar={currentEvent.organizerAvatar}
             onClose={() => setOrgOpen(false)}
