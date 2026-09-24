@@ -976,7 +976,7 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThe
                     backgroundColor: on ? `color-mix(in srgb, ${T.primary} 6%, ${T.background})` : T.background,
                   }}>
                   <div className="w-16 h-11 rounded-lg shrink-0 relative overflow-hidden" style={{ background: th.gradient }}>
-                    {th.animated && <GalaxyBackground fixed={false} />}
+                    {th.animated && <GalaxyBackground fixed={false} scrim={0} />}
                   </div>
                   <div className="flex flex-col gap-1 min-w-0 flex-1">
                     <span className="flex items-center gap-1.5" style={{ fontSize: T.sm, fontWeight: on ? T.fw_semi : T.fw_medium, color: T.foreground }}>
