@@ -1662,9 +1662,10 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
         <div className="flex flex-col lg:flex-row gap-8 lg:gap-10 items-start">
 
           {/* ── LEFT COLUMN ── */}
-          <div className="w-full lg:w-[420px] shrink-0 flex flex-col gap-5">
+          <div className="contents lg:flex lg:w-[420px] lg:shrink-0 lg:flex-col lg:gap-5">
 
             {/* Cover 1:1 */}
+            <div className="order-1 lg:order-none w-full">
             <EventCoverLarge
               src={coverSrc}
               gradient={coverGradient}
@@ -1678,6 +1679,11 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                 </div>
               )}
             </EventCoverLarge>
+            </div>
+
+            {/* Trên mobile các khối này xuống dưới thẻ đăng ký; từ lg trở lên
+                chúng trở lại thành các mục của cột trái. */}
+            <div className="order-3 lg:order-none w-full flex flex-col gap-5 lg:contents">
 
             <div style={{ borderTop: `1px solid ${T.border}` }} />
 
@@ -1693,8 +1699,8 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                     className="size-10 rounded-full shrink-0" style={{ objectFit: "cover" }} />
                 ) : (
                   <div className="size-10 rounded-full flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `rgba(255,134,68,0.12)` }}>
-                    <span style={{ fontWeight: T.fw_bold, color: OG, fontSize: T.base }}>{organizerName[0]?.toUpperCase()}</span>
+                    style={{ backgroundColor: "#b45309" }}>
+                    <span style={{ fontWeight: T.fw_bold, color: "#fff", fontSize: T.base }}>{organizerName[0]?.toUpperCase()}</span>
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
@@ -1720,7 +1726,7 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                     className="size-8 rounded-full shrink-0 flex items-center justify-center"
                     style={{ backgroundColor: j.tint, marginLeft: i === 0 ? 0 : -14,
                       border: `2px solid ${T.background}`,
-                      fontSize: "10px", fontWeight: T.fw_semi, color: "#fff" }}>
+                      fontSize: T.xs, fontWeight: T.fw_bold, color: "#101828" }}>
                     {j.name.trim().split(/\s+/).slice(-1)[0][0]}
                   </span>
                 ))}
@@ -1740,20 +1746,23 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                 textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "10px" }}>
                 Chia sẻ sự kiện
               </p>
-              <div className="flex gap-3">
-                <button title="Chia sẻ Facebook" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", opacity: 0.5, transition: "opacity 0.15s" }}
+              <div className="flex gap-2 -ml-2.5">
+                <button title="Chia sẻ Facebook" className="size-10 flex items-center justify-center rounded-full"
+                  style={{ background: "none", border: "none", padding: 0, cursor: "pointer", opacity: 0.5, transition: "opacity 0.15s" }}
                   onMouseEnter={e => (e.currentTarget.style.opacity = "1")} onMouseLeave={e => (e.currentTarget.style.opacity = "0.5")}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill={T.foreground}>
                     <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.884v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
                   </svg>
                 </button>
-                <button title="Chia sẻ Twitter" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", opacity: 0.5, transition: "opacity 0.15s" }}
+                <button title="Chia sẻ Twitter" className="size-10 flex items-center justify-center rounded-full"
+                  style={{ background: "none", border: "none", padding: 0, cursor: "pointer", opacity: 0.5, transition: "opacity 0.15s" }}
                   onMouseEnter={e => (e.currentTarget.style.opacity = "1")} onMouseLeave={e => (e.currentTarget.style.opacity = "0.5")}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill={T.foreground}>
                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                   </svg>
                 </button>
-                <button title="Sao chép link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", opacity: 0.5, transition: "opacity 0.15s" }}
+                <button title="Sao chép link" className="size-10 flex items-center justify-center rounded-full"
+                  style={{ background: "none", border: "none", padding: 0, cursor: "pointer", opacity: 0.5, transition: "opacity 0.15s" }}
                   onMouseEnter={e => (e.currentTarget.style.opacity = "1")} onMouseLeave={e => (e.currentTarget.style.opacity = "0.5")}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.foreground} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
@@ -1762,10 +1771,11 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                 </button>
               </div>
             </div>
+            </div>
           </div>
 
           {/* ── RIGHT COLUMN ── */}
-          <div className="flex-1 min-w-0 flex flex-col gap-10">
+          <div className="order-2 lg:order-none w-full lg:flex-1 min-w-0 flex flex-col gap-10">
 
             {/* Event info header */}
             <div>
@@ -1888,7 +1898,7 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                                   <span style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>{t.name}</span>
                                   {t.soldOut && (
                                     <span style={{ fontSize: T.xs, padding: "1px 8px", borderRadius: "999px",
-                                      backgroundColor: `rgba(248,104,128,0.1)`, color: "#f86880" }}>Hết vé</span>
+                                      backgroundColor: "#be123c", color: "#fff" }}>Hết vé</span>
                                   )}
                                 </div>
                                 <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: "3px", lineHeight: 1.5 }}>{t.desc}</p>
@@ -2245,7 +2255,8 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
           <p style={{ fontSize: T.xs, color: T.mutedFg }}>Powered by <strong style={{ color: T.foreground }}>NetEvent</strong></p>
           <div className="flex gap-5">
             {["Điều khoản", "Chính sách bảo mật", "Liên hệ"].map((l) => (
-              <button key={l} style={{ fontSize: T.xs, color: T.mutedFg }}>{l}</button>
+              <button key={l} className="inline-flex items-center min-h-11 px-1 cursor-pointer"
+                style={{ fontSize: T.xs, color: T.mutedFg, background: "none", border: "none" }}>{l}</button>
             ))}
           </div>
         </div>

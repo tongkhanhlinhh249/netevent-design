@@ -1261,14 +1261,14 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
 
               {/* 1. Tên sự kiện */}
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="ev-name">Tên sự kiện <span style={{ color: T.destructive }}>*</span></Label>
-                <Input id="ev-name" placeholder="Nhập tên sự kiện"
+                <Label htmlFor="ev-name">Tên sự kiện <span aria-label="bắt buộc" style={{ color: "currentColor", opacity: 0.75 }}>*</span></Label>
+                <Input id="ev-name" placeholder="Nhập tên sự kiện" required aria-required="true"
                   value={form.name} onChange={(e) => set("name")(e.target.value)} />
               </div>
 
               {/* 2. Thời gian bắt đầu / kết thúc */}
               <div className="flex flex-col gap-1.5">
-                <Label>Thời gian <span style={{ color: T.destructive }}>*</span></Label>
+                <Label>Thời gian <span aria-label="bắt buộc" style={{ color: "currentColor", opacity: 0.75 }}>*</span></Label>
                 <div className="flex items-stretch gap-2">
                   {/* Cột trái — bắt đầu / kết thúc */}
                   <div className="flex-1 min-w-0 rounded-2xl overflow-hidden" style={{ border: `1px solid ${T.border}`, backgroundColor: T.secondary }}>
@@ -1372,13 +1372,13 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
               {/* 4. Địa điểm tổ chức */}
               {needsLocation && (
                 <div className="flex flex-col gap-1.5">
-                  <Label>Địa điểm tổ chức <span style={{ color: T.destructive }}>*</span></Label>
+                  <Label>Địa điểm tổ chức <span aria-label="bắt buộc" style={{ color: "currentColor", opacity: 0.75 }}>*</span></Label>
                   <LocationPicker value={form.location} onChange={set("location")} isOnline={false} />
                 </div>
               )}
               {needsOnlineLink && (
                 <div className="flex flex-col gap-1.5">
-                  <Label>Link tham gia online <span style={{ color: T.destructive }}>*</span></Label>
+                  <Label>Link tham gia online <span aria-label="bắt buộc" style={{ color: "currentColor", opacity: 0.75 }}>*</span></Label>
                   <Input placeholder="https://meet.google.com/..."
                     value={form.onlineLink} onChange={(e) => set("onlineLink")(e.target.value)} />
                 </div>
