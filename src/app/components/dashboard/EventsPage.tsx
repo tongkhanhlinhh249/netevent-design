@@ -24,6 +24,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose } from "../ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "../ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { toast } from "sonner";
 import { cn } from "../ui/utils";
 import { LandingPageTab } from "./LandingPage";
 import { AttendeesTab } from "./AttendeesTab";
@@ -314,14 +316,15 @@ const VIRTUAL_OPTIONS = [
 function LocationPicker({
   value,
   onChange,
+  onBlur,
   isOnline,
 }: {
   value: string;
   onChange: (v: string) => void;
+  onBlur?: () => void;
   isOnline: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
-  const [inputFocused, setInputFocused] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   const showDropdown = open && !isOnline;
@@ -355,32 +358,17 @@ function LocationPicker({
 
   return (
     <div className="flex flex-col gap-1.5 relative" ref={containerRef}>
-      {/* Collapsed trigger (Luma-style) when empty and not focused */}
-      {!value && !inputFocused && !isOnline ? (
-        <button
-          data-pill="off"
-          onClick={() => { setOpen(true); setInputFocused(true); }}
-          className="flex items-start gap-3 w-full text-left rounded-xl px-4 py-3 transition-colors hover:opacity-90"
-          style={{ backgroundColor: T.secondary, border: `1px solid ${T.border}` }}
-        >
-          <MapPin className="size-4 mt-0.5 shrink-0" style={{ color: T.mutedFg }} />
-          <div>
-            <p style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>
-              Thêm địa điểm sự kiện
-            </p>
-            <p style={{ fontSize: T.xs, color: T.mutedFg }}>Địa điểm offline hoặc link trực tuyến</p>
-          </div>
-        </button>
-      ) : (
-        <div className="relative">
+      {/* Một ô nhập duy nhất: hình thức tổ chức đã chọn ở trên nên không cần
+          câu mô tả "offline hoặc trực tuyến" nữa. */}
+      <div className="relative">
           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 size-4 shrink-0"
-            style={{ color: isOnline ? T.mutedFg : T.primary }} />
+            style={{ color: showDropdown ? T.primary : T.mutedFg }} />
           <input
-            autoFocus={inputFocused}
-            placeholder={isOnline ? "https://meet.google.com/..." : "Nhập địa điểm hoặc link online"}
+            placeholder={isOnline ? "https://..." : "Tìm hoặc nhập địa điểm"}
             value={value}
             onChange={(e) => { onChange(e.target.value); setOpen(true); }}
-            onFocus={() => { setOpen(true); setInputFocused(true); }}
+            onFocus={() => setOpen(true)}
+            onBlur={onBlur}
             className="w-full rounded-xl pl-9 pr-4 py-2.5 outline-none transition-all"
             style={{
               border: `1px solid ${showDropdown ? T.primary : T.border}`,
@@ -398,8 +386,7 @@ function LocationPicker({
               <X className="size-4" />
             </button>
           )}
-        </div>
-      )}
+      </div>
 
       {/* Dropdown */}
       {showDropdown && (
@@ -1036,6 +1023,80 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThe
 
 // ── SCREEN 2 — Create Event Draft ─────────────────────────────────────────────
 
+/** Nhãn ngày kiểu "Thứ 5, 24 thg 9". */
+function dayLabel(iso: string) {
+  const d = new Date(iso);
+  const days = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+  return `${days[d.getDay()]}, ${d.getDate()} thg ${d.getMonth() + 1}`;
+}
+
+/** Ô ngày hoặc giờ: hiện giá trị đã định dạng, input thật nằm trong suốt phía trên. */
+function DateTimePill({ kind, value, onChange }: { kind: "date" | "time"; value: string; onChange: (v: string) => void }) {
+  const Icon = kind === "date" ? Calendar : Clock;
+  return (
+    <div className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+      style={{ backgroundColor: T.background, border: `1px solid ${T.border}`, cursor: "pointer" }}>
+      <Icon className="size-3.5 shrink-0" style={{ color: T.mutedFg, pointerEvents: "none" }} />
+      <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: value ? T.foreground : T.mutedFg,
+        pointerEvents: "none", whiteSpace: "nowrap", ...(kind === "time" ? { minWidth: 36 } : {}) }}>
+        {value ? (kind === "date" ? dayLabel(value) : value) : (kind === "date" ? "Chọn ngày" : "Chọn giờ")}
+      </span>
+      <ChevronDown className="size-3 shrink-0" style={{ color: T.mutedFg, pointerEvents: "none" }} />
+      <input type={kind} value={value} onChange={(e) => onChange(e.target.value)}
+        aria-label={kind === "date" ? "Ngày" : "Giờ"}
+        style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
+    </div>
+  );
+}
+
+/** Hai lựa chọn loại trừ nhau trong một viên thuốc. */
+function Segmented({ value, onChange, options, ariaLabel }: {
+  value: string; onChange: (v: string) => void;
+  options: { value: string; label: string }[]; ariaLabel?: string;
+}) {
+  return (
+    <div className="flex gap-1 p-1 rounded-full" role="group" aria-label={ariaLabel}
+      style={{ backgroundColor: T.secondary, border: `1px solid ${T.border}` }}>
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <button key={o.value} type="button" aria-pressed={on} onClick={() => onChange(o.value)}
+            className="flex-1 h-8 transition-colors cursor-pointer"
+            style={{
+              fontSize: T.sm, fontWeight: on ? T.fw_semi : T.fw_medium,
+              backgroundColor: on ? T.primary : "transparent",
+              color: on ? T.primaryFg : T.mutedFg,
+            }}>
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Một dòng tùy chọn: cả dòng bấm được, mở popover chứa đúng ô nhập của nó. */
+function OptionRow({ icon: Icon, label, value, divider, children }: {
+  icon: React.ElementType; label: string; value: string; divider?: boolean; children: React.ReactNode;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" data-pill="off"
+          className="w-full flex items-center px-4 gap-3 cursor-pointer transition-opacity hover:opacity-80"
+          style={{ height: 44, background: "transparent", border: "none", borderRadius: 0,
+            ...(divider ? { borderBottom: `1px dashed ${T.border}` } : {}) }}>
+          <Icon className="size-4 shrink-0" style={{ color: T.mutedFg }} />
+          <span style={{ fontSize: T.sm, color: T.foreground }}>{label}</span>
+          <span className="flex-1 text-right truncate" style={{ fontSize: T.sm, color: T.mutedFg }}>{value}</span>
+          <ChevronRight className="size-4 shrink-0" style={{ color: T.mutedFg }} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 p-3">{children}</PopoverContent>
+    </Popover>
+  );
+}
+
 function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCreated: (ev: EventDraft) => void }) {
   const [format, setFormat] = useState<EventFormat>("offline");
   const [loading, setLoading] = useState(false);
@@ -1064,6 +1125,11 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   });
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Chỉ nhắc thiếu thông tin sau khi người dùng đã rời khỏi ô — mở màn lên mà
+  // đã báo lỗi thì giống như bị mắng trước khi kịp gõ.
+  const [touched, setTouched] = useState<{ name?: boolean; location?: boolean; link?: boolean }>({});
+  const touch = (k: "name" | "location" | "link") => () => setTouched((t) => ({ ...t, [k]: true }));
+
   const needsLocation   = format === "offline" || format === "hybrid";
   const needsOnlineLink = format === "online"  || format === "hybrid";
 
@@ -1071,6 +1137,12 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
     && form.startDate && form.endDate
     && (!needsLocation   || form.location.trim())
     && (!needsOnlineLink || form.onlineLink.trim());
+
+  const hint =
+    touched.name && !form.name.trim() ? "Vui lòng nhập tên sự kiện."
+    : touched.location && needsLocation && !form.location.trim() ? "Vui lòng nhập địa điểm."
+    : touched.link && needsOnlineLink && !form.onlineLink.trim() ? "Vui lòng nhập link tham gia."
+    : null;
 
   const handleCreate = async () => {
     if (!isValid) return;
@@ -1196,60 +1268,43 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
             customBg={customBg} onCustomBg={setCustomBg}
             coverUrl={coverUrl} onCoverChange={setCoverUrl} />
 
-            {/* 7. Tùy chọn sự kiện */}
+            {/* 7. Tùy chọn — mỗi dòng bấm cả hàng để mở popover nhỏ */}
             <div className="flex flex-col gap-1.5">
-              <Label>Tùy chọn sự kiện</Label>
+              <Label>Tùy chọn</Label>
               <div className="rounded-2xl overflow-hidden"
                 style={{ border: `1px solid ${T.border}`, backgroundColor: T.secondary }}>
 
-                {/* Giá vé */}
-                <div className="flex items-center px-4 gap-3" style={{ height: 42, borderBottom: `1px dashed ${T.border}` }}>
-                  <Ticket className="size-4 shrink-0" style={{ color: T.mutedFg }} />
-                  <span style={{ fontSize: T.sm, color: T.foreground }}>Giá vé</span>
-                  <div className="flex-1 flex items-center justify-end gap-2">
-                    {isPaid ? (
-                      <>
-                        <Input type="number" min={0} step={1000} placeholder="499000"
-                          value={ticketPrice} onChange={(e) => setTicketPrice(e.target.value)}
-                          className="h-8 w-28 text-right" style={{ fontSize: T.sm }} />
-                        <span style={{ fontSize: T.sm, color: T.mutedFg }}>đ</span>
-                        <button type="button" onClick={() => { setIsPaid(false); setTicketPrice(""); }}
-                          className="cursor-pointer transition-opacity hover:opacity-70"
-                          style={{ fontSize: T.xs, color: T.mutedFg }}>Miễn phí</button>
-                      </>
-                    ) : (
-                      <button type="button" onClick={() => setIsPaid(true)}
-                        className="flex items-center gap-1.5 cursor-pointer transition-opacity hover:opacity-70"
-                        style={{ fontSize: T.sm, color: T.mutedFg }}>
-                        Miễn phí <Pencil className="size-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <OptionRow icon={Ticket} label="Giá vé" divider
+                  value={!isPaid ? "Miễn phí" : ticketPrice ? `${Number(ticketPrice).toLocaleString("vi-VN")} đ` : "Chưa đặt giá"}>
+                  <Segmented ariaLabel="Giá vé" value={isPaid ? "paid" : "free"}
+                    onChange={(v) => { setIsPaid(v === "paid"); if (v === "free") setTicketPrice(""); }}
+                    options={[{ value: "free", label: "Miễn phí" }, { value: "paid", label: "Có phí" }]} />
+                  {isPaid && (
+                    <div className="flex items-center gap-2 mt-3">
+                      <Input type="number" min={0} step={1000} placeholder="499000" autoFocus
+                        aria-label="Giá vé (đồng)" value={ticketPrice}
+                        onChange={(e) => setTicketPrice(e.target.value)}
+                        className="h-9 flex-1" style={{ fontSize: T.sm }} />
+                      <span style={{ fontSize: T.sm, color: T.mutedFg }}>đ</span>
+                    </div>
+                  )}
+                </OptionRow>
 
-                {/* Sức chứa */}
-                <div className="flex items-center px-4 gap-3" style={{ height: 42 }}>
-                  <Users className="size-4 shrink-0" style={{ color: T.mutedFg }} />
-                  <span style={{ fontSize: T.sm, color: T.foreground }}>Sức chứa</span>
-                  <div className="flex-1 flex items-center justify-end gap-2">
-                    {limitAttendees ? (
-                      <>
-                        <Input type="number" min={1} placeholder="100"
-                          value={maxAttendees} onChange={(e) => setMaxAttendees(e.target.value)}
-                          className="h-8 w-24 text-right" style={{ fontSize: T.sm }} />
-                        <button type="button" onClick={() => { setLimitAttendees(false); setMaxAttendees(""); }}
-                          className="cursor-pointer transition-opacity hover:opacity-70"
-                          style={{ fontSize: T.xs, color: T.mutedFg }}>Bỏ giới hạn</button>
-                      </>
-                    ) : (
-                      <button type="button" onClick={() => setLimitAttendees(true)}
-                        className="flex items-center gap-1.5 cursor-pointer transition-opacity hover:opacity-70"
-                        style={{ fontSize: T.sm, color: T.mutedFg }}>
-                        Không giới hạn <Pencil className="size-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <OptionRow icon={Users} label="Sức chứa"
+                  value={!limitAttendees ? "Không giới hạn" : maxAttendees ? `${maxAttendees} người` : "Chưa đặt số"}>
+                  <Segmented ariaLabel="Sức chứa" value={limitAttendees ? "limited" : "open"}
+                    onChange={(v) => { setLimitAttendees(v === "limited"); if (v === "open") setMaxAttendees(""); }}
+                    options={[{ value: "open", label: "Không giới hạn" }, { value: "limited", label: "Giới hạn" }]} />
+                  {limitAttendees && (
+                    <div className="flex items-center gap-2 mt-3">
+                      <Input type="number" min={1} placeholder="100" autoFocus
+                        aria-label="Số người tối đa" value={maxAttendees}
+                        onChange={(e) => setMaxAttendees(e.target.value)}
+                        className="h-9 flex-1" style={{ fontSize: T.sm }} />
+                      <span style={{ fontSize: T.sm, color: T.mutedFg }}>người</span>
+                    </div>
+                  )}
+                </OptionRow>
 
               </div>
               <p style={{ fontSize: T.xs, color: T.mutedFg }}>
@@ -1267,124 +1322,59 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="ev-name">Tên sự kiện <span aria-label="bắt buộc" style={{ color: "currentColor", opacity: 0.75 }}>*</span></Label>
                 <Input id="ev-name" placeholder="Nhập tên sự kiện" required aria-required="true"
-                  value={form.name} onChange={(e) => set("name")(e.target.value)} />
+                  value={form.name} onBlur={touch("name")}
+                  onChange={(e) => set("name")(e.target.value)} />
               </div>
 
               {/* 2. Thời gian bắt đầu / kết thúc */}
               <div className="flex flex-col gap-1.5">
-                <Label>Thời gian <span aria-label="bắt buộc" style={{ color: "currentColor", opacity: 0.75 }}>*</span></Label>
-                <div className="flex items-stretch gap-2">
-                  {/* Cột trái — bắt đầu / kết thúc */}
-                  <div className="flex-1 min-w-0 rounded-2xl overflow-hidden" style={{ border: `1px solid ${T.border}`, backgroundColor: T.secondary }}>
-                  {/* Bắt đầu */}
-                  <div className="flex items-center px-4 gap-4" style={{ height: 42, borderBottom: `1px dashed ${T.border}` }}>
-                    <div className="flex flex-col items-center shrink-0" style={{ width: 10, gap: 0 }}>
-                      <div style={{ width: 9, height: 9, borderRadius: "50%", backgroundColor: T.primary }} />
-                    </div>
-                    <span style={{ fontSize: T.sm, color: T.mutedFg, minWidth: 64 }}>Bắt đầu</span>
-                    <div className="flex-1 flex items-center justify-end gap-2">
-                      {/* Date pill */}
-                      <div className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-                        style={{ backgroundColor: T.background, border: `1px solid ${T.border}`, cursor: "pointer" }}>
-                        <Calendar className="size-3.5 shrink-0" style={{ color: T.mutedFg, pointerEvents: "none" }} />
-                        <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: form.startDate ? T.foreground : T.mutedFg, pointerEvents: "none", whiteSpace: "nowrap" }}>
-                          {form.startDate ? (() => { const d = new Date(form.startDate); const days = ["CN","Thứ 2","Thứ 3","Thứ 4","Thứ 5","Thứ 6","Thứ 7"]; return `${days[d.getDay()]}, ${d.getDate()} thg ${d.getMonth()+1}`; })() : "Chọn ngày"}
-                        </span>
-                        <ChevronDown className="size-3 shrink-0" style={{ color: T.mutedFg, pointerEvents: "none" }} />
-                        <input type="date" value={form.startDate} onChange={(e) => set("startDate")(e.target.value)}
-                          style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
-                      </div>
-                      {/* Time pill */}
-                      <div className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-                        style={{ backgroundColor: T.background, border: `1px solid ${T.border}`, cursor: "pointer" }}>
-                        <Clock className="size-3.5 shrink-0" style={{ color: T.mutedFg, pointerEvents: "none" }} />
-                        <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground, pointerEvents: "none", minWidth: 36 }}>
-                          {form.startTime || (() => { const n = new Date(); return `${String(n.getHours()).padStart(2,"0")}:${String(n.getMinutes()).padStart(2,"0")}`; })()}
-                        </span>
-                        <ChevronDown className="size-3 shrink-0" style={{ color: T.mutedFg, pointerEvents: "none" }} />
-                        <input type="time" value={form.startTime} onChange={(e) => set("startTime")(e.target.value)}
-                          style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
+                <div className="flex items-center justify-between gap-3">
+                  <Label>Thời gian <span aria-label="bắt buộc" style={{ color: "currentColor", opacity: 0.75 }}>*</span></Label>
+                  {/* Múi giờ chỉ để đọc, không phải ô nhập — đứng cạnh nhãn thay vì
+                      chiếm hẳn một thẻ riêng bên phải. */}
+                  <span className="flex items-center gap-1.5" style={{ fontSize: T.xs, color: T.mutedFg }}>
+                    <Globe className="size-3.5" /> {TIMEZONE.label} · {TIMEZONE.city}
+                  </span>
+                </div>
+                <div className="rounded-2xl overflow-hidden"
+                  style={{ border: `1px solid ${T.border}`, backgroundColor: T.secondary }}>
+                  {([
+                    { key: "start", label: "Bắt đầu", date: form.startDate, time: form.startTime },
+                    { key: "end",   label: "Kết thúc", date: form.endDate,   time: form.endTime },
+                  ] as const).map((leg, i) => (
+                    <div key={leg.key} className="flex items-center px-4 gap-3"
+                      style={{ height: 44, ...(i === 0 ? { borderBottom: `1px dashed ${T.border}` } : {}) }}>
+                      <span style={{ fontSize: T.sm, color: T.mutedFg, minWidth: 64 }}>{leg.label}</span>
+                      <div className="flex-1 flex items-center justify-end gap-2">
+                        <DateTimePill kind="date" value={leg.date} onChange={set(leg.key === "start" ? "startDate" : "endDate")} />
+                        <DateTimePill kind="time" value={leg.time} onChange={set(leg.key === "start" ? "startTime" : "endTime")} />
                       </div>
                     </div>
-                  </div>
-                  {/* Kết thúc */}
-                  <div className="flex items-center px-4 gap-4" style={{ height: 42 }}>
-                    <div className="flex flex-col items-center shrink-0" style={{ width: 10 }}>
-                      <div style={{ width: 9, height: 9, borderRadius: "50%", border: `1.5px solid ${T.mutedFg}`, backgroundColor: "transparent" }} />
-                    </div>
-                    <span style={{ fontSize: T.sm, color: T.mutedFg, minWidth: 64 }}>Kết thúc</span>
-                    <div className="flex-1 flex items-center justify-end gap-2">
-                      <div className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-                        style={{ backgroundColor: T.background, border: `1px solid ${T.border}`, cursor: "pointer" }}>
-                        <Calendar className="size-3.5 shrink-0" style={{ color: T.mutedFg, pointerEvents: "none" }} />
-                        <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: form.endDate ? T.foreground : T.mutedFg, pointerEvents: "none", whiteSpace: "nowrap" }}>
-                          {form.endDate ? (() => { const d = new Date(form.endDate); const days = ["CN","Thứ 2","Thứ 3","Thứ 4","Thứ 5","Thứ 6","Thứ 7"]; return `${days[d.getDay()]}, ${d.getDate()} thg ${d.getMonth()+1}`; })() : "Chọn ngày"}
-                        </span>
-                        <ChevronDown className="size-3 shrink-0" style={{ color: T.mutedFg, pointerEvents: "none" }} />
-                        <input type="date" value={form.endDate} onChange={(e) => set("endDate")(e.target.value)}
-                          style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
-                      </div>
-                      <div className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-                        style={{ backgroundColor: T.background, border: `1px solid ${T.border}`, cursor: "pointer" }}>
-                        <Clock className="size-3.5 shrink-0" style={{ color: T.mutedFg, pointerEvents: "none" }} />
-                        <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground, pointerEvents: "none", minWidth: 36 }}>
-                          {form.endTime || (() => { const n = new Date(); n.setHours(n.getHours()+1); return `${String(n.getHours()).padStart(2,"0")}:${String(n.getMinutes()).padStart(2,"0")}`; })()}
-                        </span>
-                        <ChevronDown className="size-3 shrink-0" style={{ color: T.mutedFg, pointerEvents: "none" }} />
-                        <input type="time" value={form.endTime} onChange={(e) => set("endTime")(e.target.value)}
-                          style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
-                      </div>
-                    </div>
-                  </div>
-                  </div>
-
-                  {/* Cột phải — múi giờ */}
-                  <div className="rounded-2xl shrink-0 flex flex-col justify-center gap-1.5 px-4 py-3"
-                    style={{ width: 136, border: `1px solid ${T.border}`, backgroundColor: T.secondary }}>
-                    <Globe className="size-4 shrink-0" style={{ color: T.mutedFg }} />
-                    <div className="flex flex-col min-w-0">
-                      <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground, whiteSpace: "nowrap" }}>{TIMEZONE.label}</span>
-                      <span className="truncate" style={{ fontSize: T.xs, color: T.mutedFg }}>{TIMEZONE.city}</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
 
               {/* 3. Hình thức tổ chức */}
               <div className="flex flex-col gap-1.5">
                 <Label>Hình thức tổ chức</Label>
-                {/* Nút bên trong bo tròn như mọi nút khác, nên khung ngoài cũng bo tròn và ôm sát */}
-                <div className="flex gap-1 p-1 rounded-full" role="group" aria-label="Hình thức tổ chức"
-                  style={{ backgroundColor: T.secondary, border: `1px solid ${T.border}` }}>
-                  {(["offline", "online"] as EventFormat[]).map((f) => {
-                    const on = format === f;
-                    return (
-                      <button key={f} type="button" aria-pressed={on} onClick={() => setFormat(f)}
-                        className="flex-1 h-8 transition-colors cursor-pointer"
-                        style={{
-                          fontSize: T.sm, fontWeight: on ? T.fw_semi : T.fw_medium,
-                          backgroundColor: on ? T.primary : "transparent",
-                          color: on ? T.primaryFg : T.mutedFg,
-                        }}>
-                        {f === "offline" ? "Offline" : "Online"}
-                      </button>
-                    );
-                  })}
-                </div>
+                <Segmented ariaLabel="Hình thức tổ chức" value={format}
+                  onChange={(v) => setFormat(v as EventFormat)}
+                  options={[{ value: "offline", label: "Offline" }, { value: "online", label: "Online" }]} />
               </div>
 
-              {/* 4. Địa điểm tổ chức */}
+              {/* 4. Địa điểm hoặc link — hỏi đúng thứ mà hình thức tổ chức cần */}
               {needsLocation && (
                 <div className="flex flex-col gap-1.5">
-                  <Label>Địa điểm tổ chức <span aria-label="bắt buộc" style={{ color: "currentColor", opacity: 0.75 }}>*</span></Label>
-                  <LocationPicker value={form.location} onChange={set("location")} isOnline={false} />
+                  <Label>Địa điểm <span aria-label="bắt buộc" style={{ color: "currentColor", opacity: 0.75 }}>*</span></Label>
+                  <LocationPicker value={form.location} onChange={set("location")} onBlur={touch("location")} isOnline={false} />
                 </div>
               )}
               {needsOnlineLink && (
                 <div className="flex flex-col gap-1.5">
-                  <Label>Link tham gia online <span aria-label="bắt buộc" style={{ color: "currentColor", opacity: 0.75 }}>*</span></Label>
-                  <Input placeholder="https://meet.google.com/..."
-                    value={form.onlineLink} onChange={(e) => set("onlineLink")(e.target.value)} />
+                  <Label htmlFor="ev-link">Link tham gia <span aria-label="bắt buộc" style={{ color: "currentColor", opacity: 0.75 }}>*</span></Label>
+                  <Input id="ev-link" placeholder="https://..." value={form.onlineLink}
+                    onBlur={touch("link")}
+                    onChange={(e) => set("onlineLink")(e.target.value)} />
                 </div>
               )}
 
@@ -1403,8 +1393,8 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                   {loading ? "Đang tạo..." : "Tạo sự kiện"}
                 </Button>
                 <div className="flex items-center justify-between gap-3">
-                  <p style={{ fontSize: T.xs, color: T.mutedFg }}>
-                    {!form.name.trim() ? "Vui lòng nhập tên sự kiện." : !isValid ? "Vui lòng điền đầy đủ các trường bắt buộc." : "Sẵn sàng tạo sự kiện."}
+                  <p aria-live="polite" className="flex items-center gap-1.5" style={{ fontSize: T.xs, color: T.mutedFg }}>
+                    {hint && <><AlertCircle className="size-3.5 shrink-0" /> {hint}</>}
                   </p>
                   <button type="button" data-pill="off" onClick={onCancel}
                     className="shrink-0 cursor-pointer transition-opacity hover:opacity-70"
@@ -2234,6 +2224,9 @@ export function EventsPage({ screen: externalScreen, onScreenChange }: { screen?
       checklistTotal: 6,
     };
     setTimelineEvents((prev) => [...prev, newTimelineEvent]);
+    // Sự kiện tạo xong mới là bản nháp; nói rõ bước tiếp theo thay vì
+    // thả người dùng vào workspace mà không biết còn phải làm gì.
+    toast.success("Đã tạo sự kiện", { description: "Tiếp tục hoàn thiện thông tin và thiết lập sự kiện." });
     navigate("/event");
   };
 
