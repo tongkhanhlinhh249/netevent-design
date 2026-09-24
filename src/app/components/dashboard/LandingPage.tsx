@@ -1,5 +1,5 @@
 import * as React from "react";
-import { GalaxyBackground } from "../backgrounds/GalaxyBackground";
+import { EventBackground } from "../backgrounds/EventBackground";
 import { isAnimatedTheme, isDarkColor } from "../../data/themes";
 import { useState, useEffect } from "react";
 import {
@@ -1291,6 +1291,8 @@ function LandingPageEditor({ event, settings, onSettingsChange }: {
       <div className="flex-1 min-w-0 overflow-auto">
         <DemoPublicLandingPage bgStyle={settings.bgStyle} bgColor={settings.bgColor} regMode={settings.regMode} ticketsConfigured={settings.ticketsConfigured} coverUrl={coverUrl} themeBg={themePageBg(event.theme, (event as { themeColor?: string }).themeColor)}
           themeImage={(event as { pageImage?: string }).pageImage} themeId={event.theme}
+          themeLineColor={(event as { themeLineColor?: string }).themeLineColor}
+          themeGlowColor={(event as { themeGlowColor?: string }).themeGlowColor}
           event={event as PublicEvent} />
       </div>
 
@@ -1527,7 +1529,7 @@ export type PublicEvent = {
   coverImage?: string; cover?: string;
 };
 
-export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfigured = true, coverUrl, themeBg, themeImage, themeId, event }: { bgStyle?: "light" | "white" | "brand"; bgColor?: string; regMode?: RegMode; ticketsConfigured?: boolean; coverUrl?: string | null; themeBg?: string; themeImage?: string; themeId?: string; event?: PublicEvent } = {}) {
+export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfigured = true, coverUrl, themeBg, themeImage, themeId, themeLineColor, themeGlowColor, event }: { bgStyle?: "light" | "white" | "brand"; bgColor?: string; regMode?: RegMode; ticketsConfigured?: boolean; coverUrl?: string | null; themeBg?: string; themeImage?: string; themeId?: string; themeLineColor?: string; themeGlowColor?: string; event?: PublicEvent } = {}) {
   const showTiers = regMode === "tickets" || regMode === undefined; // default to showing tiers in /demo
 
   // ── Nội dung lấy từ cấu hình sự kiện ──
@@ -1652,7 +1654,7 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
       ...darkVars,
     }}>
       {animatedBg && (
-        <GalaxyBackground />
+        <EventBackground themeId={themeId} lineColor={themeLineColor} glowColor={themeGlowColor} />
       )}
 
       {/* ── Main two-column layout ── */}

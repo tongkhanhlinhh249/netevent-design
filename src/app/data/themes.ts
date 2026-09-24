@@ -14,13 +14,20 @@ export interface Theme {
   page: string;
   /** Nền vẽ bằng WebGL thay vì một màu tĩnh. */
   animated?: boolean;
+  /** Người dùng chỉnh được màu của hiệu ứng. */
+  tunable?: boolean;
 }
 
 export const THEMES: Theme[] = [
   { id: "minimal",  label: "Minimal",       gradient: "linear-gradient(135deg, #f8faff 0%, #e8f0fe 100%)", page: "#f7f9ff" },
   { id: "galaxy",   label: "Galaxy",        gradient: "radial-gradient(circle at 30% 25%, #3b2a7a 0%, #150d33 45%, #06040f 100%)",
     page: "#06040f", animated: true },
+  { id: "fibers",   label: "Ghost Fibers",  gradient: "linear-gradient(120deg, #140e35 0%, #3437a0 55%, #140e35 100%)",
+    page: "#0a0722", animated: true, tunable: true },
 ];
+
+/** Màu mặc định của nền Ghost Fibers — đổi được ở màn chọn giao diện. */
+export const DEFAULT_FIBER_COLORS = { line: "#140E35", glow: "#3437A0" };
 
 /** Mã màu mặc định khi người dùng mở lựa chọn "Màu tự chọn". */
 export const DEFAULT_THEME_COLOR = "#7c3aed";

@@ -16,8 +16,8 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
-import { THEMES, themePageBg, surfaceVars, isAnimatedTheme, DEFAULT_THEME_COLOR } from "../../data/themes";
-import { GalaxyBackground } from "../backgrounds/GalaxyBackground";
+import { THEMES, themePageBg, surfaceVars, isAnimatedTheme, DEFAULT_THEME_COLOR, DEFAULT_FIBER_COLORS } from "../../data/themes";
+import { EventBackground } from "../backgrounds/EventBackground";
 import { useCurrentEvent } from "../../data/currentEvent";
 import { downscaleToDataUrl, readImageFile } from "../../data/imageUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
@@ -202,6 +202,9 @@ export interface EventDraft {
   theme: string;
   /** Màu nền tự chọn, chỉ dùng khi theme là "color". */
   themeColor?: string;
+  /** Màu của nền động Ghost Fibers. */
+  themeLineColor?: string;
+  themeGlowColor?: string;
   visibility: string;
   requireApproval: boolean;
   limitAttendees: boolean;
@@ -842,12 +845,14 @@ function CoverUploadCard({ eventName }: { eventName: string }) {
  * nơi sự kiện hiện tại được lưu để tab trang công khai đọc lại — nên thu nhỏ
  * trước khi giữ.
  */
-function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThemeColor, customBg, onCustomBg, coverUrl, onCoverChange }: {
+function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThemeColor, fiberColors, onFiberColors, customBg, onCustomBg, coverUrl, onCoverChange }: {
   form: { name: string };
   theme: string;
   onThemeChange: (id: string) => void;
   themeColor: string;
   onThemeColor: (hex: string) => void;
+  fiberColors: { line: string; glow: string };
+  onFiberColors: (c: { line: string; glow: string }) => void;
   customBg: string | null;
   onCustomBg: (url: string) => void;
   coverUrl: string | null;
@@ -968,7 +973,7 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThe
               const on = th.id === theme;
               return (
                 <button key={th.id} type="button" data-pill="off"
-                  onClick={() => { onThemeChange(th.id); setThemeOpen(false); }}
+                  onClick={() => { onThemeChange(th.id); if (!th.tunable) setThemeOpen(false); }}
                   aria-pressed={on}
                   className="flex items-center gap-3 p-3 rounded-xl w-full text-left cursor-pointer transition-colors"
                   style={{
@@ -976,7 +981,7 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThe
                     backgroundColor: on ? `color-mix(in srgb, ${T.primary} 6%, ${T.background})` : T.background,
                   }}>
                   <div className="w-16 h-11 rounded-lg shrink-0 relative overflow-hidden" style={{ background: th.gradient }}>
-                    {th.animated && <GalaxyBackground fixed={false} scrim={0} />}
+                    {th.animated && <EventBackground themeId={th.id} lineColor={fiberColors.line} glowColor={fiberColors.glow} fixed={false} scrim={0} />}
                   </div>
                   <div className="flex flex-col gap-1 min-w-0 flex-1">
                     <span className="flex items-center gap-1.5" style={{ fontSize: T.sm, fontWeight: on ? T.fw_semi : T.fw_medium, color: T.foreground }}>
@@ -996,6 +1001,26 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThe
                 </button>
               );
             })}
+            {/* Màu của nền động: chỉ hỏi khi nền đó đang được chọn */}
+            {THEMES.find((t) => t.id === theme)?.tunable && (
+              <div className="flex flex-col gap-2 rounded-xl p-3" style={{ border: `1px solid ${T.border}` }}>
+                {([
+                  { key: "line" as const, label: "Màu đường" },
+                  { key: "glow" as const, label: "Màu phát sáng" },
+                ]).map((c) => (
+                  <label key={c.key} className="flex items-center gap-3 cursor-pointer">
+                    <span className="size-8 rounded-lg shrink-0 relative overflow-hidden"
+                      style={{ backgroundColor: fiberColors[c.key], border: `1px solid ${T.border}` }}>
+                      <input type="color" value={fiberColors[c.key]} aria-label={c.label}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        onChange={(e) => onFiberColors({ ...fiberColors, [c.key]: e.target.value })} />
+                    </span>
+                    <span className="flex-1 min-w-0" style={{ fontSize: T.sm, color: T.foreground }}>{c.label}</span>
+                    <span style={{ fontSize: T.xs, color: T.mutedFg, fontFamily: "monospace" }}>{fiberColors[c.key].toUpperCase()}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
           <div className="px-6 py-4" style={{ borderTop: `1px solid ${T.border}` }}>
             <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6 }}>
@@ -1017,6 +1042,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   const [theme, setTheme] = useState("minimal");
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [themeColor, setThemeColor] = useState(DEFAULT_THEME_COLOR);
+  const [fiberColors, setFiberColors] = useState(DEFAULT_FIBER_COLORS);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [visibility, setVisibility] = useState("public");
   const [limitAttendees, setLimitAttendees] = useState(false);
@@ -1062,7 +1088,10 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         startDate: form.startDate, startTime: form.startTime,
         endDate: form.endDate, endTime: form.endTime,
         format, location: needsLocation ? form.location : (needsOnlineLink ? form.onlineLink : ""),
-        theme, themeColor: theme === "color" ? themeColor : undefined, visibility,
+        theme, themeColor: theme === "color" ? themeColor : undefined,
+        themeLineColor: theme === "fibers" ? fiberColors.line : undefined,
+        themeGlowColor: theme === "fibers" ? fiberColors.glow : undefined,
+        visibility,
         // Duyệt đăng ký không thiết lập khi tạo; bật sau ở Thông tin chung nếu cần.
         requireApproval: false, limitAttendees, maxAttendees: limitAttendees ? maxAttendees : "",
         ticketPrice: isPaid ? ticketPrice : "",
@@ -1116,7 +1145,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
     <div ref={rootRef} className="w-full flex flex-col relative"
       style={{ minHeight: "min(calc(100vh - 180px), 100%)", color: "var(--foreground)", ...GLASS_VARS }}>
       {/* Nền động chạy ngay trong màn tạo, để thấy đúng thứ trang sự kiện sẽ hiện */}
-      {isAnimatedTheme(theme) && !usingImage && <GalaxyBackground />}
+      {isAnimatedTheme(theme) && !usingImage && <EventBackground themeId={theme} lineColor={fiberColors.line} glowColor={fiberColors.glow} />}
       {/* Back */}
 
       <div className="relative flex items-center justify-between gap-3 flex-wrap mb-4 w-full max-w-[960px] mx-auto" style={{ zIndex: 1 }}>
@@ -1156,6 +1185,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         <div className="flex flex-col gap-0 lg:sticky lg:top-6">
           <UnifiedEventPreviewCard form={form} theme={theme} onThemeChange={setTheme}
             themeColor={themeColor} onThemeColor={setThemeColor}
+            fiberColors={fiberColors} onFiberColors={setFiberColors}
             customBg={customBg} onCustomBg={setCustomBg}
             coverUrl={coverUrl} onCoverChange={setCoverUrl} />
         </div>
