@@ -983,7 +983,6 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [organizerAvatar, setOrganizerAvatar] = useState<string | null>(null);
   const [visibility, setVisibility] = useState("public");
-  const [requireApproval, setRequireApproval] = useState(false);
   const [limitAttendees, setLimitAttendees] = useState(false);
   const [maxAttendees, setMaxAttendees] = useState("");
   const [isPaid, setIsPaid] = useState(false);
@@ -1028,7 +1027,8 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         endDate: form.endDate, endTime: form.endTime,
         format, location: needsLocation ? form.location : (needsOnlineLink ? form.onlineLink : ""),
         theme, visibility,
-        requireApproval, limitAttendees, maxAttendees: limitAttendees ? maxAttendees : "",
+        // Duyệt đăng ký không thiết lập khi tạo; bật sau ở Thông tin chung nếu cần.
+        requireApproval: false, limitAttendees, maxAttendees: limitAttendees ? maxAttendees : "",
         ticketPrice: isPaid ? ticketPrice : "",
         status: "draft",
         cover: THEMES.find((t) => t.id === theme)?.gradient ?? THEMES[1].gradient,
@@ -1233,18 +1233,23 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
               {/* 3. Hình thức tổ chức */}
               <div className="flex flex-col gap-1.5">
                 <Label>Hình thức tổ chức</Label>
-                <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${T.border}` }}>
-                  {(["offline", "online"] as EventFormat[]).map((f, i) => (
-                    <button key={f} onClick={() => setFormat(f)} className="flex-1 py-2 transition-colors cursor-pointer"
-                      style={{
-                        fontSize: T.sm, fontWeight: format === f ? T.fw_semi : T.fw_normal,
-                        backgroundColor: format === f ? T.primary : T.background,
-                        color: format === f ? T.primaryFg : T.mutedFg,
-                        borderRight: i < 1 ? `1px solid ${T.border}` : "none",
-                      }}>
-                      {f === "offline" ? "Offline" : "Online"}
-                    </button>
-                  ))}
+                {/* Nút bên trong bo tròn như mọi nút khác, nên khung ngoài cũng bo tròn và ôm sát */}
+                <div className="flex gap-1 p-1 rounded-full" role="group" aria-label="Hình thức tổ chức"
+                  style={{ backgroundColor: T.secondary, border: `1px solid ${T.border}` }}>
+                  {(["offline", "online"] as EventFormat[]).map((f) => {
+                    const on = format === f;
+                    return (
+                      <button key={f} type="button" aria-pressed={on} onClick={() => setFormat(f)}
+                        className="flex-1 h-8 transition-colors cursor-pointer"
+                        style={{
+                          fontSize: T.sm, fontWeight: on ? T.fw_semi : T.fw_medium,
+                          backgroundColor: on ? T.primary : "transparent",
+                          color: on ? T.primaryFg : T.mutedFg,
+                        }}>
+                        {f === "offline" ? "Offline" : "Online"}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1311,15 +1316,6 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                           Miễn phí <Pencil className="size-3.5" />
                         </button>
                       )}
-                    </div>
-                  </div>
-
-                  {/* Yêu cầu duyệt */}
-                  <div className="flex items-center px-4 gap-3" style={{ height: 52, borderBottom: `1px dashed ${T.border}` }}>
-                    <UserCheck className="size-4 shrink-0" style={{ color: T.mutedFg }} />
-                    <span style={{ fontSize: T.sm, color: T.foreground }}>Yêu cầu duyệt</span>
-                    <div className="flex-1 flex items-center justify-end">
-                      <Switch checked={requireApproval} onCheckedChange={setRequireApproval} />
                     </div>
                   </div>
 

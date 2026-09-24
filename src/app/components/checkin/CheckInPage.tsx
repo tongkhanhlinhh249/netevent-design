@@ -371,35 +371,38 @@ function PhoneCheckin({ guests, onCheckIn }: { guests: Guest[]; onCheckIn: (id: 
   };
 
   return (
-    <main className="flex-1 max-w-[560px] w-full mx-auto px-4 sm:px-6 py-8 flex flex-col gap-4">
-      <div>
-        <p style={{ fontSize: T.lg, fontWeight: T.fw_semi }}>Check-in bằng số điện thoại</p>
-        <p style={{ fontSize: T.sm, color: T.mutedFg, marginTop: 4 }}>Nhập số điện thoại khách đã dùng khi đăng ký sự kiện.</p>
-      </div>
-      <form className="flex flex-col gap-1.5" onSubmit={(e) => { e.preventDefault(); search(); }}>
-        <div className="flex gap-2">
-          <Input type="tel" inputMode="tel" value={value} placeholder="Ví dụ: 0981 234 567" aria-label="Số điện thoại"
-            aria-invalid={!!error} onChange={(e) => { setValue(e.target.value); setError(""); }} />
-          <Button type="submit" className="shrink-0">Tìm</Button>
+    <main className="flex-1 w-full max-w-[880px] mx-auto px-4 sm:px-6 py-8">
+      {/* Cùng bề ngang với thanh tiêu đề; cột nhập liệu giữ hẹp cho dễ đọc */}
+      <div className="w-full max-w-[560px] flex flex-col gap-4">
+        <div>
+          <p style={{ fontSize: T.lg, fontWeight: T.fw_semi }}>Check-in bằng số điện thoại</p>
+          <p style={{ fontSize: T.sm, color: T.mutedFg, marginTop: 4 }}>Nhập số điện thoại khách đã dùng khi đăng ký sự kiện.</p>
         </div>
-        {error && <p style={{ fontSize: T.xs, color: T.destructive }}>{error}</p>}
-      </form>
-      {matches?.map((g) => (
-        <div key={g.id} className="rounded-2xl p-4 flex items-center gap-3" style={{ border: `1px solid ${T.border}` }}>
-          <Avatar name={g.name} />
-          <div className="flex-1 min-w-0">
-            <p className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_semi }}>{g.name}</p>
-            <p className="truncate" style={{ fontSize: T.xs, color: T.mutedFg }}>{g.phone} · {g.ticketCode} · {g.tier}</p>
+        <form className="flex flex-col gap-1.5" onSubmit={(e) => { e.preventDefault(); search(); }}>
+          <div className="flex gap-2">
+            <Input type="tel" inputMode="tel" value={value} placeholder="Ví dụ: 0981 234 567" aria-label="Số điện thoại"
+              aria-invalid={!!error} onChange={(e) => { setValue(e.target.value); setError(""); }} />
+            <Button type="submit" className="shrink-0">Tìm</Button>
           </div>
-          {g.status === "going" ? (
-            <Button size="sm" onClick={() => { onCheckIn(g.id); toast.success(`Đã check-in cho ${g.name}`); }}>
-              <UserCheck className="size-3.5" /> Check-in
-            </Button>
-          ) : (
-            <CheckedInPill guest={g} />
-          )}
-        </div>
-      ))}
+          {error && <p style={{ fontSize: T.xs, color: T.destructive }}>{error}</p>}
+        </form>
+        {matches?.map((g) => (
+          <div key={g.id} className="rounded-2xl p-4 flex items-center gap-3" style={{ border: `1px solid ${T.border}` }}>
+            <Avatar name={g.name} />
+            <div className="flex-1 min-w-0">
+              <p className="truncate" style={{ fontSize: T.sm, fontWeight: T.fw_semi }}>{g.name}</p>
+              <p className="truncate" style={{ fontSize: T.xs, color: T.mutedFg }}>{g.phone} · {g.ticketCode} · {g.tier}</p>
+            </div>
+            {g.status === "going" ? (
+              <Button size="sm" onClick={() => { onCheckIn(g.id); toast.success(`Đã check-in cho ${g.name}`); }}>
+                <UserCheck className="size-3.5" /> Check-in
+              </Button>
+            ) : (
+              <CheckedInPill guest={g} />
+            )}
+          </div>
+        ))}
+      </div>
     </main>
   );
 }
@@ -441,28 +444,31 @@ function GiftDesk({ eventId, guests }: { eventId: string; guests: Guest[] }) {
   };
 
   return (
-    <main className="flex-1 max-w-[560px] w-full mx-auto px-4 sm:px-6 py-8 flex flex-col gap-4">
-      <div>
-        <p style={{ fontSize: T.lg, fontWeight: T.fw_semi }}>Xác nhận trao quà</p>
-        <p style={{ fontSize: T.sm, color: T.mutedFg, marginTop: 4 }}>
-          Quét hoặc nhập mã nhận quà của khách. Khách không mở được mã thì tìm theo số điện thoại, mã đăng ký hoặc họ tên.
-        </p>
-        <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 8 }}>
-          Chờ nhận <strong style={{ color: T.foreground }}>{pending.length}</strong> · Đã nhận <strong style={{ color: T.foreground }}>{claimed}</strong>
-        </p>
-      </div>
-      <form className="flex flex-col gap-1.5" onSubmit={(e) => { e.preventDefault(); open(value); }}>
-        <div className="flex gap-2">
-          <Input value={value} placeholder="Mã nhận quà, SĐT, mã đăng ký hoặc họ tên" aria-label="Tra cứu phần quà"
-            aria-invalid={!!error} onChange={(e) => { setValue(e.target.value); setError(""); }} />
-          <Button type="submit" className="shrink-0">Kiểm tra</Button>
+    <main className="flex-1 w-full max-w-[880px] mx-auto px-4 sm:px-6 py-8">
+      {/* Cùng bề ngang với thanh tiêu đề; cột nhập liệu giữ hẹp cho dễ đọc */}
+      <div className="w-full max-w-[560px] flex flex-col gap-4">
+        <div>
+          <p style={{ fontSize: T.lg, fontWeight: T.fw_semi }}>Xác nhận trao quà</p>
+          <p style={{ fontSize: T.sm, color: T.mutedFg, marginTop: 4 }}>
+            Quét hoặc nhập mã nhận quà của khách. Khách không mở được mã thì tìm theo số điện thoại, mã đăng ký hoặc họ tên.
+          </p>
+          <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 8 }}>
+            Chờ nhận <strong style={{ color: T.foreground }}>{pending.length}</strong> · Đã nhận <strong style={{ color: T.foreground }}>{claimed}</strong>
+          </p>
         </div>
-        {error && <p style={{ fontSize: T.xs, color: T.destructive }}>{error}</p>}
-      </form>
-      {found && (
-        <RewardCard found={found} onConfirm={confirm}
-          onIncident={() => { reportGiftIncident(eventId, found.reward.code, STAFF); toast("Đã ghi nhận sự cố quà tặng", { description: "Ban tổ chức sẽ xử lý. Phần quà vẫn ở trạng thái Chờ nhận." }); }} />
-      )}
+        <form className="flex flex-col gap-1.5" onSubmit={(e) => { e.preventDefault(); open(value); }}>
+          <div className="flex gap-2">
+            <Input value={value} placeholder="Mã nhận quà, SĐT, mã đăng ký hoặc họ tên" aria-label="Tra cứu phần quà"
+              aria-invalid={!!error} onChange={(e) => { setValue(e.target.value); setError(""); }} />
+            <Button type="submit" className="shrink-0">Kiểm tra</Button>
+          </div>
+          {error && <p style={{ fontSize: T.xs, color: T.destructive }}>{error}</p>}
+        </form>
+        {found && (
+          <RewardCard found={found} onConfirm={confirm}
+            onIncident={() => { reportGiftIncident(eventId, found.reward.code, STAFF); toast("Đã ghi nhận sự cố quà tặng", { description: "Ban tổ chức sẽ xử lý. Phần quà vẫn ở trạng thái Chờ nhận." }); }} />
+        )}
+      </div>
     </main>
   );
 }
