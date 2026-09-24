@@ -1628,11 +1628,11 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
     "--foreground": "#f8fafc", "--color-foreground": "#f8fafc",
     "--muted-foreground": "rgba(248,250,252,0.72)", "--color-muted-foreground": "rgba(248,250,252,0.72)",
     "--border": "rgba(255,255,255,0.16)", "--color-border": "rgba(255,255,255,0.16)",
-    "--secondary": "rgba(12,10,24,0.38)", "--color-secondary": "rgba(12,10,24,0.38)",
+    "--secondary": "rgba(12,10,24,0.34)", "--color-secondary": "rgba(12,10,24,0.34)",
     // Thẻ là lớp tối trong suốt, không phải trắng mờ: nền động có thể sáng
     // (Grainient) và khi đó lớp trắng mờ làm chữ sáng mất tương phản.
-    "--background": "rgba(12,10,24,0.55)", "--color-background": "rgba(12,10,24,0.55)",
-    "--card": "rgba(12,10,24,0.55)", "--color-card": "rgba(12,10,24,0.55)",
+    "--background": "rgba(12,10,24,0.5)", "--color-background": "rgba(12,10,24,0.5)",
+    "--card": "rgba(12,10,24,0.5)", "--color-card": "rgba(12,10,24,0.5)",
     "--input-background": "rgba(12,10,24,0.45)", "--color-input-background": "rgba(12,10,24,0.45)",
     "--muted": "rgba(12,10,24,0.28)", "--color-muted": "rgba(12,10,24,0.28)",
   } as React.CSSProperties : undefined;

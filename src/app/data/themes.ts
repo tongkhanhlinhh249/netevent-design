@@ -84,15 +84,15 @@ export function surfaceVars(pageBg: string): Record<string, string> {
     // Bề mặt tối trong suốt (không phải trắng mờ): nền động có thể sáng — như
     // Grainient — và khi đó lớp trắng mờ làm chữ sáng mất tương phản.
     ? pair({
-      "--background": "rgba(12,10,24,0.55)",
-      "--card": "rgba(12,10,24,0.55)",
-      "--input-background": "rgba(12,10,24,0.45)",
-      "--input": "rgba(255,255,255,0.20)",
-      "--secondary": "rgba(12,10,24,0.38)",
-      "--muted": "rgba(12,10,24,0.28)",
-      "--border": "rgba(255,255,255,0.18)",
-      "--foreground": "#f8fafc",
-      "--muted-foreground": "rgba(248,250,252,0.62)",
+      "--background": "rgba(12,10,24,0.5)",
+      "--card": "rgba(12,10,24,0.5)",
+      "--input-background": "rgba(12,10,24,0.46)",
+      "--input": "rgba(255,255,255,0.22)",
+      "--secondary": "rgba(12,10,24,0.34)",
+      "--muted": "rgba(12,10,24,0.24)",
+      "--border": "rgba(255,255,255,0.20)",
+      "--foreground": "#ffffff",
+      "--muted-foreground": "rgba(255,255,255,0.72)",
       "--secondary-foreground": "#f8fafc",
     })
     : pair({

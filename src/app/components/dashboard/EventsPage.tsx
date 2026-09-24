@@ -1116,7 +1116,11 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   // Ô nhập lấy bề mặt theo nền đang chọn: nền sáng thì phủ trắng mờ, nền tối
   // (màu đậm tự chọn hoặc Galaxy) thì phủ trắng nhạt và đảo chữ sang sáng.
   const GLASS_VARS = surfaceVars(pageBg) as React.CSSProperties;
-  const fadeColor = isDarkColor(pageBg) ? "rgba(10,8,20,0.78)" : "rgba(255,255,255,0.85)";
+  // Nền tĩnh: khối hành động tan vào đúng màu trang. Nền động: không tô gì —
+  // một dải màu phẳng đè lên hiệu ứng đang chạy trông như lỗi; nút vốn đã đặc.
+  const fadeColor = isAnimatedTheme(theme) && !usingImage
+    ? null
+    : `color-mix(in srgb, ${pageBg} 92%, transparent)`;
   React.useEffect(() => {
     const main = rootRef.current?.closest("main") as HTMLElement | null;
     if (!main) return;
@@ -1185,7 +1189,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
       <div className="relative grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 w-full max-w-[960px] mx-auto items-start" style={{ zIndex: 1 }}>
 
         {/* ── Left: ảnh cover + giao diện, đứng yên khi form cuộn ── */}
-        <div className="flex flex-col gap-0 lg:sticky lg:top-6">
+        <div className="flex flex-col gap-4 lg:sticky lg:top-6">
           <UnifiedEventPreviewCard form={form} theme={theme} onThemeChange={setTheme}
             themeColor={themeColor} onThemeColor={setThemeColor}
             effectColors={effectColors} onEffectColors={setEffectColors}
@@ -1394,7 +1398,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
               {/* Hành động nằm cuối cột form (không phải thanh footer full-width),
                   dính đáy màn hình để luôn thấy nút tạo mà không phải cuộn. */}
               <div className="sticky bottom-0 flex flex-col gap-2 pt-4 pb-1" style={{ zIndex: 2,
-                background: `linear-gradient(to top, ${fadeColor} 45%, transparent)` }}>
+                ...(fadeColor ? { background: `linear-gradient(to top, ${fadeColor} 45%, transparent)` } : {}) }}>
                 <Button className="w-full h-11" disabled={!isValid || loading} onClick={handleCreate}>
                   {loading ? "Đang tạo..." : "Tạo sự kiện"}
                 </Button>
