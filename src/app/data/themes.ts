@@ -14,20 +14,36 @@ export interface Theme {
   page: string;
   /** Nền vẽ bằng WebGL thay vì một màu tĩnh. */
   animated?: boolean;
-  /** Người dùng chỉnh được màu của hiệu ứng. */
-  tunable?: boolean;
+  /** Các màu của hiệu ứng mà người dùng chỉnh được ở màn chọn giao diện. */
+  tunable?: { key: EffectColorKey; label: string }[];
 }
+
+export type EffectColorKey = "line" | "glow" | "dot" | "c1" | "c2" | "c3";
+
+/** Màu mặc định của các nền động. */
+export const DEFAULT_EFFECT_COLORS: Record<EffectColorKey, string> = {
+  line: "#140E35",
+  glow: "#3437A0",
+  dot:  "#FFFFFF",
+  c1:   "#FF9FFC",
+  c2:   "#5227FF",
+  c3:   "#B497CF",
+};
 
 export const THEMES: Theme[] = [
   { id: "minimal",  label: "Minimal",       gradient: "linear-gradient(135deg, #f8faff 0%, #e8f0fe 100%)", page: "#f7f9ff" },
   { id: "galaxy",   label: "Galaxy",        gradient: "radial-gradient(circle at 30% 25%, #3b2a7a 0%, #150d33 45%, #06040f 100%)",
     page: "#06040f", animated: true },
   { id: "fibers",   label: "Ghost Fibers",  gradient: "linear-gradient(120deg, #140e35 0%, #3437a0 55%, #140e35 100%)",
-    page: "#0a0722", animated: true, tunable: true },
+    page: "#0a0722", animated: true,
+    tunable: [{ key: "line", label: "Màu đường" }, { key: "glow", label: "Màu phát sáng" }] },
+  { id: "particles", label: "Particles",     gradient: "radial-gradient(circle at 35% 30%, #23252e 0%, #0b0c11 70%)",
+    page: "#08090e", animated: true,
+    tunable: [{ key: "dot", label: "Màu chấm" }] },
+  { id: "grainient", label: "Grainient",     gradient: "linear-gradient(120deg, #ff9ffc 0%, #b497cf 45%, #5227ff 100%)",
+    page: "#2a1a63", animated: true,
+    tunable: [{ key: "c1", label: "Màu 1" }, { key: "c2", label: "Màu 2" }, { key: "c3", label: "Màu 3" }] },
 ];
-
-/** Màu mặc định của nền Ghost Fibers — đổi được ở màn chọn giao diện. */
-export const DEFAULT_FIBER_COLORS = { line: "#140E35", glow: "#3437A0" };
 
 /** Mã màu mặc định khi người dùng mở lựa chọn "Màu tự chọn". */
 export const DEFAULT_THEME_COLOR = "#7c3aed";

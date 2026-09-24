@@ -16,7 +16,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
-import { THEMES, themePageBg, surfaceVars, isAnimatedTheme, DEFAULT_THEME_COLOR, DEFAULT_FIBER_COLORS } from "../../data/themes";
+import { THEMES, themePageBg, surfaceVars, isAnimatedTheme, isDarkColor, DEFAULT_THEME_COLOR, DEFAULT_EFFECT_COLORS, type EffectColorKey } from "../../data/themes";
 import { EventBackground } from "../backgrounds/EventBackground";
 import { useCurrentEvent } from "../../data/currentEvent";
 import { downscaleToDataUrl, readImageFile } from "../../data/imageUtils";
@@ -202,9 +202,8 @@ export interface EventDraft {
   theme: string;
   /** Màu nền tự chọn, chỉ dùng khi theme là "color". */
   themeColor?: string;
-  /** Màu của nền động Ghost Fibers. */
-  themeLineColor?: string;
-  themeGlowColor?: string;
+  /** Màu của nền động (Ghost Fibers, Particles, Grainient…) theo khoá hiệu ứng. */
+  themeEffectColors?: Partial<Record<string, string>>;
   visibility: string;
   requireApproval: boolean;
   limitAttendees: boolean;
@@ -845,14 +844,14 @@ function CoverUploadCard({ eventName }: { eventName: string }) {
  * nơi sự kiện hiện tại được lưu để tab trang công khai đọc lại — nên thu nhỏ
  * trước khi giữ.
  */
-function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThemeColor, fiberColors, onFiberColors, customBg, onCustomBg, coverUrl, onCoverChange }: {
+function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThemeColor, effectColors, onEffectColors, customBg, onCustomBg, coverUrl, onCoverChange }: {
   form: { name: string };
   theme: string;
   onThemeChange: (id: string) => void;
   themeColor: string;
   onThemeColor: (hex: string) => void;
-  fiberColors: { line: string; glow: string };
-  onFiberColors: (c: { line: string; glow: string }) => void;
+  effectColors: Record<EffectColorKey, string>;
+  onEffectColors: (c: Record<EffectColorKey, string>) => void;
   customBg: string | null;
   onCustomBg: (url: string) => void;
   coverUrl: string | null;
@@ -973,7 +972,7 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThe
               const on = th.id === theme;
               return (
                 <button key={th.id} type="button" data-pill="off"
-                  onClick={() => { onThemeChange(th.id); if (!th.tunable) setThemeOpen(false); }}
+                  onClick={() => { onThemeChange(th.id); if (!th.tunable?.length) setThemeOpen(false); }}
                   aria-pressed={on}
                   className="flex items-center gap-3 p-3 rounded-xl w-full text-left cursor-pointer transition-colors"
                   style={{
@@ -981,7 +980,7 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThe
                     backgroundColor: on ? `color-mix(in srgb, ${T.primary} 6%, ${T.background})` : T.background,
                   }}>
                   <div className="w-16 h-11 rounded-lg shrink-0 relative overflow-hidden" style={{ background: th.gradient }}>
-                    {th.animated && <EventBackground themeId={th.id} lineColor={fiberColors.line} glowColor={fiberColors.glow} fixed={false} scrim={0} />}
+                    {th.animated && <EventBackground themeId={th.id} colors={effectColors} fixed={false} scrim={0} />}
                   </div>
                   <div className="flex flex-col gap-1 min-w-0 flex-1">
                     <span className="flex items-center gap-1.5" style={{ fontSize: T.sm, fontWeight: on ? T.fw_semi : T.fw_medium, color: T.foreground }}>
@@ -1002,21 +1001,18 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThe
               );
             })}
             {/* Màu của nền động: chỉ hỏi khi nền đó đang được chọn */}
-            {THEMES.find((t) => t.id === theme)?.tunable && (
+            {(THEMES.find((t) => t.id === theme)?.tunable ?? []).length > 0 && (
               <div className="flex flex-col gap-2 rounded-xl p-3" style={{ border: `1px solid ${T.border}` }}>
-                {([
-                  { key: "line" as const, label: "Màu đường" },
-                  { key: "glow" as const, label: "Màu phát sáng" },
-                ]).map((c) => (
+                {THEMES.find((t) => t.id === theme)!.tunable!.map((c) => (
                   <label key={c.key} className="flex items-center gap-3 cursor-pointer">
                     <span className="size-8 rounded-lg shrink-0 relative overflow-hidden"
-                      style={{ backgroundColor: fiberColors[c.key], border: `1px solid ${T.border}` }}>
-                      <input type="color" value={fiberColors[c.key]} aria-label={c.label}
+                      style={{ backgroundColor: effectColors[c.key], border: `1px solid ${T.border}` }}>
+                      <input type="color" value={effectColors[c.key]} aria-label={c.label}
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        onChange={(e) => onFiberColors({ ...fiberColors, [c.key]: e.target.value })} />
+                        onChange={(e) => onEffectColors({ ...effectColors, [c.key]: e.target.value })} />
                     </span>
                     <span className="flex-1 min-w-0" style={{ fontSize: T.sm, color: T.foreground }}>{c.label}</span>
-                    <span style={{ fontSize: T.xs, color: T.mutedFg, fontFamily: "monospace" }}>{fiberColors[c.key].toUpperCase()}</span>
+                    <span style={{ fontSize: T.xs, color: T.mutedFg, fontFamily: "monospace" }}>{effectColors[c.key].toUpperCase()}</span>
                   </label>
                 ))}
               </div>
@@ -1042,7 +1038,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   const [theme, setTheme] = useState("minimal");
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [themeColor, setThemeColor] = useState(DEFAULT_THEME_COLOR);
-  const [fiberColors, setFiberColors] = useState(DEFAULT_FIBER_COLORS);
+  const [effectColors, setEffectColors] = useState(DEFAULT_EFFECT_COLORS);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [visibility, setVisibility] = useState("public");
   const [limitAttendees, setLimitAttendees] = useState(false);
@@ -1089,8 +1085,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         endDate: form.endDate, endTime: form.endTime,
         format, location: needsLocation ? form.location : (needsOnlineLink ? form.onlineLink : ""),
         theme, themeColor: theme === "color" ? themeColor : undefined,
-        themeLineColor: theme === "fibers" ? fiberColors.line : undefined,
-        themeGlowColor: theme === "fibers" ? fiberColors.glow : undefined,
+        themeEffectColors: isAnimatedTheme(theme) ? effectColors : undefined,
         visibility,
         // Duyệt đăng ký không thiết lập khi tạo; bật sau ở Thông tin chung nếu cần.
         requireApproval: false, limitAttendees, maxAttendees: limitAttendees ? maxAttendees : "",
@@ -1117,6 +1112,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   // Ô nhập lấy bề mặt theo nền đang chọn: nền sáng thì phủ trắng mờ, nền tối
   // (màu đậm tự chọn hoặc Galaxy) thì phủ trắng nhạt và đảo chữ sang sáng.
   const GLASS_VARS = surfaceVars(pageBg) as React.CSSProperties;
+  const fadeColor = isDarkColor(pageBg) ? "rgba(6,4,15,0.72)" : "rgba(255,255,255,0.82)";
   React.useEffect(() => {
     const main = rootRef.current?.closest("main") as HTMLElement | null;
     if (!main) return;
@@ -1145,10 +1141,10 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
     <div ref={rootRef} className="w-full flex flex-col relative"
       style={{ minHeight: "min(calc(100vh - 180px), 100%)", color: "var(--foreground)", ...GLASS_VARS }}>
       {/* Nền động chạy ngay trong màn tạo, để thấy đúng thứ trang sự kiện sẽ hiện */}
-      {isAnimatedTheme(theme) && !usingImage && <EventBackground themeId={theme} lineColor={fiberColors.line} glowColor={fiberColors.glow} />}
+      {isAnimatedTheme(theme) && !usingImage && <EventBackground themeId={theme} colors={effectColors} />}
       {/* Back */}
 
-      <div className="relative flex items-center justify-between gap-3 flex-wrap mb-4 w-full max-w-[960px] mx-auto" style={{ zIndex: 1 }}>
+      <div className="relative flex items-center justify-between gap-3 flex-wrap mb-3 w-full max-w-[960px] mx-auto" style={{ zIndex: 1 }}>
         <h2 style={{ color: T.foreground, fontSize: T["2xl"], fontWeight: T.fw_semi }}>Tạo sự kiện</h2>
         <div className="flex items-center gap-3">
           {/* Quyền riêng tư */}
@@ -1185,15 +1181,76 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         <div className="flex flex-col gap-0 lg:sticky lg:top-6">
           <UnifiedEventPreviewCard form={form} theme={theme} onThemeChange={setTheme}
             themeColor={themeColor} onThemeColor={setThemeColor}
-            fiberColors={fiberColors} onFiberColors={setFiberColors}
+            effectColors={effectColors} onEffectColors={setEffectColors}
             customBg={customBg} onCustomBg={setCustomBg}
             coverUrl={coverUrl} onCoverChange={setCoverUrl} />
+
+            {/* 7. Tùy chọn sự kiện */}
+            <div className="flex flex-col gap-1.5">
+              <Label>Tùy chọn sự kiện</Label>
+              <div className="rounded-2xl overflow-hidden"
+                style={{ border: `1px solid ${T.border}`, backgroundColor: T.secondary }}>
+
+                {/* Giá vé */}
+                <div className="flex items-center px-4 gap-3" style={{ height: 42, borderBottom: `1px dashed ${T.border}` }}>
+                  <Ticket className="size-4 shrink-0" style={{ color: T.mutedFg }} />
+                  <span style={{ fontSize: T.sm, color: T.foreground }}>Giá vé</span>
+                  <div className="flex-1 flex items-center justify-end gap-2">
+                    {isPaid ? (
+                      <>
+                        <Input type="number" min={0} step={1000} placeholder="499000"
+                          value={ticketPrice} onChange={(e) => setTicketPrice(e.target.value)}
+                          className="h-8 w-28 text-right" style={{ fontSize: T.sm }} />
+                        <span style={{ fontSize: T.sm, color: T.mutedFg }}>đ</span>
+                        <button type="button" onClick={() => { setIsPaid(false); setTicketPrice(""); }}
+                          className="cursor-pointer transition-opacity hover:opacity-70"
+                          style={{ fontSize: T.xs, color: T.mutedFg }}>Miễn phí</button>
+                      </>
+                    ) : (
+                      <button type="button" onClick={() => setIsPaid(true)}
+                        className="flex items-center gap-1.5 cursor-pointer transition-opacity hover:opacity-70"
+                        style={{ fontSize: T.sm, color: T.mutedFg }}>
+                        Miễn phí <Pencil className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sức chứa */}
+                <div className="flex items-center px-4 gap-3" style={{ height: 42 }}>
+                  <Users className="size-4 shrink-0" style={{ color: T.mutedFg }} />
+                  <span style={{ fontSize: T.sm, color: T.foreground }}>Sức chứa</span>
+                  <div className="flex-1 flex items-center justify-end gap-2">
+                    {limitAttendees ? (
+                      <>
+                        <Input type="number" min={1} placeholder="100"
+                          value={maxAttendees} onChange={(e) => setMaxAttendees(e.target.value)}
+                          className="h-8 w-24 text-right" style={{ fontSize: T.sm }} />
+                        <button type="button" onClick={() => { setLimitAttendees(false); setMaxAttendees(""); }}
+                          className="cursor-pointer transition-opacity hover:opacity-70"
+                          style={{ fontSize: T.xs, color: T.mutedFg }}>Bỏ giới hạn</button>
+                      </>
+                    ) : (
+                      <button type="button" onClick={() => setLimitAttendees(true)}
+                        className="flex items-center gap-1.5 cursor-pointer transition-opacity hover:opacity-70"
+                        style={{ fontSize: T.sm, color: T.mutedFg }}>
+                        Không giới hạn <Pencil className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+              <p style={{ fontSize: T.xs, color: T.mutedFg }}>
+                Hạng vé chi tiết thiết lập ở <strong>Kho vé</strong> sau khi tạo.
+              </p>
+            </div>
         </div>
 
         {/* ── Right: Form ── */}
         <div className="min-w-0">
           <div>
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
 
               {/* 1. Tên sự kiện */}
               <div className="flex flex-col gap-1.5">
@@ -1209,7 +1266,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                   {/* Cột trái — bắt đầu / kết thúc */}
                   <div className="flex-1 min-w-0 rounded-2xl overflow-hidden" style={{ border: `1px solid ${T.border}`, backgroundColor: T.secondary }}>
                   {/* Bắt đầu */}
-                  <div className="flex items-center px-4 gap-4" style={{ height: 46, borderBottom: `1px dashed ${T.border}` }}>
+                  <div className="flex items-center px-4 gap-4" style={{ height: 42, borderBottom: `1px dashed ${T.border}` }}>
                     <div className="flex flex-col items-center shrink-0" style={{ width: 10, gap: 0 }}>
                       <div style={{ width: 9, height: 9, borderRadius: "50%", backgroundColor: T.primary }} />
                     </div>
@@ -1240,7 +1297,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                     </div>
                   </div>
                   {/* Kết thúc */}
-                  <div className="flex items-center px-4 gap-4" style={{ height: 46 }}>
+                  <div className="flex items-center px-4 gap-4" style={{ height: 42 }}>
                     <div className="flex flex-col items-center shrink-0" style={{ width: 10 }}>
                       <div style={{ width: 9, height: 9, borderRadius: "50%", border: `1.5px solid ${T.mutedFg}`, backgroundColor: "transparent" }} />
                     </div>
@@ -1327,71 +1384,10 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                   value={form.description} onChange={(e) => set("description")(e.target.value)} />
               </div>
 
-              {/* 7. Tùy chọn sự kiện */}
-              <div className="flex flex-col gap-1.5">
-                <Label>Tùy chọn sự kiện</Label>
-                <div className="rounded-2xl overflow-hidden"
-                  style={{ border: `1px solid ${T.border}`, backgroundColor: T.secondary }}>
-
-                  {/* Giá vé */}
-                  <div className="flex items-center px-4 gap-3" style={{ height: 46, borderBottom: `1px dashed ${T.border}` }}>
-                    <Ticket className="size-4 shrink-0" style={{ color: T.mutedFg }} />
-                    <span style={{ fontSize: T.sm, color: T.foreground }}>Giá vé</span>
-                    <div className="flex-1 flex items-center justify-end gap-2">
-                      {isPaid ? (
-                        <>
-                          <Input type="number" min={0} step={1000} placeholder="499000"
-                            value={ticketPrice} onChange={(e) => setTicketPrice(e.target.value)}
-                            className="h-8 w-28 text-right" style={{ fontSize: T.sm }} />
-                          <span style={{ fontSize: T.sm, color: T.mutedFg }}>đ</span>
-                          <button type="button" onClick={() => { setIsPaid(false); setTicketPrice(""); }}
-                            className="cursor-pointer transition-opacity hover:opacity-70"
-                            style={{ fontSize: T.xs, color: T.mutedFg }}>Miễn phí</button>
-                        </>
-                      ) : (
-                        <button type="button" onClick={() => setIsPaid(true)}
-                          className="flex items-center gap-1.5 cursor-pointer transition-opacity hover:opacity-70"
-                          style={{ fontSize: T.sm, color: T.mutedFg }}>
-                          Miễn phí <Pencil className="size-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Sức chứa */}
-                  <div className="flex items-center px-4 gap-3" style={{ height: 46 }}>
-                    <Users className="size-4 shrink-0" style={{ color: T.mutedFg }} />
-                    <span style={{ fontSize: T.sm, color: T.foreground }}>Sức chứa</span>
-                    <div className="flex-1 flex items-center justify-end gap-2">
-                      {limitAttendees ? (
-                        <>
-                          <Input type="number" min={1} placeholder="100"
-                            value={maxAttendees} onChange={(e) => setMaxAttendees(e.target.value)}
-                            className="h-8 w-24 text-right" style={{ fontSize: T.sm }} />
-                          <button type="button" onClick={() => { setLimitAttendees(false); setMaxAttendees(""); }}
-                            className="cursor-pointer transition-opacity hover:opacity-70"
-                            style={{ fontSize: T.xs, color: T.mutedFg }}>Bỏ giới hạn</button>
-                        </>
-                      ) : (
-                        <button type="button" onClick={() => setLimitAttendees(true)}
-                          className="flex items-center gap-1.5 cursor-pointer transition-opacity hover:opacity-70"
-                          style={{ fontSize: T.sm, color: T.mutedFg }}>
-                          Không giới hạn <Pencil className="size-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                </div>
-                <p style={{ fontSize: T.xs, color: T.mutedFg }}>
-                  Hạng vé chi tiết thiết lập ở <strong>Kho vé</strong> sau khi tạo.
-                </p>
-              </div>
-
               {/* Hành động nằm cuối cột form (không phải thanh footer full-width),
                   dính đáy màn hình để luôn thấy nút tạo mà không phải cuộn. */}
-              <div className="sticky bottom-0 flex flex-col gap-2 pt-3 pb-2" style={{ zIndex: 2,
-                background: `linear-gradient(to top, ${pageBg} 62%, transparent)` }}>
+              <div className="sticky bottom-0 flex flex-col gap-2 pt-4 pb-1" style={{ zIndex: 2,
+                background: `linear-gradient(to top, ${fadeColor} 45%, transparent)` }}>
                 <Button className="w-full h-11" disabled={!isValid || loading} onClick={handleCreate}>
                   {loading ? "Đang tạo..." : "Tạo sự kiện"}
                 </Button>
