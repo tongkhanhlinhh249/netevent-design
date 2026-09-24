@@ -26,7 +26,7 @@ export function EventBackground({ themeId, colors, fixed = true, scrim }: {
       {themeId === "fibers" ? (
         <GhostFibers lineColor={color("line")} glowColor={color("glow")} />
       ) : themeId === "grainient" ? (
-        <Grainient color1={color("c1")} color2={color("c2")} color3={color("c3")} />
+        <Grainient color1={color("c1")} color2={color("c2")} color3={color("c3")} grainAmount={0} grainAnimated={false} />
       ) : themeId === "particles" ? (
         <Particles particleColors={[color("dot")]} particleCount={200} particleSpread={10} speed={0.1}
           particleBaseSize={100} alphaParticles={false} disableRotation={false} />

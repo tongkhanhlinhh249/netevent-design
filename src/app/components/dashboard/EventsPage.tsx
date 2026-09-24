@@ -970,53 +970,57 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThe
 
             {THEMES.map((th) => {
               const on = th.id === theme;
+              // Ô chỉnh màu nằm ngay trong thẻ của nền đang chọn, không rời xuống cuối danh sách.
+              const tunable = on ? th.tunable ?? [] : [];
               return (
-                <button key={th.id} type="button" data-pill="off"
-                  onClick={() => { onThemeChange(th.id); if (!th.tunable?.length) setThemeOpen(false); }}
-                  aria-pressed={on}
-                  className="flex items-center gap-3 p-3 rounded-xl w-full text-left cursor-pointer transition-colors"
+                <div key={th.id} className="rounded-xl overflow-hidden transition-colors"
                   style={{
                     border: on ? `2px solid ${T.primary}` : `1px solid ${T.border}`,
                     backgroundColor: on ? `color-mix(in srgb, ${T.primary} 6%, ${T.background})` : T.background,
                   }}>
-                  <div className="w-16 h-11 rounded-lg shrink-0 relative overflow-hidden" style={{ background: th.gradient }}>
-                    {th.animated && <EventBackground themeId={th.id} colors={effectColors} fixed={false} scrim={0} />}
-                  </div>
-                  <div className="flex flex-col gap-1 min-w-0 flex-1">
-                    <span className="flex items-center gap-1.5" style={{ fontSize: T.sm, fontWeight: on ? T.fw_semi : T.fw_medium, color: T.foreground }}>
-                      {th.label}
-                      {th.animated && (
-                        <span style={{ fontSize: "10px", fontWeight: T.fw_medium, padding: "1px 7px", borderRadius: 999,
-                          backgroundColor: T.secondary, color: T.mutedFg }}>Động</span>
-                      )}
-                    </span>
-                    <span className="flex items-center gap-1.5" style={{ fontSize: T.xs, color: T.mutedFg }}>
-                      <span className="inline-block size-3 rounded-full shrink-0"
-                        style={{ backgroundColor: th.page, border: `1px solid ${T.border}` }} />
-                      {th.animated ? "Nền chuyển động" : "Nền trang sự kiện"}
-                    </span>
-                  </div>
-                  {on && <CheckCircle2 className="size-4 shrink-0" style={{ color: T.primary }} />}
-                </button>
+                  <button type="button" data-pill="off" aria-pressed={on}
+                    onClick={() => { onThemeChange(th.id); if (!th.tunable?.length) setThemeOpen(false); }}
+                    className="flex items-center gap-3 p-3 w-full text-left cursor-pointer"
+                    style={{ background: "none", border: "none" }}>
+                    <div className="w-16 h-11 rounded-lg shrink-0 relative overflow-hidden" style={{ background: th.gradient }}>
+                      {th.animated && <EventBackground themeId={th.id} colors={effectColors} fixed={false} scrim={0} />}
+                    </div>
+                    <div className="flex flex-col gap-1 min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5" style={{ fontSize: T.sm, fontWeight: on ? T.fw_semi : T.fw_medium, color: T.foreground }}>
+                        {th.label}
+                        {th.animated && (
+                          <span style={{ fontSize: "10px", fontWeight: T.fw_medium, padding: "1px 7px", borderRadius: 999,
+                            backgroundColor: T.secondary, color: T.mutedFg }}>Động</span>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-1.5" style={{ fontSize: T.xs, color: T.mutedFg }}>
+                        <span className="inline-block size-3 rounded-full shrink-0"
+                          style={{ backgroundColor: th.page, border: `1px solid ${T.border}` }} />
+                        {th.animated ? "Nền chuyển động" : "Nền trang sự kiện"}
+                      </span>
+                    </div>
+                    {on && <CheckCircle2 className="size-4 shrink-0" style={{ color: T.primary }} />}
+                  </button>
+                  {tunable.length > 0 && (
+                    <div className="flex flex-col gap-1.5 px-3 pb-3">
+                      {tunable.map((c) => (
+                        <label key={c.key} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 cursor-pointer"
+                          style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+                          <span className="size-6 rounded-md shrink-0 relative overflow-hidden"
+                            style={{ backgroundColor: effectColors[c.key], border: `1px solid ${T.border}` }}>
+                            <input type="color" value={effectColors[c.key]} aria-label={c.label}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              onChange={(e) => onEffectColors({ ...effectColors, [c.key]: e.target.value })} />
+                          </span>
+                          <span className="flex-1 min-w-0" style={{ fontSize: T.sm, color: T.foreground }}>{c.label}</span>
+                          <span style={{ fontSize: T.xs, color: T.mutedFg, fontFamily: "monospace" }}>{effectColors[c.key].toUpperCase()}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
               );
             })}
-            {/* Màu của nền động: chỉ hỏi khi nền đó đang được chọn */}
-            {(THEMES.find((t) => t.id === theme)?.tunable ?? []).length > 0 && (
-              <div className="flex flex-col gap-2 rounded-xl p-3" style={{ border: `1px solid ${T.border}` }}>
-                {THEMES.find((t) => t.id === theme)!.tunable!.map((c) => (
-                  <label key={c.key} className="flex items-center gap-3 cursor-pointer">
-                    <span className="size-8 rounded-lg shrink-0 relative overflow-hidden"
-                      style={{ backgroundColor: effectColors[c.key], border: `1px solid ${T.border}` }}>
-                      <input type="color" value={effectColors[c.key]} aria-label={c.label}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        onChange={(e) => onEffectColors({ ...effectColors, [c.key]: e.target.value })} />
-                    </span>
-                    <span className="flex-1 min-w-0" style={{ fontSize: T.sm, color: T.foreground }}>{c.label}</span>
-                    <span style={{ fontSize: T.xs, color: T.mutedFg, fontFamily: "monospace" }}>{effectColors[c.key].toUpperCase()}</span>
-                  </label>
-                ))}
-              </div>
-            )}
           </div>
           <div className="px-6 py-4" style={{ borderTop: `1px solid ${T.border}` }}>
             <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6 }}>
