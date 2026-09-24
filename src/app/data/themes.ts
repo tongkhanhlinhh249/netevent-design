@@ -86,8 +86,10 @@ export function surfaceVars(pageBg: string): Record<string, string> {
     ? pair({
       "--background": "rgba(12,10,24,0.5)",
       "--card": "rgba(12,10,24,0.5)",
-      "--input-background": "rgba(12,10,24,0.46)",
-      "--input": "rgba(255,255,255,0.22)",
+      // Ô nhập và thẻ nhóm (thời gian, hình thức, tùy chọn) dùng chung một bề
+      // mặt: cả form đọc như một khối, không phải ba sắc độ khác nhau.
+      "--input-background": "rgba(12,10,24,0.34)",
+      "--input": "rgba(255,255,255,0.20)",
       "--secondary": "rgba(12,10,24,0.34)",
       "--muted": "rgba(12,10,24,0.24)",
       "--border": "rgba(255,255,255,0.20)",
@@ -99,10 +101,11 @@ export function surfaceVars(pageBg: string): Record<string, string> {
       // Chip, nút viền, pill ngày giờ: gần như trắng đặc để luôn nổi.
       "--background": "rgba(255,255,255,0.9)",
       "--card": "rgba(255,255,255,0.9)",
-      // Ô nhập: trắng mờ + viền mảnh. Trên nền gần trắng (Minimal) chính viền
-      // mới tách ô ra khỏi trang.
-      "--input-background": "rgba(255,255,255,0.72)",
-      "--input": "rgba(15,23,42,0.12)",
+      // Ô nhập dùng đúng bề mặt của thẻ nhóm (thời gian, hình thức, tùy chọn)
+      // để cả form là một khối. Trên nền gần trắng (Minimal) chính viền mới
+      // tách ô ra khỏi trang.
+      "--input-background": "rgba(15,23,42,0.045)",
+      "--input": "rgba(15,23,42,0.10)",
       // Rãnh và nền phụ: phủ tối rất nhẹ, trung tính nên hợp cả nền ấm lẫn lạnh.
       "--secondary": "rgba(15,23,42,0.045)",
       "--muted": "rgba(15,23,42,0.03)",

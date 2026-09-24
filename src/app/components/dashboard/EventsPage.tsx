@@ -39,6 +39,7 @@ const T = {
   pageSurface:   "var(--page-surface)",
   pageBorder:    "var(--page-border)",
   background:    "var(--background)",
+  inputBg:       "var(--input-background)",
   foreground:    "var(--foreground)",
   border:        "var(--border)",
   primary:       "var(--primary)",
@@ -361,7 +362,7 @@ function LocationPicker({
             className="w-full rounded-xl pl-9 pr-4 py-2.5 outline-none transition-all"
             style={{
               border: `1px solid ${showDropdown ? T.primary : T.border}`,
-              backgroundColor: T.background,
+              backgroundColor: T.inputBg,
               color: T.foreground,
               fontSize: T.sm,
             }}
@@ -860,7 +861,7 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThe
         <button type="button" data-pill="off"
           onClick={() => setThemeOpen(true)}
           className="flex items-center gap-3 p-2.5 rounded-xl w-full text-left cursor-pointer transition-opacity hover:opacity-90"
-          style={{ border: `1px solid ${T.border}`, backgroundColor: T.background }}>
+          style={{ border: `1px solid ${T.border}`, backgroundColor: T.inputBg }}>
           <div className="w-10 h-7 rounded-md shrink-0"
             style={usingImage
               ? { backgroundImage: `url("${customBg}")`, backgroundSize: "cover", backgroundPosition: "center" }
