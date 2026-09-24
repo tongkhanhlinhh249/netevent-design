@@ -10,7 +10,7 @@ export const DEMO_EVENT: EventDraft = {
   endTime: "17:00",
   format: "offline",
   location: "NetSpace — Công ty Công nghệ & Truyền thông",
-  theme: "conference",
+  theme: "minimal",
   visibility: "public",
   requireApproval: false,
   limitAttendees: false,

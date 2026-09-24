@@ -1014,7 +1014,7 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThe
 function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCreated: (ev: EventDraft) => void }) {
   const [format, setFormat] = useState<EventFormat>("offline");
   const [loading, setLoading] = useState(false);
-  const [theme, setTheme] = useState("gradient");
+  const [theme, setTheme] = useState("minimal");
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [themeColor, setThemeColor] = useState(DEFAULT_THEME_COLOR);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
@@ -1067,7 +1067,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         requireApproval: false, limitAttendees, maxAttendees: limitAttendees ? maxAttendees : "",
         ticketPrice: isPaid ? ticketPrice : "",
         status: "draft",
-        cover: THEMES.find((t) => t.id === theme)?.gradient ?? THEMES[1].gradient,
+        cover: THEMES.find((t) => t.id === theme)?.gradient ?? THEMES[0].gradient,
         pageImage: theme === "custom" && customBg ? customBg : undefined,
         // Đơn vị tổ chức đặt sau ở Thông tin chung, không hỏi lúc tạo.
         coverImage,
@@ -1119,7 +1119,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
       {isAnimatedTheme(theme) && !usingImage && <GalaxyBackground />}
       {/* Back */}
 
-      <div className="relative flex items-center justify-between gap-3 flex-wrap mb-6 w-full max-w-[960px] mx-auto" style={{ zIndex: 1 }}>
+      <div className="relative flex items-center justify-between gap-3 flex-wrap mb-4 w-full max-w-[960px] mx-auto" style={{ zIndex: 1 }}>
         <h2 style={{ color: T.foreground, fontSize: T["2xl"], fontWeight: T.fw_semi }}>Tạo sự kiện</h2>
         <div className="flex items-center gap-3">
           {/* Quyền riêng tư */}
@@ -1150,7 +1150,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
 
       {/* Cột hẹp căn giữa, không card đục: nền theme lộ ra hai bên và xuyên qua
           các ô nhập trong suốt, như một bản xem trước của trang sự kiện. */}
-      <div className="relative grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 w-full max-w-[960px] mx-auto items-start" style={{ zIndex: 1 }}>
+      <div className="relative grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 w-full max-w-[960px] mx-auto items-start" style={{ zIndex: 1 }}>
 
         {/* ── Left: ảnh cover + giao diện, đứng yên khi form cuộn ── */}
         <div className="flex flex-col gap-0 lg:sticky lg:top-6">
@@ -1163,7 +1163,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         {/* ── Right: Form ── */}
         <div className="min-w-0">
           <div>
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-4">
 
               {/* 1. Tên sự kiện */}
               <div className="flex flex-col gap-1.5">
@@ -1179,7 +1179,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                   {/* Cột trái — bắt đầu / kết thúc */}
                   <div className="flex-1 min-w-0 rounded-2xl overflow-hidden" style={{ border: `1px solid ${T.border}`, backgroundColor: T.secondary }}>
                   {/* Bắt đầu */}
-                  <div className="flex items-center px-4 gap-4" style={{ height: 52, borderBottom: `1px dashed ${T.border}` }}>
+                  <div className="flex items-center px-4 gap-4" style={{ height: 46, borderBottom: `1px dashed ${T.border}` }}>
                     <div className="flex flex-col items-center shrink-0" style={{ width: 10, gap: 0 }}>
                       <div style={{ width: 9, height: 9, borderRadius: "50%", backgroundColor: T.primary }} />
                     </div>
@@ -1210,7 +1210,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                     </div>
                   </div>
                   {/* Kết thúc */}
-                  <div className="flex items-center px-4 gap-4" style={{ height: 52 }}>
+                  <div className="flex items-center px-4 gap-4" style={{ height: 46 }}>
                     <div className="flex flex-col items-center shrink-0" style={{ width: 10 }}>
                       <div style={{ width: 9, height: 9, borderRadius: "50%", border: `1.5px solid ${T.mutedFg}`, backgroundColor: "transparent" }} />
                     </div>
@@ -1293,7 +1293,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
               {/* 5. Mô tả ngắn */}
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="ev-desc">Mô tả ngắn</Label>
-                <Textarea id="ev-desc" rows={3} placeholder="Sự kiện này dành cho ai? Nội dung chính là gì?"
+                <Textarea id="ev-desc" rows={2} placeholder="Sự kiện này dành cho ai? Nội dung chính là gì?"
                   value={form.description} onChange={(e) => set("description")(e.target.value)} />
               </div>
 
@@ -1304,7 +1304,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                   style={{ border: `1px solid ${T.border}`, backgroundColor: T.secondary }}>
 
                   {/* Giá vé */}
-                  <div className="flex items-center px-4 gap-3" style={{ height: 52, borderBottom: `1px dashed ${T.border}` }}>
+                  <div className="flex items-center px-4 gap-3" style={{ height: 46, borderBottom: `1px dashed ${T.border}` }}>
                     <Ticket className="size-4 shrink-0" style={{ color: T.mutedFg }} />
                     <span style={{ fontSize: T.sm, color: T.foreground }}>Giá vé</span>
                     <div className="flex-1 flex items-center justify-end gap-2">
@@ -1329,7 +1329,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                   </div>
 
                   {/* Sức chứa */}
-                  <div className="flex items-center px-4 gap-3" style={{ height: 52 }}>
+                  <div className="flex items-center px-4 gap-3" style={{ height: 46 }}>
                     <Users className="size-4 shrink-0" style={{ color: T.mutedFg }} />
                     <span style={{ fontSize: T.sm, color: T.foreground }}>Sức chứa</span>
                     <div className="flex-1 flex items-center justify-end gap-2">
@@ -1353,14 +1353,15 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                   </div>
 
                 </div>
-                <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6 }}>
-                  Hạng vé và giá vé chi tiết được thiết lập ở <strong>Kho vé</strong> sau khi tạo sự kiện.
+                <p style={{ fontSize: T.xs, color: T.mutedFg }}>
+                  Hạng vé chi tiết thiết lập ở <strong>Kho vé</strong> sau khi tạo.
                 </p>
               </div>
 
-              {/* Hành động nằm cuối cột form như mẫu — không còn thanh footer
-                  full-width cắt ngang nền. */}
-              <div className="flex flex-col gap-2 pt-2">
+              {/* Hành động nằm cuối cột form (không phải thanh footer full-width),
+                  dính đáy màn hình để luôn thấy nút tạo mà không phải cuộn. */}
+              <div className="sticky bottom-0 flex flex-col gap-2 pt-3 pb-2" style={{ zIndex: 2,
+                background: `linear-gradient(to top, ${pageBg} 62%, transparent)` }}>
                 <Button className="w-full h-11" disabled={!isValid || loading} onClick={handleCreate}>
                   {loading ? "Đang tạo..." : "Tạo sự kiện"}
                 </Button>
@@ -1693,7 +1694,7 @@ function CheckinTab() {
 export function WorkspaceTabContent({ tab, event, onEditDrawer, landingInitialView, onNavigateToLanding }: {
   tab: WorkspaceTab; event: EventDraft; onEditDrawer: () => void; landingInitialView?: "editor" | "preview"; onNavigateToLanding?: () => void;
 }) {
-  const theme = THEMES.find((t) => t.id === event.theme) ?? THEMES[1];
+  const theme = THEMES.find((t) => t.id === event.theme) ?? THEMES[0];
 
   if (tab === "overview") {
     const doneCount = CHECKLIST.filter((c) => c.done).length;
@@ -1904,7 +1905,7 @@ function EventWorkspaceScreen({
   const [editOpen, setEditOpen] = useState(false);
   const [landingInitialView, setLandingInitialView] = useState<"editor" | "preview" | undefined>(undefined);
   const [editForm, setEditForm] = useState({ name: event.name, description: event.description, location: event.location });
-  const theme = THEMES.find((t) => t.id === event.theme) ?? THEMES[1];
+  const theme = THEMES.find((t) => t.id === event.theme) ?? THEMES[0];
 
   const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
   const [published, setPublished] = useState(false);

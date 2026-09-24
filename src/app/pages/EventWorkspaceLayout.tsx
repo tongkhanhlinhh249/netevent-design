@@ -54,7 +54,7 @@ const OPTIONAL_TABS = [
 export function EventWorkspaceLayout() {
   const navigate = useNavigate();
   const { event } = useCurrentEvent();
-  const theme = THEMES.find((t) => t.id === event.theme) ?? THEMES[1];
+  const theme = THEMES.find((t) => t.id === event.theme) ?? THEMES[0];
 
   const [editOpen, setEditOpen] = React.useState(false);
   const [moreOpen, setMoreOpen] = React.useState(false);

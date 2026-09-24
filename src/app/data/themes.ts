@@ -18,10 +18,6 @@ export interface Theme {
 
 export const THEMES: Theme[] = [
   { id: "minimal",  label: "Minimal",       gradient: "linear-gradient(135deg, #f8faff 0%, #e8f0fe 100%)", page: "#f7f9ff" },
-  { id: "gradient", label: "Gradient",      gradient: "linear-gradient(135deg, #1eaaff 0%, #7c3aed 100%)", page: "#eff3ff" },
-  { id: "conference",label:"Conference",    gradient: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)", page: "#eef2f7" },
-  { id: "workshop", label: "Workshop",      gradient: "linear-gradient(135deg, #064e3b 0%, #10b981 100%)", page: "#edfaf3" },
-  { id: "launch",   label: "Product Launch",gradient: "linear-gradient(135deg, #1c1917 0%, #7c2d12 100%)", page: "#fdf3ed" },
   { id: "galaxy",   label: "Galaxy",        gradient: "radial-gradient(circle at 30% 25%, #3b2a7a 0%, #150d33 45%, #06040f 100%)",
     page: "#06040f", animated: true },
 ];
@@ -32,7 +28,7 @@ export const DEFAULT_THEME_COLOR = "#7c3aed";
 /** Nền trang sự kiện: màu tự chọn thì lấy đúng màu, còn lại theo theme. */
 export function themePageBg(themeId?: string, themeColor?: string): string {
   if (themeId === "color") return themeColor || DEFAULT_THEME_COLOR;
-  return (THEMES.find((t) => t.id === themeId) ?? THEMES[1]).page;
+  return (THEMES.find((t) => t.id === themeId) ?? THEMES[0]).page;
 }
 
 export const isAnimatedTheme = (themeId?: string) => !!THEMES.find((t) => t.id === themeId)?.animated;
