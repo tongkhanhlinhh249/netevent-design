@@ -198,8 +198,8 @@ function LiveEventCard({ event, onManage }: { event: OvEvent; onManage: () => vo
   return (
     <div className="rounded-2xl p-5 flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6"
       style={{ backgroundColor: T.background, border: `1px solid rgba(248,104,128,0.35)` }}>
-      {/* Khối chiếm hết bề ngang nên bày ngang: thông tin và hành động bên
-          trái, tiến độ check-in bên phải. */}
+      {/* Khối chiếm hết bề ngang nên bày ngang: thông tin và tiến độ check-in
+          bên trái, hai nút hành động bên phải. */}
       <div className="flex-1 min-w-0 flex flex-col gap-2">
         <span className="inline-flex items-center gap-1.5 self-start" style={{
           fontSize: T.xs, fontWeight: T.fw_semi, padding: "2px 8px", borderRadius: 999,
@@ -212,29 +212,28 @@ function LiveEventCard({ event, onManage }: { event: OvEvent; onManage: () => vo
         <p style={{ fontSize: T.sm, color: T.mutedFg }}>
           {event.startTime}{event.location ? ` · ${event.location}` : ""}
         </p>
-        <div className="flex items-center gap-2 flex-wrap mt-1">
-          {/* Check-in mở tab riêng, như ở danh sách sự kiện */}
-          <Button size="sm" asChild>
-            <a href={checkInHref(event)} target="_blank" rel="noreferrer"><QrCode className="size-3.5" /> Check-in QR</a>
-          </Button>
-          <Button size="sm" variant="outline" onClick={onManage}>Quản lý sự kiện →</Button>
+        {/* Tiến độ check-in — con số cần nhìn nhất trong lúc sự kiện đang chạy */}
+        <div className="flex flex-col gap-1.5 mt-1">
+          <div className="flex items-baseline justify-between gap-3">
+            <span style={{ fontSize: T.sm, color: T.foreground }}>
+              <strong>{event.checkins.toLocaleString()}</strong>
+              <span style={{ color: T.mutedFg }}> / {event.registrants.toLocaleString()} đã check-in</span>
+            </span>
+            <span style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: "#f86880" }}>{pct}%</span>
+          </div>
+          <div className="rounded-full overflow-hidden" style={{ height: 6, backgroundColor: T.border }}>
+            <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: "#f86880" }} />
+          </div>
         </div>
       </div>
 
-      {/* Tiến độ check-in — con số cần nhìn nhất trong lúc sự kiện đang chạy */}
-      <div className="shrink-0 flex flex-col gap-1.5 lg:w-64">
-        <div className="flex items-baseline justify-between gap-3">
-          <span style={{ fontSize: T.sm, color: T.foreground }}>
-            <strong>{event.checkins.toLocaleString()}</strong>
-            <span style={{ color: T.mutedFg }}> / {event.registrants.toLocaleString()} đã check-in</span>
-          </span>
-          <span style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: "#f86880" }}>{pct}%</span>
-        </div>
-        <div className="rounded-full overflow-hidden" style={{ height: 6, backgroundColor: T.border }}>
-          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: "#f86880" }} />
-        </div>
+      <div className="shrink-0 flex items-center gap-2 flex-wrap">
+        {/* Check-in mở tab riêng, như ở danh sách sự kiện */}
+        <Button size="sm" asChild>
+          <a href={checkInHref(event)} target="_blank" rel="noreferrer"><QrCode className="size-3.5" /> Check-in QR</a>
+        </Button>
+        <Button size="sm" variant="outline" onClick={onManage}>Quản lý sự kiện →</Button>
       </div>
-
     </div>
   );
 }
@@ -305,24 +304,23 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
         ]).map((m) => {
           const on = m.live && m.value > 0;
           return (
-            <div key={m.label} className="rounded-2xl p-4 flex flex-col gap-3"
+            <div key={m.label} className="rounded-2xl p-4 flex items-start gap-3"
               style={{ backgroundColor: T.background,
                 border: `1px solid ${on ? "rgba(248,104,128,0.35)" : T.border}` }}>
-              <div className="flex items-center justify-between gap-2">
-                <span className="size-9 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: on ? "rgba(248,104,128,0.10)" : `color-mix(in srgb, ${T.primary} 8%, transparent)` }}>
-                  <m.icon className="size-4" style={{ color: on ? "#f86880" : T.primary }} />
-                </span>
-                {on && (
-                  <span className="size-2 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: "#f86880" }} />
-                )}
-              </div>
-              <div>
+              {/* Biểu tượng đứng cạnh con số, không nằm trên một hàng riêng */}
+              <span className="size-9 rounded-xl flex items-center justify-center shrink-0"
+                style={{ backgroundColor: on ? "rgba(248,104,128,0.10)" : `color-mix(in srgb, ${T.primary} 8%, transparent)` }}>
+                <m.icon className="size-4" style={{ color: on ? "#f86880" : T.primary }} />
+              </span>
+              <div className="flex-1 min-w-0">
                 <p style={{ fontSize: T["2xl"], fontWeight: T.fw_bold, lineHeight: 1.1,
                   color: on ? "#f86880" : T.foreground }}>{m.value}</p>
                 <p style={{ fontSize: T.sm, color: T.foreground, marginTop: 4 }}>{m.label}</p>
                 <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>{m.sub}</p>
               </div>
+              {on && (
+                <span className="size-2 rounded-full shrink-0 animate-pulse mt-1" style={{ backgroundColor: "#f86880" }} />
+              )}
             </div>
           );
         })}
@@ -379,7 +377,7 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
           </div>
           {upcoming.length > 0 && (
             <div className="flex flex-col gap-6 min-w-0">
-      {/* ── Khối 3 — Sắp diễn ra (tối đa 3, nối sang màn Sự kiện) ── */}
+      {/* ── Khối 3 — Sắp diễn ra (tối đa 4, cân chiều cao với khối Cần xử lý; nối sang màn Sự kiện) ── */}
       {!allClosed && upcoming.length > 0 && (
         <Section title="Sắp diễn ra" action={
           <button data-pill="off" onClick={() => onGoToEvents?.()}
@@ -390,7 +388,7 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
         }>
           <div className="rounded-2xl overflow-hidden"
             style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-            {upcoming.slice(0, 3).map((e, i) => (
+            {upcoming.slice(0, 4).map((e, i) => (
               <button key={e.id} data-pill="off" onClick={() => onGoToEvents?.()}
                 className="w-full flex items-start gap-3 px-4 py-3 text-left cursor-pointer transition-opacity hover:opacity-80"
                 style={{ background: "none", borderTop: i === 0 ? "none" : `1px solid ${T.border}`,
