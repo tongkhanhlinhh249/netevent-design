@@ -16,7 +16,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
-import { THEMES, themePageBg, surfaceVars, isAnimatedTheme, isDarkColor, DEFAULT_THEME_COLOR, DEFAULT_EFFECT_COLORS, type EffectColorKey } from "../../data/themes";
+import { THEMES, themePageBg, surfaceVars, isAnimatedTheme, isBrightTheme, isDarkColor, DEFAULT_THEME_COLOR, DEFAULT_EFFECT_COLORS, type EffectColorKey } from "../../data/themes";
 import { EventBackground } from "../backgrounds/EventBackground";
 import { useCurrentEvent } from "../../data/currentEvent";
 import { downscaleToDataUrl, readImageFile } from "../../data/imageUtils";
@@ -1179,7 +1179,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   const pageBg = usingImage ? "#f6f8fb" : themePageBg(theme, themeColor);
   // Ô nhập lấy bề mặt theo nền đang chọn: nền sáng thì phủ trắng mờ, nền tối
   // (màu đậm tự chọn hoặc Galaxy) thì phủ trắng nhạt và đảo chữ sang sáng.
-  const GLASS_VARS = surfaceVars(pageBg) as React.CSSProperties;
+  const GLASS_VARS = surfaceVars(pageBg, isBrightTheme(theme) && !usingImage) as React.CSSProperties;
   // Nền tĩnh: khối hành động tan vào đúng màu trang. Nền động: không tô gì —
   // một dải màu phẳng đè lên hiệu ứng đang chạy trông như lỗi; nút vốn đã đặc.
   const fadeColor = isAnimatedTheme(theme) && !usingImage

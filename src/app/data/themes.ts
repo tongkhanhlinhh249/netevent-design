@@ -14,6 +14,8 @@ export interface Theme {
   page: string;
   /** Nền vẽ bằng WebGL thay vì một màu tĩnh. */
   animated?: boolean;
+  /** Hiệu ứng vẽ ra nền sáng, dù `page` (màu chờ) là màu tối. */
+  bright?: boolean;
   /** Các màu của hiệu ứng mà người dùng chỉnh được ở màn chọn giao diện. */
   tunable?: { key: EffectColorKey; label: string }[];
 }
@@ -41,7 +43,7 @@ export const THEMES: Theme[] = [
     page: "#08090e", animated: true,
     tunable: [{ key: "dot", label: "Màu chấm" }] },
   { id: "grainient", label: "Grainient",     gradient: "linear-gradient(120deg, #ff9ffc 0%, #b497cf 45%, #5227ff 100%)",
-    page: "#2a1a63", animated: true,
+    page: "#2a1a63", animated: true, bright: true,
     tunable: [{ key: "c1", label: "Màu 1" }, { key: "c2", label: "Màu 2" }, { key: "c3", label: "Màu 3" }] },
 ];
 
@@ -56,59 +58,84 @@ export function themePageBg(themeId?: string, themeColor?: string): string {
 
 export const isAnimatedTheme = (themeId?: string) => !!THEMES.find((t) => t.id === themeId)?.animated;
 
-/** Độ sáng cảm nhận của một màu hex hoặc rgb(); không đọc được thì coi như nền sáng. */
-export function isDarkColor(color?: string): boolean {
-  if (!color) return false;
+/** Theme vẽ ra nền sáng (Grainient), dù màu trang khai báo là màu tối. */
+export const isBrightTheme = (themeId?: string) => !!THEMES.find((t) => t.id === themeId)?.bright;
+
+/** Độ sáng cảm nhận (0..1) của một màu hex hoặc rgb(); không đọc được thì coi như nền sáng. */
+export function brightness(color?: string): number {
+  if (!color) return 1;
   let r = 0, g = 0, b = 0;
   const hex = color.trim().replace("#", "");
   if (/^[0-9a-f]{3}$/i.test(hex)) [r, g, b] = [...hex].map((c) => parseInt(c + c, 16));
   else if (/^[0-9a-f]{6}$/i.test(hex)) [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
   else {
     const m = color.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/i);
-    if (!m) return false;
+    if (!m) return 1;
     [r, g, b] = [m[1], m[2], m[3]].map(Number);
   }
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.55;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 }
 
+export const isDarkColor = (color?: string) => brightness(color) < 0.55;
+
 /**
- * Biến CSS cho các ô nhập đặt trên nền trang sự kiện. Nền sáng thì phủ trắng mờ,
- * nền tối thì phủ trắng rất nhạt và đảo chữ sang sáng — nhờ vậy cùng một form
- * dùng được cho mọi kiểu nền: màu nhạt, màu đậm tự chọn hay nền động Galaxy.
+ * Biến CSS cho các ô nhập đặt trên nền trang sự kiện. Ba bậc, theo đúng thứ mà
+ * chữ trắng cần để đọc được:
+ *
+ * - Nền rất tối (Galaxy, Ghost Fibers, Particles): ô là tấm gần đục, SÁNG HƠN
+ *   nền. Để trong suốt thì một vệt sáng chạy qua sau ô sẽ nuốt mất chữ trắng.
+ * - Nền màu đậm hoặc nền động sáng (Grainient): phủ tối mỏng, ô sáng gần bằng
+ *   trang mà chữ trắng vẫn đủ tương phản.
+ * - Nền sáng: phủ tối rất nhẹ, chữ giữ màu tối mặc định.
+ *
  * Ghi đè cả dạng --color-* vì utility của Tailwind đọc qua biến trung gian.
  */
-export function surfaceVars(pageBg: string): Record<string, string> {
+export function surfaceVars(pageBg: string, brightBackdrop = false): Record<string, string> {
   const pair = (vars: Record<string, string>) =>
     Object.fromEntries(Object.entries(vars).flatMap(([k, v]) => [[k, v], [k.replace("--", "--color-"), v]]));
-  return isDarkColor(pageBg)
-    // Bề mặt tối trong suốt (không phải trắng mờ): nền động có thể sáng — như
-    // Grainient — và khi đó lớp trắng mờ làm chữ sáng mất tương phản.
-    ? pair({
-      "--background": "rgba(12,10,24,0.5)",
-      "--card": "rgba(12,10,24,0.5)",
-      // Ô nhập và thẻ nhóm (thời gian, hình thức, tùy chọn) dùng chung một bề
-      // mặt: cả form đọc như một khối, không phải ba sắc độ khác nhau.
-      "--input-background": "rgba(12,10,24,0.34)",
-      "--input": "rgba(255,255,255,0.20)",
-      "--secondary": "rgba(12,10,24,0.34)",
-      "--muted": "rgba(12,10,24,0.24)",
-      "--border": "rgba(255,255,255,0.20)",
-      "--foreground": "#ffffff",
-      "--muted-foreground": "rgba(255,255,255,0.72)",
-      "--secondary-foreground": "#f8fafc",
-    })
-    : pair({
-      // Chip, nút viền, pill ngày giờ: gần như trắng đặc để luôn nổi.
-      "--background": "rgba(255,255,255,0.9)",
-      "--card": "rgba(255,255,255,0.9)",
-      // Ô nhập dùng đúng bề mặt của thẻ nhóm (thời gian, hình thức, tùy chọn)
-      // để cả form là một khối. Trên nền gần trắng (Minimal) chính viền mới
-      // tách ô ra khỏi trang.
-      "--input-background": "rgba(15,23,42,0.045)",
-      "--input": "rgba(15,23,42,0.10)",
-      // Rãnh và nền phụ: phủ tối rất nhẹ, trung tính nên hợp cả nền ấm lẫn lạnh.
-      "--secondary": "rgba(15,23,42,0.045)",
-      "--muted": "rgba(15,23,42,0.03)",
-      "--border": "rgba(15,23,42,0.10)",
-    });
+  const light = {
+    "--foreground": "#ffffff",
+    "--muted-foreground": "rgba(255,255,255,0.8)",
+    "--secondary-foreground": "#f8fafc",
+  };
+  const level = brightness(pageBg);
+
+  if (!brightBackdrop && level < 0.32) return pair({
+    // Ô nhập và thẻ nhóm: một tấm; pill ngày/giờ lồng bên trong sáng hơn một bậc.
+    "--input-background": "rgba(42,38,72,0.78)",
+    "--secondary": "rgba(42,38,72,0.78)",
+    "--background": "rgba(60,54,96,0.88)",
+    "--card": "rgba(60,54,96,0.88)",
+    "--muted": "rgba(42,38,72,0.5)",
+    "--input": "rgba(255,255,255,0.22)",
+    "--border": "rgba(255,255,255,0.22)",
+    ...light,
+  });
+
+  if (brightBackdrop || level < 0.55) return pair({
+    "--input-background": "rgba(12,10,24,0.22)",
+    "--secondary": "rgba(12,10,24,0.22)",
+    "--background": "rgba(12,10,24,0.34)",
+    "--card": "rgba(12,10,24,0.34)",
+    "--muted": "rgba(12,10,24,0.14)",
+    "--input": "rgba(255,255,255,0.28)",
+    "--border": "rgba(255,255,255,0.28)",
+    ...light,
+    "--muted-foreground": "rgba(255,255,255,0.85)",
+  });
+
+  return pair({
+    // Chip, nút viền, pill ngày giờ: gần như trắng đặc để luôn nổi.
+    "--background": "rgba(255,255,255,0.9)",
+    "--card": "rgba(255,255,255,0.9)",
+    // Ô nhập dùng đúng bề mặt của thẻ nhóm (thời gian, hình thức, tùy chọn)
+    // để cả form là một khối. Trên nền gần trắng (Minimal) chính viền mới
+    // tách ô ra khỏi trang.
+    "--input-background": "rgba(15,23,42,0.045)",
+    "--input": "rgba(15,23,42,0.10)",
+    // Rãnh và nền phụ: phủ tối rất nhẹ, trung tính nên hợp cả nền ấm lẫn lạnh.
+    "--secondary": "rgba(15,23,42,0.045)",
+    "--muted": "rgba(15,23,42,0.03)",
+    "--border": "rgba(15,23,42,0.10)",
+  });
 }
