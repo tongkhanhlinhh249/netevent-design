@@ -5,6 +5,6 @@ import { useCurrentEvent } from "../data/currentEvent";
 export function DemoRoute() {
   const { event } = useCurrentEvent();
   return (
-    <DemoPublicLandingPage event={event} themeBg={themePageBg(event.theme)} themeImage={event.pageImage} />
+    <DemoPublicLandingPage event={event} themeBg={themePageBg(event.theme, event.themeColor)} themeImage={event.pageImage} themeId={event.theme} />
   );
 }

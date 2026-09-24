@@ -16,10 +16,9 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
-import { THEMES } from "../../data/themes";
+import { THEMES, themePageBg, surfaceVars, DEFAULT_THEME_COLOR } from "../../data/themes";
 import { useCurrentEvent } from "../../data/currentEvent";
 import { downscaleToDataUrl, readImageFile } from "../../data/imageUtils";
-import { OrganizerAvatarPicker } from "./OrganizerAvatarPicker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose } from "../ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "../ui/dialog";
@@ -200,6 +199,8 @@ export interface EventDraft {
   format: EventFormat;
   location: string;
   theme: string;
+  /** Màu nền tự chọn, chỉ dùng khi theme là "color". */
+  themeColor?: string;
   visibility: string;
   requireApproval: boolean;
   limitAttendees: boolean;
@@ -840,10 +841,12 @@ function CoverUploadCard({ eventName }: { eventName: string }) {
  * nơi sự kiện hiện tại được lưu để tab trang công khai đọc lại — nên thu nhỏ
  * trước khi giữ.
  */
-function UnifiedEventPreviewCard({ form, theme, onThemeChange, customBg, onCustomBg, coverUrl, onCoverChange }: {
+function UnifiedEventPreviewCard({ form, theme, onThemeChange, themeColor, onThemeColor, customBg, onCustomBg, coverUrl, onCoverChange }: {
   form: { name: string };
   theme: string;
   onThemeChange: (id: string) => void;
+  themeColor: string;
+  onThemeColor: (hex: string) => void;
   customBg: string | null;
   onCustomBg: (url: string) => void;
   coverUrl: string | null;
@@ -852,6 +855,7 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, customBg, onCusto
   const [themeOpen, setThemeOpen] = React.useState(false);
   const activeTheme = THEMES.find((t) => t.id === theme);
   const usingImage = theme === "custom" && !!customBg;
+  const usingColor = theme === "color";
   const fileRef = React.useRef<HTMLInputElement>(null);
 
   const pickFile = async (file?: File) => {
@@ -879,11 +883,12 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, customBg, onCusto
           <div className="w-10 h-7 rounded-md shrink-0"
             style={usingImage
               ? { backgroundImage: `url("${customBg}")`, backgroundSize: "cover", backgroundPosition: "center" }
+              : usingColor ? { backgroundColor: themeColor }
               : { background: activeTheme?.gradient }} />
           <div className="flex flex-col min-w-0 flex-1">
             <span style={{ fontSize: T.xs, color: T.mutedFg }}>Giao diện trang sự kiện</span>
             <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>
-              {usingImage ? "Ảnh nền của bạn" : activeTheme?.label}
+              {usingImage ? "Ảnh nền của bạn" : usingColor ? "Màu tự chọn" : activeTheme?.label}
             </span>
           </div>
           <ChevronDown className="size-4 shrink-0" style={{ color: T.mutedFg }} />
@@ -936,6 +941,28 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, customBg, onCusto
               </button>
             )}
 
+            {/* Màu tự chọn — bấm ô màu để mở bảng màu của hệ thống */}
+            <div className="flex items-center gap-3 p-3 rounded-xl"
+              style={{
+                border: usingColor ? `2px solid ${T.primary}` : `1px solid ${T.border}`,
+                backgroundColor: usingColor ? `color-mix(in srgb, ${T.primary} 6%, ${T.background})` : T.background,
+              }}>
+              <label className="relative w-16 h-11 rounded-lg shrink-0 cursor-pointer overflow-hidden"
+                style={{ backgroundColor: themeColor, border: `1px solid ${T.border}` }}>
+                <input type="color" value={themeColor} aria-label="Chọn màu nền trang sự kiện"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  onChange={(e) => { onThemeColor(e.target.value); onThemeChange("color"); }} />
+              </label>
+              <button type="button" data-pill="off" aria-pressed={usingColor}
+                onClick={() => { onThemeChange("color"); setThemeOpen(false); }}
+                className="flex flex-col gap-1 min-w-0 flex-1 text-left cursor-pointer"
+                style={{ background: "none", border: "none", padding: 0 }}>
+                <span style={{ fontSize: T.sm, fontWeight: usingColor ? T.fw_semi : T.fw_medium, color: T.foreground }}>Màu tự chọn</span>
+                <span style={{ fontSize: T.xs, color: T.mutedFg, fontFamily: "monospace" }}>{themeColor.toUpperCase()}</span>
+              </button>
+              {usingColor && <CheckCircle2 className="size-4 shrink-0" style={{ color: T.primary }} />}
+            </div>
+
             {THEMES.map((th) => {
               const on = th.id === theme;
               return (
@@ -949,11 +976,17 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, customBg, onCusto
                   }}>
                   <div className="w-16 h-11 rounded-lg shrink-0" style={{ background: th.gradient }} />
                   <div className="flex flex-col gap-1 min-w-0 flex-1">
-                    <span style={{ fontSize: T.sm, fontWeight: on ? T.fw_semi : T.fw_medium, color: T.foreground }}>{th.label}</span>
+                    <span className="flex items-center gap-1.5" style={{ fontSize: T.sm, fontWeight: on ? T.fw_semi : T.fw_medium, color: T.foreground }}>
+                      {th.label}
+                      {th.animated && (
+                        <span style={{ fontSize: "10px", fontWeight: T.fw_medium, padding: "1px 7px", borderRadius: 999,
+                          backgroundColor: T.secondary, color: T.mutedFg }}>Động</span>
+                      )}
+                    </span>
                     <span className="flex items-center gap-1.5" style={{ fontSize: T.xs, color: T.mutedFg }}>
                       <span className="inline-block size-3 rounded-full shrink-0"
                         style={{ backgroundColor: th.page, border: `1px solid ${T.border}` }} />
-                      Nền trang sự kiện
+                      {th.animated ? "Nền chuyển động" : "Nền trang sự kiện"}
                     </span>
                   </div>
                   {on && <CheckCircle2 className="size-4 shrink-0" style={{ color: T.primary }} />}
@@ -963,7 +996,7 @@ function UnifiedEventPreviewCard({ form, theme, onThemeChange, customBg, onCusto
           </div>
           <div className="px-6 py-4" style={{ borderTop: `1px solid ${T.border}` }}>
             <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6 }}>
-              Giao diện quyết định nền của trang sự kiện công khai — một màu có sẵn hoặc ảnh bạn tải lên. Ảnh cover được tải riêng.
+              Giao diện quyết định nền của trang sự kiện công khai — màu có sẵn, màu bạn tự chọn, nền chuyển động hoặc ảnh bạn tải lên. Ảnh cover được tải riêng.
             </p>
           </div>
         </SheetContent>
@@ -980,8 +1013,8 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   const [loading, setLoading] = useState(false);
   const [theme, setTheme] = useState("gradient");
   const [customBg, setCustomBg] = useState<string | null>(null);
+  const [themeColor, setThemeColor] = useState(DEFAULT_THEME_COLOR);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
-  const [organizerAvatar, setOrganizerAvatar] = useState<string | null>(null);
   const [visibility, setVisibility] = useState("public");
   const [limitAttendees, setLimitAttendees] = useState(false);
   const [maxAttendees, setMaxAttendees] = useState("");
@@ -1026,15 +1059,14 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         startDate: form.startDate, startTime: form.startTime,
         endDate: form.endDate, endTime: form.endTime,
         format, location: needsLocation ? form.location : (needsOnlineLink ? form.onlineLink : ""),
-        theme, visibility,
+        theme, themeColor: theme === "color" ? themeColor : undefined, visibility,
         // Duyệt đăng ký không thiết lập khi tạo; bật sau ở Thông tin chung nếu cần.
         requireApproval: false, limitAttendees, maxAttendees: limitAttendees ? maxAttendees : "",
         ticketPrice: isPaid ? ticketPrice : "",
         status: "draft",
         cover: THEMES.find((t) => t.id === theme)?.gradient ?? THEMES[1].gradient,
         pageImage: theme === "custom" && customBg ? customBg : undefined,
-        organizer: form.organizer.trim() || undefined,
-        organizerAvatar: organizerAvatar || undefined,
+        // Đơn vị tổ chức đặt sau ở Thông tin chung, không hỏi lúc tạo.
         coverImage,
       };
       onCreated(newEvent);
@@ -1048,28 +1080,11 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   // mở, và trả lại nền cũ khi rời màn.
   const rootRef = React.useRef<HTMLDivElement>(null);
 
-  // Bề mặt trong màn này là trắng trong suốt thay vì trắng đục, để nền theme
-  // xuyên qua các ô nhập. Định nghĩa lại biến ở gốc là đủ cho mọi ô con (Input,
-  // Select, ô cover, pill ngày giờ…). Ghi đè cả dạng --color-* vì utility của
-  // Tailwind có thể đọc qua biến trung gian đã được tính sẵn ở :root. Dialog và
-  // drawer render ở portal ngoài gốc này nên vẫn giữ nền trắng.
-  const GLASS_VARS = {
-    // Chip, nút viền, pill ngày giờ: gần như trắng đặc để luôn nổi.
-    "--background": "rgba(255,255,255,0.9)",        "--color-background": "rgba(255,255,255,0.9)",
-    // Ô nhập: trắng mờ + viền mảnh. Trên nền nhạt (Minimal gần như trắng) lớp
-    // trắng mờ trùng màu nền, nên chính viền mới tách ô ra khỏi trang — theme
-    // gốc đặt --input trong suốt nên ô nhập vốn không có viền.
-    "--input-background": "rgba(255,255,255,0.72)", "--color-input-background": "rgba(255,255,255,0.72)",
-    "--input": "rgba(15,23,42,0.12)",               "--color-input": "rgba(15,23,42,0.12)",
-    // Rãnh và nền phụ: phủ tối rất nhẹ thay vì trắng mờ, để vẫn thấy được trên
-    // nền gần trắng, còn trên nền có màu thì màu vẫn xuyên qua.
-    "--secondary": "rgba(15,23,42,0.045)",          "--color-secondary": "rgba(15,23,42,0.045)",
-    "--muted": "rgba(15,23,42,0.03)",               "--color-muted": "rgba(15,23,42,0.03)",
-    // Viền trung tính trong suốt, hợp với mọi màu theme thay vì xám-xanh cố định.
-    "--border": "rgba(15,23,42,0.10)",              "--color-border": "rgba(15,23,42,0.10)",
-  } as React.CSSProperties;
   const usingImage = theme === "custom" && !!customBg;
-  const pageBg = usingImage ? "#f6f8fb" : (THEMES.find((t) => t.id === theme)?.page ?? "");
+  const pageBg = usingImage ? "#f6f8fb" : themePageBg(theme, themeColor);
+  // Ô nhập lấy bề mặt theo nền đang chọn: nền sáng thì phủ trắng mờ, nền tối
+  // (màu đậm tự chọn hoặc Galaxy) thì phủ trắng nhạt và đảo chữ sang sáng.
+  const GLASS_VARS = surfaceVars(pageBg) as React.CSSProperties;
   React.useEffect(() => {
     const main = rootRef.current?.closest("main") as HTMLElement | null;
     if (!main) return;
@@ -1095,7 +1110,8 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   }, [pageBg, usingImage, customBg]);
 
   return (
-    <div ref={rootRef} className="w-full flex flex-col" style={{ minHeight: "min(calc(100vh - 180px), 100%)", ...GLASS_VARS }}>
+    <div ref={rootRef} className="w-full flex flex-col"
+      style={{ minHeight: "min(calc(100vh - 180px), 100%)", color: "var(--foreground)", ...GLASS_VARS }}>
       {/* Back */}
 
       <div className="flex items-center justify-between gap-3 flex-wrap mb-6 w-full max-w-[960px] mx-auto">
@@ -1134,6 +1150,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         {/* ── Left: ảnh cover + giao diện, đứng yên khi form cuộn ── */}
         <div className="flex flex-col gap-0 lg:sticky lg:top-6">
           <UnifiedEventPreviewCard form={form} theme={theme} onThemeChange={setTheme}
+            themeColor={themeColor} onThemeColor={setThemeColor}
             customBg={customBg} onCustomBg={setCustomBg}
             coverUrl={coverUrl} onCoverChange={setCoverUrl} />
         </div>
@@ -1155,7 +1172,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                 <Label>Thời gian <span style={{ color: T.destructive }}>*</span></Label>
                 <div className="flex items-stretch gap-2">
                   {/* Cột trái — bắt đầu / kết thúc */}
-                  <div className="flex-1 min-w-0 rounded-2xl overflow-hidden" style={{ border: `1px solid ${T.border}`, backgroundColor: `color-mix(in srgb, ${T.primary} 5%, ${T.background})` }}>
+                  <div className="flex-1 min-w-0 rounded-2xl overflow-hidden" style={{ border: `1px solid ${T.border}`, backgroundColor: T.secondary }}>
                   {/* Bắt đầu */}
                   <div className="flex items-center px-4 gap-4" style={{ height: 52, borderBottom: `1px dashed ${T.border}` }}>
                     <div className="flex flex-col items-center shrink-0" style={{ width: 10, gap: 0 }}>
@@ -1220,7 +1237,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
 
                   {/* Cột phải — múi giờ */}
                   <div className="rounded-2xl shrink-0 flex flex-col justify-center gap-1.5 px-4 py-3"
-                    style={{ width: 136, border: `1px solid ${T.border}`, backgroundColor: `color-mix(in srgb, ${T.primary} 5%, ${T.background})` }}>
+                    style={{ width: 136, border: `1px solid ${T.border}`, backgroundColor: T.secondary }}>
                     <Globe className="size-4 shrink-0" style={{ color: T.mutedFg }} />
                     <div className="flex flex-col min-w-0">
                       <span style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground, whiteSpace: "nowrap" }}>{TIMEZONE.label}</span>
@@ -1275,24 +1292,11 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                   value={form.description} onChange={(e) => set("description")(e.target.value)} />
               </div>
 
-              {/* 6. Đơn vị tổ chức — ảnh đại diện + tên, đúng như khối trên trang sự kiện */}
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="ev-org">Đơn vị tổ chức</Label>
-                <div className="flex items-center gap-3">
-                  <OrganizerAvatarPicker value={organizerAvatar} name={form.organizer} onChange={setOrganizerAvatar} />
-                  <Input id="ev-org" className="flex-1" placeholder="Tên công ty, tổ chức hoặc cá nhân tổ chức"
-                    value={form.organizer} onChange={(e) => set("organizer")(e.target.value)} />
-                </div>
-                <p style={{ fontSize: T.xs, color: T.mutedFg }}>
-                  Bấm vào ảnh tròn để tải ảnh đại diện. Ảnh và tên hiển thị ở mục Đơn vị tổ chức trên trang sự kiện.
-                </p>
-              </div>
-
               {/* 7. Tùy chọn sự kiện */}
               <div className="flex flex-col gap-1.5">
                 <Label>Tùy chọn sự kiện</Label>
                 <div className="rounded-2xl overflow-hidden"
-                  style={{ border: `1px solid ${T.border}`, backgroundColor: `color-mix(in srgb, ${T.primary} 5%, ${T.background})` }}>
+                  style={{ border: `1px solid ${T.border}`, backgroundColor: T.secondary }}>
 
                   {/* Giá vé */}
                   <div className="flex items-center px-4 gap-3" style={{ height: 52, borderBottom: `1px dashed ${T.border}` }}>

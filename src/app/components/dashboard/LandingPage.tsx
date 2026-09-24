@@ -1,4 +1,6 @@
 import * as React from "react";
+import Galaxy from "../backgrounds/Galaxy";
+import { isAnimatedTheme, isDarkColor } from "../../data/themes";
 import { useState, useEffect } from "react";
 import {
   Globe, Calendar, MapPin, Eye, Settings, X, AlertCircle,
@@ -1525,7 +1527,7 @@ export type PublicEvent = {
   coverImage?: string; cover?: string;
 };
 
-export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfigured = true, coverUrl, themeBg, themeImage, event }: { bgStyle?: "light" | "white" | "brand"; bgColor?: string; regMode?: RegMode; ticketsConfigured?: boolean; coverUrl?: string | null; themeBg?: string; themeImage?: string; event?: PublicEvent } = {}) {
+export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfigured = true, coverUrl, themeBg, themeImage, themeId, event }: { bgStyle?: "light" | "white" | "brand"; bgColor?: string; regMode?: RegMode; ticketsConfigured?: boolean; coverUrl?: string | null; themeBg?: string; themeImage?: string; themeId?: string; event?: PublicEvent } = {}) {
   const showTiers = regMode === "tickets" || regMode === undefined; // default to showing tiers in /demo
 
   // ── Nội dung lấy từ cấu hình sự kiện ──
@@ -1614,8 +1616,27 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
 
   const tier = tiers.find((t) => t.id === selectedTier);
 
+  // Nền chuyển động (Galaxy) chỉ chạy khi không có lựa chọn nền tường minh nào khác.
+  const animatedBg = isAnimatedTheme(themeId) && !themeImage && bgStyle !== "white" && !(bgStyle === "brand" && bgColor);
+  // Nền tối (màu đậm tự chọn hoặc Galaxy): đảo chữ và đường kẻ sang sáng, còn
+  // các thẻ trắng giữ nguyên. Đặt cả `color` vì màu chữ kế thừa từ body là giá
+  // trị đã tính, không theo biến ghi đè.
+  const darkPage = !themeImage && bgStyle !== "white" && isDarkColor(animatedBg ? "#06040f" : themeBg);
+  const darkVars = darkPage ? {
+    color: "#f8fafc",
+    "--foreground": "#f8fafc", "--color-foreground": "#f8fafc",
+    "--muted-foreground": "rgba(248,250,252,0.72)", "--color-muted-foreground": "rgba(248,250,252,0.72)",
+    "--border": "rgba(255,255,255,0.16)", "--color-border": "rgba(255,255,255,0.16)",
+    "--secondary": "rgba(255,255,255,0.10)", "--color-secondary": "rgba(255,255,255,0.10)",
+    // Thẻ cũng chuyển sang trong suốt tối, nếu giữ trắng thì chữ sáng bên trong không đọc được.
+    "--background": "rgba(255,255,255,0.08)", "--color-background": "rgba(255,255,255,0.08)",
+    "--card": "rgba(255,255,255,0.08)", "--color-card": "rgba(255,255,255,0.08)",
+    "--input-background": "rgba(255,255,255,0.10)", "--color-input-background": "rgba(255,255,255,0.10)",
+    "--muted": "rgba(255,255,255,0.06)", "--color-muted": "rgba(255,255,255,0.06)",
+  } as React.CSSProperties : undefined;
+
   return (
-    <div className="min-h-full" style={{
+    <div className="min-h-full relative" style={{
       // "Trắng" và "Màu thương hiệu" là lựa chọn tường minh nên vẫn thắng;
       // còn lại nền trang lấy theo giao diện (theme) của sự kiện.
       backgroundColor: bgStyle === "white" ? "#ffffff"
@@ -1628,10 +1649,16 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
         backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed",
       } : {}),
       transition: "background-color 0.2s",
+      ...darkVars,
     }}>
+      {animatedBg && (
+        <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }} aria-hidden>
+          <Galaxy density={1.1} glowIntensity={0.35} saturation={0.45} hueShift={250} mouseInteraction={false} transparent={false} />
+        </div>
+      )}
 
       {/* ── Main two-column layout ── */}
-      <div className="mx-auto px-4 lg:px-6 py-8 lg:py-12" style={{ maxWidth: "1160px" }}>
+      <div className="relative mx-auto px-4 lg:px-6 py-8 lg:py-12" style={{ maxWidth: "1160px", zIndex: 1 }}>
         <div className="flex flex-col lg:flex-row gap-8 lg:gap-10 items-start">
 
           {/* ── LEFT COLUMN ── */}
