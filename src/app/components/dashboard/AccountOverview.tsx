@@ -196,43 +196,44 @@ function Section({ title, action, children }: {
 function LiveEventCard({ event, onManage }: { event: OvEvent; onManage: () => void }) {
   const pct = event.registrants > 0 ? Math.round(event.checkins / event.registrants * 100) : 0;
   return (
-    <div className="rounded-2xl p-5 flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6"
+    <div className="rounded-2xl p-5 flex flex-col gap-3"
       style={{ backgroundColor: T.background, border: `1px solid rgba(248,104,128,0.35)` }}>
-      {/* Khối chiếm hết bề ngang nên bày ngang: thông tin và tiến độ check-in
-          bên trái, hai nút hành động bên phải. */}
-      <div className="flex-1 min-w-0 flex flex-col gap-2">
-        <span className="inline-flex items-center gap-1.5 self-start" style={{
-          fontSize: T.xs, fontWeight: T.fw_semi, padding: "2px 8px", borderRadius: 999,
-          backgroundColor: "rgba(248,104,128,0.10)", color: "#f86880",
-          border: "1px solid rgba(248,104,128,0.30)" }}>
-          <span className="size-1.5 rounded-full animate-pulse" style={{ backgroundColor: "#f86880" }} />
-          Đang diễn ra
-        </span>
-        <p className="min-w-0" style={{ fontSize: T.lg, fontWeight: T.fw_semi, color: T.foreground }}>{event.name}</p>
-        <p style={{ fontSize: T.sm, color: T.mutedFg }}>
-          {event.startTime}{event.location ? ` · ${event.location}` : ""}
-        </p>
-        {/* Tiến độ check-in — con số cần nhìn nhất trong lúc sự kiện đang chạy */}
-        <div className="flex flex-col gap-1.5 mt-1">
-          <div className="flex items-baseline justify-between gap-3">
-            <span style={{ fontSize: T.sm, color: T.foreground }}>
-              <strong>{event.checkins.toLocaleString()}</strong>
-              <span style={{ color: T.mutedFg }}> / {event.registrants.toLocaleString()} đã check-in</span>
-            </span>
-            <span style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: "#f86880" }}>{pct}%</span>
-          </div>
-          <div className="rounded-full overflow-hidden" style={{ height: 6, backgroundColor: T.border }}>
-            <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: "#f86880" }} />
-          </div>
+      {/* Hàng 1: trạng thái, tên sự kiện và hai hành động — gộp một hàng cho đỡ tốn chiều cao */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="inline-flex items-center gap-1.5 shrink-0 whitespace-nowrap" style={{
+            fontSize: T.xs, fontWeight: T.fw_semi, padding: "2px 8px", borderRadius: 999,
+            backgroundColor: "rgba(248,104,128,0.10)", color: "#f86880",
+            border: "1px solid rgba(248,104,128,0.30)" }}>
+            <span className="size-1.5 rounded-full animate-pulse" style={{ backgroundColor: "#f86880" }} />
+            Đang diễn ra
+          </span>
+          <p className="truncate" style={{ fontSize: T.lg, fontWeight: T.fw_semi, color: T.foreground }}>{event.name}</p>
+        </div>
+        <div className="shrink-0 flex items-center gap-2">
+          {/* Check-in mở tab riêng, như ở danh sách sự kiện */}
+          <Button size="sm" asChild>
+            <a href={checkInHref(event)} target="_blank" rel="noreferrer"><QrCode className="size-3.5" /> Check-in QR</a>
+          </Button>
+          <Button size="sm" variant="outline" onClick={onManage}>Quản lý sự kiện →</Button>
         </div>
       </div>
 
-      <div className="shrink-0 flex items-center gap-2 flex-wrap">
-        {/* Check-in mở tab riêng, như ở danh sách sự kiện */}
-        <Button size="sm" asChild>
-          <a href={checkInHref(event)} target="_blank" rel="noreferrer"><QrCode className="size-3.5" /> Check-in QR</a>
-        </Button>
-        <Button size="sm" variant="outline" onClick={onManage}>Quản lý sự kiện →</Button>
+      {/* Hàng 2: giờ và địa điểm bên trái, tiến độ check-in bên phải, thanh tiến độ chạy hết bề ngang */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-baseline justify-between gap-4 flex-wrap">
+          <p className="min-w-0 truncate" style={{ fontSize: T.sm, color: T.mutedFg }}>
+            {event.startTime}{event.location ? ` · ${event.location}` : ""}
+          </p>
+          <p className="shrink-0 whitespace-nowrap" style={{ fontSize: T.sm, color: T.foreground }}>
+            <strong>{event.checkins.toLocaleString()}</strong>
+            <span style={{ color: T.mutedFg }}> / {event.registrants.toLocaleString()} đã check-in</span>
+            <span style={{ fontWeight: T.fw_semi, color: "#f86880", marginLeft: 8 }}>{pct}%</span>
+          </p>
+        </div>
+        <div className="rounded-full overflow-hidden" style={{ height: 6, backgroundColor: T.border }}>
+          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: "#f86880" }} />
+        </div>
       </div>
     </div>
   );
@@ -304,22 +305,24 @@ export function AccountOverview({ onGoToEvents, onCreateEvent }: {
         ]).map((m) => {
           const on = m.live && m.value > 0;
           return (
-            <div key={m.label} className="rounded-2xl p-4 flex items-start gap-3"
+            <div key={m.label} className="rounded-2xl px-4 py-3 flex items-center gap-3"
               style={{ backgroundColor: T.background,
                 border: `1px solid ${on ? "rgba(248,104,128,0.35)" : T.border}` }}>
-              {/* Biểu tượng đứng cạnh con số, không nằm trên một hàng riêng */}
+              {/* Biểu tượng, con số và nhãn nằm trên cùng một hàng để ô chỉ số thấp lại */}
               <span className="size-9 rounded-xl flex items-center justify-center shrink-0"
                 style={{ backgroundColor: on ? "rgba(248,104,128,0.10)" : `color-mix(in srgb, ${T.primary} 8%, transparent)` }}>
                 <m.icon className="size-4" style={{ color: on ? "#f86880" : T.primary }} />
               </span>
               <div className="flex-1 min-w-0">
-                <p style={{ fontSize: T["2xl"], fontWeight: T.fw_bold, lineHeight: 1.1,
-                  color: on ? "#f86880" : T.foreground }}>{m.value}</p>
-                <p style={{ fontSize: T.sm, color: T.foreground, marginTop: 4 }}>{m.label}</p>
-                <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>{m.sub}</p>
+                <p className="flex items-baseline gap-1.5 min-w-0">
+                  <span style={{ fontSize: T["2xl"], fontWeight: T.fw_bold, lineHeight: 1.1,
+                    color: on ? "#f86880" : T.foreground }}>{m.value}</span>
+                  <span className="truncate" style={{ fontSize: T.sm, color: T.foreground }}>{m.label}</span>
+                </p>
+                <p className="truncate" style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>{m.sub}</p>
               </div>
               {on && (
-                <span className="size-2 rounded-full shrink-0 animate-pulse mt-1" style={{ backgroundColor: "#f86880" }} />
+                <span className="size-2 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: "#f86880" }} />
               )}
             </div>
           );
