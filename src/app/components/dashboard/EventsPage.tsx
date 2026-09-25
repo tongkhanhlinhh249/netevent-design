@@ -1179,35 +1179,23 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   const pageBg = usingImage ? "#f6f8fb" : themePageBg(theme, themeColor);
   // Ô nhập lấy bề mặt theo nền đang chọn: nền sáng thì phủ trắng mờ, nền tối
   // (màu đậm tự chọn hoặc Galaxy) thì phủ trắng nhạt và đảo chữ sang sáng.
-  const GLASS_VARS = surfaceVars(pageBg, isBrightTheme(theme) && !usingImage) as React.CSSProperties;
-  // Nền tĩnh: khối hành động tan vào đúng màu trang. Nền động: không tô gì —
-  // một dải màu phẳng đè lên hiệu ứng đang chạy trông như lỗi; nút vốn đã đặc.
-  const fadeColor = isAnimatedTheme(theme) && !usingImage
+  const GLASS_VARS = surfaceVars(pageBg, isBrightTheme(theme) && !usingImage, usingImage) as React.CSSProperties;
+  // Nền màu phẳng: khối hành động tan vào đúng màu trang. Nền động hay ảnh: không
+  // tô gì — một dải màu phẳng đè lên hình phía sau trông như lỗi; nút vốn đã đặc.
+  const fadeColor = isAnimatedTheme(theme) || usingImage
     ? null
     : `color-mix(in srgb, ${pageBg} 92%, transparent)`;
   React.useEffect(() => {
     const main = rootRef.current?.closest("main") as HTMLElement | null;
     if (!main) return;
-    const prev = {
-      bg: main.style.backgroundColor, img: main.style.backgroundImage,
-      size: main.style.backgroundSize, pos: main.style.backgroundPosition, tr: main.style.transition,
-    };
+    const prev = { bg: main.style.backgroundColor, tr: main.style.transition };
     main.style.transition = "background-color 0.25s";
     main.style.backgroundColor = pageBg;
-    // Ảnh tải lên phủ kín trang; lớp trắng mờ phía trên giữ chữ đọc được kể cả trên ảnh sẫm.
-    main.style.backgroundImage = usingImage
-      ? `linear-gradient(rgba(255,255,255,0.35), rgba(255,255,255,0.35)), url("${customBg}")`
-      : "";
-    main.style.backgroundSize = usingImage ? "cover" : "";
-    main.style.backgroundPosition = usingImage ? "center" : "";
     return () => {
       main.style.backgroundColor = prev.bg;
-      main.style.backgroundImage = prev.img;
-      main.style.backgroundSize = prev.size;
-      main.style.backgroundPosition = prev.pos;
       main.style.transition = prev.tr;
     };
-  }, [pageBg, usingImage, customBg]);
+  }, [pageBg]);
 
   return (
     <div ref={rootRef} className="w-full flex flex-col relative"
@@ -1216,7 +1204,9 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         ...(isDarkColor(pageBg) ? { textShadow: "0 1px 2px rgba(0,0,0,0.45)" } : {}),
         ...GLASS_VARS }}>
       {/* Nền động chạy ngay trong màn tạo, để thấy đúng thứ trang sự kiện sẽ hiện */}
-      {isAnimatedTheme(theme) && !usingImage && <EventBackground themeId={theme} colors={effectColors} />}
+      {usingImage
+        ? <EventBackground image={customBg!} />
+        : isAnimatedTheme(theme) && <EventBackground themeId={theme} colors={effectColors} />}
       {/* Back */}
 
       <div className="relative flex items-center justify-between gap-3 flex-wrap mb-3 w-full max-w-[1280px] mx-auto" style={{ zIndex: 1 }}>
@@ -1250,7 +1240,7 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
 
       {/* Cột hẹp căn giữa, không card đục: nền theme lộ ra hai bên và xuyên qua
           các ô nhập trong suốt, như một bản xem trước của trang sự kiện. */}
-      <div className="relative grid grid-cols-1 lg:grid-cols-[340px_1fr] xl:grid-cols-[400px_1fr] gap-6 xl:gap-8 w-full max-w-[1280px] mx-auto items-start" style={{ zIndex: 1 }}>
+      <div className="relative grid grid-cols-1 lg:grid-cols-[340px_1fr] 2xl:grid-cols-[400px_1fr] gap-6 2xl:gap-8 w-full max-w-[1280px] mx-auto items-start" style={{ zIndex: 1 }}>
 
         {/* ── Left: ảnh cover + giao diện, đứng yên khi form cuộn ── */}
         <div className="flex flex-col gap-4 lg:sticky lg:top-6">

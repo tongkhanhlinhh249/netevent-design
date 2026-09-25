@@ -86,11 +86,12 @@ export const isDarkColor = (color?: string) => brightness(color) < 0.55;
  *   nền. Để trong suốt thì một vệt sáng chạy qua sau ô sẽ nuốt mất chữ trắng.
  * - Nền màu đậm hoặc nền động sáng (Grainient): phủ tối mỏng, ô sáng gần bằng
  *   trang mà chữ trắng vẫn đủ tương phản.
- * - Nền sáng: phủ tối rất nhẹ, chữ giữ màu tối mặc định.
+ * - Nền sáng: phủ tối rất nhẹ, chữ giữ màu tối mặc định. Riêng ảnh tải lên thì
+ *   ô là lớp trắng gần đục, vì ảnh sau lưng vẫn còn hình khối.
  *
  * Ghi đè cả dạng --color-* vì utility của Tailwind đọc qua biến trung gian.
  */
-export function surfaceVars(pageBg: string, brightBackdrop = false): Record<string, string> {
+export function surfaceVars(pageBg: string, brightBackdrop = false, overImage = false): Record<string, string> {
   const pair = (vars: Record<string, string>) =>
     Object.fromEntries(Object.entries(vars).flatMap(([k, v]) => [[k, v], [k.replace("--", "--color-"), v]]));
   const light = {
@@ -122,6 +123,18 @@ export function surfaceVars(pageBg: string, brightBackdrop = false): Record<stri
     "--border": "rgba(255,255,255,0.28)",
     ...light,
     "--muted-foreground": "rgba(255,255,255,0.85)",
+  });
+
+  // Ảnh tải lên: nền phía sau vẫn còn hình khối và màu dù đã làm mờ, nên ô nhập
+  // là lớp trắng gần đục thay vì lớp phủ gần trong suốt như trên nền màu phẳng.
+  if (overImage) return pair({
+    "--input-background": "rgba(255,255,255,0.8)",
+    "--secondary": "rgba(255,255,255,0.8)",
+    "--background": "rgba(255,255,255,0.96)",
+    "--card": "rgba(255,255,255,0.96)",
+    "--muted": "rgba(255,255,255,0.6)",
+    "--input": "rgba(15,23,42,0.12)",
+    "--border": "rgba(15,23,42,0.12)",
   });
 
   return pair({

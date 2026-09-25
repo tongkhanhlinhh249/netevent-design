@@ -17,11 +17,17 @@ import { DEFAULT_EFFECT_COLORS, type EffectColorKey } from "../../data/themes";
  * trong dashboard nó bám theo khung <main>, để sidebar và thanh tiêu đề không
  * bị đè lên. Ngoài dashboard (trang sự kiện công khai) thì phủ kín màn hình.
  */
-export function EventBackground({ themeId, colors, fixed = true, scrim }: {
+export function EventBackground({ themeId, colors, fixed = true, scrim, image }: {
   themeId?: string;
   colors?: Partial<Record<EffectColorKey, string>>;
   fixed?: boolean;
   scrim?: number;
+  /**
+   * Ảnh nền người dùng tải lên. Ảnh chụp thật nhiều chi tiết sắc nét ngay sau
+   * chữ, nên làm mờ và phủ sáng: vẫn giữ màu và bố cục của ảnh, còn chữ tối và
+   * ô nhập đọc được trên mọi vùng của ảnh.
+   */
+  image?: string;
 }) {
   const ref = React.useRef<HTMLDivElement>(null);
   const [box, setBox] = React.useState<{ left: number; top: number; width: number; height: number } | null>(null);
@@ -53,7 +59,14 @@ export function EventBackground({ themeId, colors, fixed = true, scrim }: {
   const cover = scrim ?? (themeId === "galaxy" ? 0.45 : themeId === "grainient" ? 0.35 : 0.25);
   return (
     <div ref={ref} className="pointer-events-none" style={{ ...frame, zIndex: 0 }} aria-hidden>
-      {themeId === "fibers" ? (
+      {image ? (
+        <>
+          {/* Tràn ra ngoài khung một đoạn để mép ảnh mờ không lộ viền trong suốt */}
+          <div className="absolute" style={{ inset: -48, backgroundImage: `url("${image}")`,
+            backgroundSize: "cover", backgroundPosition: "center", filter: "blur(14px)" }} />
+          <div className="absolute inset-0" style={{ backgroundColor: "rgba(246,248,251,0.58)" }} />
+        </>
+      ) : themeId === "fibers" ? (
         <GhostFibers lineColor={color("line")} glowColor={color("glow")} />
       ) : themeId === "grainient" ? (
         <Grainient color1={color("c1")} color2={color("c2")} color3={color("c3")} grainAmount={0} grainAnimated={false} />
@@ -64,7 +77,7 @@ export function EventBackground({ themeId, colors, fixed = true, scrim }: {
         <Galaxy density={1.5} glowIntensity={0.5} saturation={0.8} hueShift={240}
           mouseInteraction={false} mouseRepulsion={false} transparent={false} />
       )}
-      {cover > 0 && <div className="absolute inset-0" style={{ backgroundColor: `rgba(4,3,12,${cover})` }} />}
+      {!image && cover > 0 && <div className="absolute inset-0" style={{ backgroundColor: `rgba(4,3,12,${cover})` }} />}
     </div>
   );
 }
