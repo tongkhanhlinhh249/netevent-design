@@ -23,9 +23,8 @@ export function EventBackground({ themeId, colors, fixed = true, scrim, image }:
   fixed?: boolean;
   scrim?: number;
   /**
-   * Ảnh nền người dùng tải lên. Ảnh chụp thật nhiều chi tiết sắc nét ngay sau
-   * chữ, nên làm mờ và phủ sáng: vẫn giữ màu và bố cục của ảnh, còn chữ tối và
-   * ô nhập đọc được trên mọi vùng của ảnh.
+   * Ảnh nền người dùng tải lên, giữ nguyên độ nét. Lớp phủ đen 55% kéo cả vùng
+   * sáng nhất của ảnh xuống đủ tối để chữ trắng đạt tương phản 4.5:1.
    */
   image?: string;
 }) {
@@ -61,10 +60,9 @@ export function EventBackground({ themeId, colors, fixed = true, scrim, image }:
     <div ref={ref} className="pointer-events-none" style={{ ...frame, zIndex: 0 }} aria-hidden>
       {image ? (
         <>
-          {/* Tràn ra ngoài khung một đoạn để mép ảnh mờ không lộ viền trong suốt */}
-          <div className="absolute" style={{ inset: -48, backgroundImage: `url("${image}")`,
-            backgroundSize: "cover", backgroundPosition: "center", filter: "blur(14px)" }} />
-          <div className="absolute inset-0" style={{ backgroundColor: "rgba(246,248,251,0.58)" }} />
+          <div className="absolute inset-0" style={{ backgroundImage: `url("${image}")`,
+            backgroundSize: "cover", backgroundPosition: "center" }} />
+          <div className="absolute inset-0" style={{ backgroundColor: "rgba(0,0,0,0.55)" }} />
         </>
       ) : themeId === "fibers" ? (
         <GhostFibers lineColor={color("line")} glowColor={color("glow")} />

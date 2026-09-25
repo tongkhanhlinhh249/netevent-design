@@ -86,8 +86,8 @@ export const isDarkColor = (color?: string) => brightness(color) < 0.55;
  *   nền. Để trong suốt thì một vệt sáng chạy qua sau ô sẽ nuốt mất chữ trắng.
  * - Nền màu đậm hoặc nền động sáng (Grainient): phủ tối mỏng, ô sáng gần bằng
  *   trang mà chữ trắng vẫn đủ tương phản.
- * - Nền sáng: phủ tối rất nhẹ, chữ giữ màu tối mặc định. Riêng ảnh tải lên thì
- *   ô là lớp trắng gần đục, vì ảnh sau lưng vẫn còn hình khối.
+ * - Nền sáng: phủ tối rất nhẹ, chữ giữ màu tối mặc định.
+ * - Ảnh tải lên (đã phủ đen): ô là lớp tối trung tính khá đặc, chữ trắng.
  *
  * Ghi đè cả dạng --color-* vì utility của Tailwind đọc qua biến trung gian.
  */
@@ -100,6 +100,21 @@ export function surfaceVars(pageBg: string, brightBackdrop = false, overImage = 
     "--secondary-foreground": "#f8fafc",
   };
   const level = brightness(pageBg);
+
+  // Ảnh tải lên đã phủ đen nhưng vẫn giữ nét, nên ô nhập là lớp tối trung tính
+  // khá đặc: một mảng sáng của ảnh nằm sau ô cũng không làm chữ trắng chìm.
+  // Trung tính chứ không ngả chàm như Galaxy, vì ảnh có thể mang bất kỳ màu nào.
+  if (overImage) return pair({
+    "--input-background": "rgba(15,15,22,0.55)",
+    "--secondary": "rgba(15,15,22,0.55)",
+    "--background": "rgba(44,44,56,0.88)",
+    "--card": "rgba(44,44,56,0.88)",
+    "--muted": "rgba(15,15,22,0.35)",
+    "--input": "rgba(255,255,255,0.22)",
+    "--border": "rgba(255,255,255,0.22)",
+    ...light,
+    "--muted-foreground": "rgba(255,255,255,0.85)",
+  });
 
   if (!brightBackdrop && level < 0.32) return pair({
     // Ô nhập và thẻ nhóm: một tấm; pill ngày/giờ lồng bên trong sáng hơn một bậc.
@@ -123,18 +138,6 @@ export function surfaceVars(pageBg: string, brightBackdrop = false, overImage = 
     "--border": "rgba(255,255,255,0.28)",
     ...light,
     "--muted-foreground": "rgba(255,255,255,0.85)",
-  });
-
-  // Ảnh tải lên: nền phía sau vẫn còn hình khối và màu dù đã làm mờ, nên ô nhập
-  // là lớp trắng gần đục thay vì lớp phủ gần trong suốt như trên nền màu phẳng.
-  if (overImage) return pair({
-    "--input-background": "rgba(255,255,255,0.8)",
-    "--secondary": "rgba(255,255,255,0.8)",
-    "--background": "rgba(255,255,255,0.96)",
-    "--card": "rgba(255,255,255,0.96)",
-    "--muted": "rgba(255,255,255,0.6)",
-    "--input": "rgba(15,23,42,0.12)",
-    "--border": "rgba(15,23,42,0.12)",
   });
 
   return pair({

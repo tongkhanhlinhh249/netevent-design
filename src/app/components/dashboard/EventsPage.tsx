@@ -1176,7 +1176,8 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   const rootRef = React.useRef<HTMLDivElement>(null);
 
   const usingImage = theme === "custom" && !!customBg;
-  const pageBg = usingImage ? "#f6f8fb" : themePageBg(theme, themeColor);
+  // Ảnh tải lên luôn có lớp phủ đen, nên với chữ và ô nhập nó là một nền tối.
+  const pageBg = usingImage ? "#111116" : themePageBg(theme, themeColor);
   // Ô nhập lấy bề mặt theo nền đang chọn: nền sáng thì phủ trắng mờ, nền tối
   // (màu đậm tự chọn hoặc Galaxy) thì phủ trắng nhạt và đảo chữ sang sáng.
   const GLASS_VARS = surfaceVars(pageBg, isBrightTheme(theme) && !usingImage, usingImage) as React.CSSProperties;
