@@ -5,11 +5,16 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Checkbox } from "../ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "../ui/dialog";
 import { cn } from "../ui/utils";
+import { toast } from "sonner";
 
 type AuthScreen = "login" | "register" | "otp-register" | "forgot-email" | "otp-reset" | "new-password" | "success";
 
-interface AuthFlowProps { onLoginSuccess: (role: "owner" | "admin" | "staff") => void; }
+interface AuthFlowProps {
+  /** `name` có khi tài khoản vừa tạo bằng Google; tài khoản demo dùng tên sẵn có theo vai trò. */
+  onLoginSuccess: (role: "owner" | "admin" | "staff", name?: string) => void;
+}
 
 // ── CSS variable tokens ───────────────────────────────────────────────────────
 
@@ -37,6 +42,98 @@ const T = {
   xl:   "var(--text-xl)",
   "2xl":"var(--text-2xl)",
 };
+
+type Role = "owner" | "admin" | "staff";
+
+/** Tài khoản demo có sẵn. Google đăng nhập vào đúng tài khoản trùng email. */
+const DEMO_USERS: Record<string, { password: string; role: Role }> = {
+  "owner@netevent.vn": { password: "password123", role: "owner" },
+  "admin@netevent.vn": { password: "password123", role: "admin" },
+  "staff@netevent.vn": { password: "password123", role: "staff" },
+};
+
+/** Tài khoản Google hiện trong hộp chọn của bản prototype. */
+const GOOGLE_ACCOUNTS = [
+  { name: "Nguyễn Thị Lan", email: "owner@netevent.vn" },
+  { name: "Trần Minh Tú",   email: "tu.tran@gmail.com" },
+];
+
+// ── Google ───────────────────────────────────────────────────────────────────
+
+function GoogleIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden>
+      <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 8 3l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z" />
+      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 8 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+      <path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z" />
+    </svg>
+  );
+}
+
+function GoogleButton({ label = "Tiếp tục với Google", onClick }: { label?: string; onClick: () => void }) {
+  return (
+    <Button type="button" variant="outline" size="lg" className="w-full gap-2.5" onClick={onClick}>
+      <GoogleIcon /> {label}
+    </Button>
+  );
+}
+
+function OrDivider() {
+  return (
+    <div className="flex items-center gap-3 my-5" aria-hidden>
+      <span className="flex-1 h-px" style={{ backgroundColor: T.border }} />
+      <span style={{ color: T.mutedFg, fontSize: T.xs }}>hoặc</span>
+      <span className="flex-1 h-px" style={{ backgroundColor: T.border }} />
+    </div>
+  );
+}
+
+/**
+ * Hộp chọn tài khoản thay cho cửa sổ đăng nhập của Google — bản prototype không
+ * gọi OAuth thật. Chọn tài khoản là đủ: không mật khẩu, không OTP.
+ */
+function GoogleAccountDialog({ onPick, onClose }: {
+  onPick: (a: { name: string; email: string }) => void;
+  onClose: () => void;
+}) {
+  const [picked, setPicked] = useState<string | null>(null);
+  const pick = (a: { name: string; email: string }) => {
+    setPicked(a.email);
+    window.setTimeout(() => onPick(a), 700);
+  };
+  return (
+    <Dialog open onOpenChange={(o) => !o && !picked && onClose()}>
+      <DialogContent className="sm:max-w-[380px] p-0 gap-0 overflow-hidden">
+        <div className="px-6 pt-6 pb-4 flex flex-col items-center text-center gap-2">
+          <GoogleIcon size={28} />
+          <DialogTitle style={{ fontSize: T.lg, fontWeight: T.fw_semi }}>Chọn tài khoản</DialogTitle>
+          <DialogDescription style={{ fontSize: T.sm }}>để tiếp tục tới NetEvent</DialogDescription>
+        </div>
+        <div className="flex flex-col" style={{ borderTop: `1px solid ${T.border}` }}>
+          {GOOGLE_ACCOUNTS.map((a) => (
+            <button key={a.email} type="button" data-pill="off" disabled={!!picked}
+              onClick={() => pick(a)}
+              className="flex items-center gap-3 px-6 py-3 text-left transition-colors hover:bg-[var(--secondary)] disabled:cursor-default"
+              style={{ background: "none", border: "none", borderBottom: `1px solid ${T.border}` }}>
+              <span className="size-9 rounded-full flex items-center justify-center shrink-0"
+                style={{ backgroundColor: T.secondary, color: T.foreground, fontSize: T.sm, fontWeight: T.fw_semi }}>
+                {a.name.split(" ").pop()?.[0]}
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block truncate" style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>{a.name}</span>
+                <span className="block truncate" style={{ fontSize: T.xs, color: T.mutedFg }}>{a.email}</span>
+              </span>
+              {picked === a.email && (
+                <span style={{ fontSize: T.xs, color: T.mutedFg }}>Đang đăng nhập...</span>
+              )}
+            </button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // ── Shared layout ─────────────────────────────────────────────────────────────
 
@@ -151,8 +248,8 @@ function useCountdown(seconds: number) {
 
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
 
-function LoginScreen({ onNavigate, onLoginSuccess }:
-  { onNavigate: (s: AuthScreen) => void; onLoginSuccess: (role: "owner" | "admin" | "staff") => void }) {
+function LoginScreen({ onNavigate, onLoginSuccess, onGoogle }:
+  { onNavigate: (s: AuthScreen) => void; onLoginSuccess: (role: Role) => void; onGoogle: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -160,18 +257,12 @@ function LoginScreen({ onNavigate, onLoginSuccess }:
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const USERS: Record<string, { password: string; role: "owner" | "admin" | "staff" }> = {
-    "owner@netevent.vn": { password: "password123", role: "owner" },
-    "admin@netevent.vn": { password: "password123", role: "admin" },
-    "staff@netevent.vn": { password: "password123", role: "staff" },
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault(); setError("");
     if (!email || !password) { setError("Vui lòng nhập đầy đủ email và mật khẩu."); return; }
     setLoading(true);
     setTimeout(() => {
-      const u = USERS[email.toLowerCase()];
+      const u = DEMO_USERS[email.toLowerCase()];
       if (!u || u.password !== password) { setError("Email hoặc mật khẩu không chính xác."); setLoading(false); return; }
       onLoginSuccess(u.role);
     }, 800);
@@ -185,6 +276,9 @@ function LoginScreen({ onNavigate, onLoginSuccess }:
         Chào mừng trở lại! Vui lòng đăng nhập để tiếp tục.
       </p>
       {error && <ErrorMsg>{error}</ErrorMsg>}
+
+      <GoogleButton onClick={onGoogle} />
+      <OrDivider />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
@@ -244,8 +338,8 @@ function LoginScreen({ onNavigate, onLoginSuccess }:
 
 // ── REGISTER ──────────────────────────────────────────────────────────────────
 
-function RegisterScreen({ onNavigate, onEmailSet }:
-  { onNavigate: (s: AuthScreen) => void; onEmailSet: (email: string) => void }) {
+function RegisterScreen({ onNavigate, onEmailSet, onGoogle }:
+  { onNavigate: (s: AuthScreen) => void; onEmailSet: (email: string) => void; onGoogle: () => void }) {
   const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "", agree: false });
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -284,6 +378,15 @@ function RegisterScreen({ onNavigate, onEmailSet }:
       <NetEventLogo />
       <h1 style={{ color: T.foreground }} className="mb-1">Tạo tài khoản</h1>
       <p style={{ color: T.mutedFg, fontSize: T.sm }} className="mb-6">Đăng ký để bắt đầu quản lý sự kiện.</p>
+
+      <GoogleButton label="Đăng ký với Google" onClick={onGoogle} />
+      {/* Đi đường Google thì không qua ô đồng ý bên dưới, nên nói rõ ngay tại đây */}
+      <p className="mt-2 text-center" style={{ color: T.mutedFg, fontSize: T.xs, lineHeight: 1.5 }}>
+        Tiếp tục với Google nghĩa là bạn đồng ý với{" "}
+        <span style={{ color: T.primary }}>Điều khoản sử dụng</span> và{" "}
+        <span style={{ color: T.primary }}>Chính sách bảo mật</span>.
+      </p>
+      <OrDivider />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {(["name", "email"] as const).map((id) => (
@@ -327,7 +430,7 @@ function RegisterScreen({ onNavigate, onEmailSet }:
         <div className="flex flex-col gap-1">
           <div className="flex items-start gap-2">
             <Checkbox id="agree" checked={form.agree} onCheckedChange={(v) => set("agree")(!!v)} className="mt-0.5" />
-            <Label htmlFor="agree" className="cursor-pointer leading-relaxed" style={{ color: T.mutedFg, fontSize: T.sm }}>
+            <Label htmlFor="agree" className="block cursor-pointer leading-relaxed" style={{ color: T.mutedFg, fontSize: T.sm, fontWeight: T.fw_normal }}>
               Tôi đồng ý với{" "}
               <span className="hover:underline" style={{ color: T.primary }}>Điều khoản sử dụng</span>{" "}
               và <span className="hover:underline" style={{ color: T.primary }}>Chính sách bảo mật</span>
@@ -549,10 +652,28 @@ function SuccessScreen({ onNavigate }: { onNavigate: (s: AuthScreen) => void }) 
 export function AuthFlow({ onLoginSuccess }: AuthFlowProps) {
   const [screen, setScreen] = useState<AuthScreen>("login");
   const [email, setEmail] = useState("");
+  const [googleOpen, setGoogleOpen] = useState(false);
   const nav = (s: AuthScreen) => setScreen(s);
 
-  if (screen === "login") return <LoginScreen onNavigate={nav} onLoginSuccess={onLoginSuccess} />;
-  if (screen === "register") return <RegisterScreen onNavigate={nav} onEmailSet={setEmail} />;
+  // Một nút cho cả đăng nhập lẫn đăng ký: email đã có tài khoản thì vào thẳng,
+  // chưa có thì tạo luôn. Google đã xác minh email nên bỏ qua bước OTP.
+  const continueWithGoogle = (account: { name: string; email: string }) => {
+    setGoogleOpen(false);
+    const existing = DEMO_USERS[account.email];
+    if (existing) { onLoginSuccess(existing.role); return; }
+    toast.success("Đã tạo tài khoản NetEvent", { description: `Đăng ký bằng Google: ${account.email}` });
+    onLoginSuccess("owner", account.name);
+  };
+  const google = googleOpen && (
+    <GoogleAccountDialog onPick={continueWithGoogle} onClose={() => setGoogleOpen(false)} />
+  );
+
+  if (screen === "login") return <>
+    <LoginScreen onNavigate={nav} onLoginSuccess={onLoginSuccess} onGoogle={() => setGoogleOpen(true)} />{google}
+  </>;
+  if (screen === "register") return <>
+    <RegisterScreen onNavigate={nav} onEmailSet={setEmail} onGoogle={() => setGoogleOpen(true)} />{google}
+  </>;
   if (screen === "otp-register") return (
     <OTPScreen email={email} title="Xác thực email" subtitle="Chúng tôi đã gửi mã OTP đến email:" ctaLabel="Xác thực tài khoản"
       onVerify={() => nav("login")} onBack={() => nav("register")} onChangeEmail={() => nav("register")} />

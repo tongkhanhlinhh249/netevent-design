@@ -42,7 +42,7 @@ interface Member {
   assignments: EventAssignment[];
 }
 
-interface AdminDashboardProps { currentRole: UserRole; onLogout: () => void; }
+interface AdminDashboardProps { currentRole: UserRole; userName?: string; onLogout: () => void; }
 
 const MOCK_MEMBERS: Member[] = [
   { id: "1", name: "Nguyễn Thị Lan",  email: "owner@netevent.vn",    role: "owner", status: "active",    eventCount: "Toàn bộ sự kiện", joinedAt: "12/01/2024", lastActive: "Hôm nay",       assignments: [] },
@@ -1524,7 +1524,7 @@ function SidebarPanel({
 
 // ── Admin Dashboard shell ─────────────────────────────────────────────────────
 
-export function AdminDashboard({ currentRole, onLogout }: AdminDashboardProps) {
+export function AdminDashboard({ currentRole, userName, onLogout }: AdminDashboardProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const isEventWorkspace = location.pathname.startsWith("/event");
@@ -1574,8 +1574,8 @@ export function AdminDashboard({ currentRole, onLogout }: AdminDashboardProps) {
   const roleLabelMap: Record<UserRole, string> = {
     owner: "Chủ tài khoản", admin: "Quản trị sự kiện", staff: "Nhân sự sự kiện",
   };
-  const currentUserName = currentRole === "owner" ? "Nguyễn Thị Lan"
-    : currentRole === "admin" ? "Trần Văn Minh" : "Phạm Đức Anh";
+  const currentUserName = userName ?? (currentRole === "owner" ? "Nguyễn Thị Lan"
+    : currentRole === "admin" ? "Trần Văn Minh" : "Phạm Đức Anh");
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: T.pageSurface }}>
