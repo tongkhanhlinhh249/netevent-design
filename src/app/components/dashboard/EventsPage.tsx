@@ -24,7 +24,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose } from "../ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "../ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { toast } from "sonner";
 import { cn } from "../ui/utils";
 import { LandingPageTab } from "./LandingPage";
@@ -1065,30 +1064,6 @@ function Segmented({ value, onChange, options, ariaLabel }: {
   );
 }
 
-/** Một dòng tùy chọn: cả dòng bấm được, mở popover chứa đúng ô nhập của nó. */
-function OptionRow({ icon: Icon, label, value, divider, children }: {
-  icon: React.ElementType; label: string; value: string;
-  divider?: "bottom" | "right"; children: React.ReactNode;
-}) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button type="button" data-pill="off"
-          className="w-full min-w-0 flex items-center px-4 gap-3 cursor-pointer transition-opacity hover:opacity-80"
-          style={{ height: 44, background: "transparent", border: "none", borderRadius: 0,
-            ...(divider === "bottom" ? { borderBottom: `1px dashed ${T.border}` } : {}),
-            ...(divider === "right"  ? { borderRight:  `1px dashed ${T.border}` } : {}) }}>
-          <Icon className="size-4 shrink-0" style={{ color: T.mutedFg }} />
-          <span style={{ fontSize: T.sm, color: T.foreground }}>{label}</span>
-          <span className="flex-1 text-right truncate" style={{ fontSize: T.sm, color: T.mutedFg }}>{value}</span>
-          <ChevronRight className="size-4 shrink-0" style={{ color: T.mutedFg }} />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-64 p-3">{children}</PopoverContent>
-    </Popover>
-  );
-}
-
 function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCreated: (ev: EventDraft) => void }) {
   const [format, setFormat] = useState<EventFormat>("offline");
   const [loading, setLoading] = useState(false);
@@ -1098,10 +1073,6 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
   const [effectColors, setEffectColors] = useState(DEFAULT_EFFECT_COLORS);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [visibility, setVisibility] = useState("public");
-  const [limitAttendees, setLimitAttendees] = useState(false);
-  const [maxAttendees, setMaxAttendees] = useState("");
-  const [isPaid, setIsPaid] = useState(false);
-  const [ticketPrice, setTicketPrice] = useState("");
   const [form, setForm] = useState(() => {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
@@ -1156,8 +1127,9 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
         themeEffectColors: isAnimatedTheme(theme) ? effectColors : undefined,
         visibility,
         // Duyệt đăng ký không thiết lập khi tạo; bật sau ở Thông tin chung nếu cần.
-        requireApproval: false, limitAttendees, maxAttendees: limitAttendees ? maxAttendees : "",
-        ticketPrice: isPaid ? ticketPrice : "",
+        // Giá vé và sức chứa thiết lập sau ở Kho vé, không hỏi lúc tạo.
+        requireApproval: false, limitAttendees: false, maxAttendees: "",
+        ticketPrice: "",
         status: "draft",
         cover: THEMES.find((t) => t.id === theme)?.gradient ?? THEMES[0].gradient,
         pageImage: theme === "custom" && customBg ? customBg : undefined,
@@ -1315,50 +1287,6 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
                 <Label htmlFor="ev-desc">Mô tả ngắn</Label>
                 <Textarea id="ev-desc" rows={2} placeholder="Sự kiện này dành cho ai? Nội dung chính là gì?"
                   value={form.description} onChange={(e) => set("description")(e.target.value)} />
-              </div>
-
-              {/* 6. Tùy chọn — hai mục xếp ngang, bấm cả ô để mở popover nhỏ */}
-              <div className="flex flex-col gap-1.5">
-                <Label>Tùy chọn</Label>
-                <div className="grid grid-cols-2 rounded-2xl overflow-hidden"
-                  style={{ border: `1px solid ${T.border}`, backgroundColor: T.secondary }}>
-
-                  <OptionRow icon={Ticket} label="Giá vé" divider="right"
-                    value={!isPaid ? "Miễn phí" : ticketPrice ? `${Number(ticketPrice).toLocaleString("vi-VN")} đ` : "Chưa đặt giá"}>
-                    <Segmented ariaLabel="Giá vé" value={isPaid ? "paid" : "free"}
-                      onChange={(v) => { setIsPaid(v === "paid"); if (v === "free") setTicketPrice(""); }}
-                      options={[{ value: "free", label: "Miễn phí" }, { value: "paid", label: "Có phí" }]} />
-                    {isPaid && (
-                      <div className="flex items-center gap-2 mt-3">
-                        <Input type="number" min={0} step={1000} placeholder="499000" autoFocus
-                          aria-label="Giá vé (đồng)" value={ticketPrice}
-                          onChange={(e) => setTicketPrice(e.target.value)}
-                          className="h-9 flex-1" style={{ fontSize: T.sm }} />
-                        <span style={{ fontSize: T.sm, color: T.mutedFg }}>đ</span>
-                      </div>
-                    )}
-                  </OptionRow>
-
-                  <OptionRow icon={Users} label="Sức chứa"
-                    value={!limitAttendees ? "Không giới hạn" : maxAttendees ? `${maxAttendees} người` : "Chưa đặt số"}>
-                    <Segmented ariaLabel="Sức chứa" value={limitAttendees ? "limited" : "open"}
-                      onChange={(v) => { setLimitAttendees(v === "limited"); if (v === "open") setMaxAttendees(""); }}
-                      options={[{ value: "open", label: "Không giới hạn" }, { value: "limited", label: "Giới hạn" }]} />
-                    {limitAttendees && (
-                      <div className="flex items-center gap-2 mt-3">
-                        <Input type="number" min={1} placeholder="100" autoFocus
-                          aria-label="Số người tối đa" value={maxAttendees}
-                          onChange={(e) => setMaxAttendees(e.target.value)}
-                          className="h-9 flex-1" style={{ fontSize: T.sm }} />
-                        <span style={{ fontSize: T.sm, color: T.mutedFg }}>người</span>
-                      </div>
-                    )}
-                  </OptionRow>
-
-                </div>
-                <p style={{ fontSize: T.xs, color: T.mutedFg }}>
-                  Hạng vé chi tiết thiết lập ở <strong>Kho vé</strong> sau khi tạo.
-                </p>
               </div>
 
               {/* Hành động nằm cuối cột form (không phải thanh footer full-width),
