@@ -1540,10 +1540,23 @@ export function AdminDashboard({ currentRole, userName, onLogout }: AdminDashboa
     if (target !== "events") setEventsScreen("list");
   }, [location.state]);
 
+  // /tao-su-kien (nút "Tạo sự kiện" trên landing page) mở thẳng màn tạo sự kiện.
+  // Rời màn tạo thì trả URL về "/", để tải lại trang không mở lại màn tạo.
+  const onCreatePath = location.pathname === "/tao-su-kien";
+  useEffect(() => {
+    if (!onCreatePath) return;
+    setActivePage("events");
+    setEventsScreen("create");
+  }, [onCreatePath]);
+  const changeEventsScreen = (next: "list" | "create") => {
+    setEventsScreen(next);
+    if (next !== "create" && onCreatePath) navigate("/", { replace: true });
+  };
+
   const handleNavigate = (id: string) => {
     setActivePage(id);
     if (id !== "events") setEventsScreen("list");
-    if (isEventWorkspace && id !== "events") navigate("/");
+    if ((isEventWorkspace && id !== "events") || onCreatePath) navigate("/");
   };
   const [eventsScreen, setEventsScreen] = useState<"list" | "create">("list");
   const [membersInviteOpen, setMembersInviteOpen] = useState(false);
@@ -1737,7 +1750,7 @@ export function AdminDashboard({ currentRole, userName, onLogout }: AdminDashboa
                 {activePage === "members"
                   ? <RolesPage currentRole={currentRole} inviteOpen={membersInviteOpen} onInviteOpenChange={setMembersInviteOpen} />
                   : activePage === "events"
-                  ? <EventsPage screen={eventsScreen} onScreenChange={setEventsScreen} />
+                  ? <EventsPage screen={eventsScreen} onScreenChange={changeEventsScreen} />
                   : activePage === "notifications"
                   ? <NotificationsPage notifications={notifications} onMarkAllRead={markAllRead} onMarkRead={markRead} onAccept={acceptInvite} onDecline={declineInvite} />
                   : activePage === "settings"

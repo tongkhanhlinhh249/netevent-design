@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NetEvent — Nền tảng hỗ trợ tổ chức sự kiện</title>
+<meta name="description" content="Từ đăng ký, gửi vé đến check-in và minigame, NetEvent giúp bạn kết nối các bước tổ chức trên một nền tảng.">
+<link rel="icon" type="image/svg+xml" href="/gioi-thieu/assets/img/favicon.svg">
+<meta name="theme-color" content="#1460f2">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="NetEvent">
+<meta property="og:locale" content="vi_VN">
+<meta property="og:title" content="NetEvent — Nền tảng hỗ trợ tổ chức sự kiện">
+<meta property="og:description" content="Từ đăng ký, gửi vé đến check-in và minigame, NetEvent giúp bạn kết nối các bước tổ chức trên một nền tảng.">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="/gioi-thieu/assets/img/og-cover.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<link rel="preload" href="/gioi-thieu/assets/fonts/be-vietnam-pro-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/gioi-thieu/assets/fonts/be-vietnam-pro-400-vi.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/gioi-thieu/assets/fonts/be-vietnam-pro-600-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/gioi-thieu/assets/fonts/be-vietnam-pro-600-vi.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/gioi-thieu/assets/style.css?v=6d21d6fd">
+</head>
+<body>
+<a class="skip" href="#main">Bỏ qua, tới nội dung chính</a>
+<svg width="0" height="0" aria-hidden="true" style="position:absolute">
+  <defs>
+    <!-- lưới nền hero: đặt ở sprite dùng chung để mọi trang tham chiếu được url(#grid) -->
+    <pattern id="grid" width="56" height="56" patternUnits="userSpaceOnUse">
+      <path d="M 56 0 L 0 0 0 56" fill="none" stroke="#1eaaff" stroke-width=".6"/>
+    </pattern>
+    <symbol id="i-cal" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m6.08 10.37-3.5 1.6a1 1 0 0 0 0 1.83l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.6"/><path d="m6.08 15.87-3.5 1.6a1 1 0 0 0 0 1.83l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.6"/></symbol>
+    <symbol id="i-trend" viewBox="0 0 24 24"><path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M11.5 2.3a.5.5 0 0 1 .95 0l2.3 4.68a2 2 0 0 0 1.6 1.16l5.17.76a.53.53 0 0 1 .29.9l-3.73 3.64a2 2 0 0 0-.61 1.88l.88 5.14a.53.53 0 0 1-.77.56l-4.62-2.43a2 2 0 0 0-1.97 0L6.4 21.01a.53.53 0 0 1-.77-.56l.88-5.14a2 2 0 0 0-.61-1.88L2.16 9.8a.53.53 0 0 1 .29-.91l5.17-.75a2 2 0 0 0 1.6-1.16z"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><path d="m16 13 5.2 3.1a.5.5 0 0 0 .8-.4V8.3a.5.5 0 0 0-.8-.4L16 11"/><rect x="2" y="6" width="14" height="12" rx="2"/></symbol>
+    <symbol id="i-cap" viewBox="0 0 24 24"><path d="M21.42 10.92a1 1 0 0 0 0-1.84L12.83 5.2a2 2 0 0 0-1.66 0L2.58 9.08a1 1 0 0 0 0 1.84l8.59 3.89a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></symbol>
+    <symbol id="i-qr" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></symbol>
+    <symbol id="i-game" viewBox="0 0 24 24"><line x1="6" x2="10" y1="11" y2="11"/><line x1="8" x2="8" y1="9" y2="13"/><line x1="15" x2="15.01" y1="12" y2="12"/><line x1="18" x2="18.01" y1="10" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.98 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.01-.1-.017-.152A4 4 0 0 0 17.32 5"/></symbol>
+    <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="1" x2="7" y1="14" y2="14"/><line x1="9" x2="15" y1="8" y2="8"/><line x1="17" x2="23" y1="16" y2="16"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></symbol>
+    <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></symbol>
+    <symbol id="i-vr" viewBox="0 0 24 24"><path d="M20 12h-1.5a2.5 2.5 0 0 0-2 1l-1 1.3a2 2 0 0 1-3 0l-1-1.3a2.5 2.5 0 0 0-2-1H4"/><rect x="2" y="7" width="20" height="10" rx="3"/></symbol>
+<symbol id="i-wheel" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 5v16"/><path d="m5.07 9 13.86 8"/><path d="m5.07 17 13.86-8"/><circle cx="12" cy="13" r="1.6"/><path d="M10.4 1.8h3.2L12 4.4z"/></symbol>
+<symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></symbol>
+<symbol id="i-ticket" viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+  </defs>
+</svg>
+<header class="ns-root hd" id="nav" style="position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,0.92); border-bottom: 1px solid #eeeeef;">
+<div style="max-width: 1280px; margin: 0 auto; padding: 0 24px; height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 24px;">
+<a href="/gioi-thieu/" aria-label="NetEvent — trang chủ" style="display: flex; align-items: center; text-decoration: none; min-width: 140px;"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgMTkzNy41MyAzNDMiPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuY2xzLTEgewogICAgICAgIGZpbGw6IHVybCgjbGluZWFyLWdyYWRpZW50LTIpOwogICAgICB9CgogICAgICAuY2xzLTIgewogICAgICAgIGZpbGw6IG5vbmU7CiAgICAgICAgc3Ryb2tlOiAjMDAwOwogICAgICAgIHN0cm9rZS1taXRlcmxpbWl0OiAxMDsKICAgICAgICBzdHJva2Utd2lkdGg6IDE1cHg7CiAgICAgIH0KCiAgICAgIC5jbHMtMyB7CiAgICAgICAgZmlsbDogdXJsKCNsaW5lYXItZ3JhZGllbnQtNCk7CiAgICAgIH0KCiAgICAgIC5jbHMtNCB7CiAgICAgICAgZmlsbDogdXJsKCNsaW5lYXItZ3JhZGllbnQtMyk7CiAgICAgIH0KCiAgICAgIC5jbHMtNSB7CiAgICAgICAgZmlsbDogdXJsKCNsaW5lYXItZ3JhZGllbnQpOwogICAgICB9CiAgICA8L3N0eWxlPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJsaW5lYXItZ3JhZGllbnQiIHgxPSIxOC4wNiIgeTE9IjIxNi4zMSIgeDI9IjE0OC40MiIgeTI9IjEuMDQiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjNmFkYmUzIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzFlYWFmZiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0ibGluZWFyLWdyYWRpZW50LTIiIHgxPSIxNjAuNTUiIHkxPSItMzIuNTciIHgyPSIyNTYuNiIgeTI9IjEzOC45NSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMxZWFhZmYiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTQ2MmZiIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJsaW5lYXItZ3JhZGllbnQtMyIgeDE9IjM2Ny43MSIgeTE9IjEzMi41NCIgeDI9IjI0NS45MyIgeTI9IjMzOC4zNiIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmYWUwOTYiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZjg2ODgwIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJsaW5lYXItZ3JhZGllbnQtNCIgeDE9IjIzNC4xMSIgeTE9IjM4MC4wNSIgeDI9IjEzMi4wNSIgeTI9IjIwNy42NyIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmODY4ODAiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTQ2MmZiIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8Zz4KICAgIDxnPgogICAgICA8cGF0aCBjbGFzcz0iY2xzLTUiIGQ9Ik0xNDUuNTcsODUuNDFsLTQ5LjY1LDg2aDBzLTQzLjMxLDc1LjA0LTQzLjMxLDc1LjA0Yy0yLjgxLDQuODctOS44NCw0Ljg3LTEyLjY2LDBsLTE2Ljg2LTI5LjJMMi45MiwxODIuMzRjLTMuOS02Ljc1LTMuOS0xNS4wOCwwLTIxLjgzbDIwLjE2LTM0LjkzLDIzLjE5LTQwLjE2LDMyLjktNTYuOTksMi45My01LjA2YzMuMjgtMy45OSw4LjI1LTYuNTMsMTMuODEtNi41M3MxMC42MywyLjU5LDEzLjksNi42NWwyLjc4LDQuODIsMzIuOTgsNTcuMTFaIi8+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTI4NS41LS4xNkgxMDYuMzljLTYuNjMsMC0xMi43NSwzLjU0LTE2LjA2LDkuMjdsLTguMjMsMTQuMjVjMy4yOC0zLjk5LDguMjUtNi41MywxMy44MS02LjUzczEwLjYzLDIuNTksMTMuOSw2LjY1bDIuNzgsNC44MiwzMi45OCw1Ny4xMSw0OS42NSw4Ni4wMSw0OS42NS04NkwyODkuODksNy40NmMxLjk2LTMuMzgtLjQ5LTcuNjItNC4zOS03LjYyWiIvPgogICAgICA8cGF0aCBjbGFzcz0iY2xzLTQiIGQ9Ik0yNDQuODgsMjU3LjQzbDQ5LjY1LTg2aDBzNDMuMzEtNzUuMDQsNDMuMzEtNzUuMDRjMi44MS00Ljg3LDkuODQtNC44NywxMi42NiwwbDE2Ljg2LDI5LjIsMjAuMTYsMzQuOTJjMy45LDYuNzUsMy45LDE1LjA4LDAsMjEuODNsLTIwLjE2LDM0LjkzLTIzLjE5LDQwLjE2LTMyLjksNTYuOTktMi45Myw1LjA2Yy0zLjI4LDMuOTktOC4yNSw2LjUzLTEzLjgxLDYuNTMtNS42MiwwLTEwLjYzLTIuNTktMTMuOS02LjY1bC0yLjc4LTQuODItMzIuOTgtNTcuMTFaIi8+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMyIgZD0iTTEwNC45NSwzNDNoMTc5LjExYzYuNjMsMCwxMi43NS0zLjU0LDE2LjA2LTkuMjdsOC4yMy0xNC4yNWMtMy4yOCwzLjk5LTguMjUsNi41My0xMy44MSw2LjUzLTUuNjIsMC0xMC42My0yLjU5LTEzLjktNi42NWwtMi43OC00LjgyLTMyLjk4LTU3LjExLTQ5LjY1LTg2LjAxLTQ5LjY1LDg2LTQ1LjAxLDc3Ljk2Yy0xLjk2LDMuMzguNDksNy42Miw0LjM5LDcuNjJaIi8+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgPHBhdGggZD0iTTU3Ni44OSw4Ni4wMWgyNC43djEzOS4zOWgtMTIuMjVsLTg4LjE3LTk1LjV2OTUuNWgtMjQuN1Y4Ni4wMWgxMi4yNWw4OC4xNyw5NS41di05NS41WiIvPgogICAgICA8cGF0aCBkPSJNNzMzLjM1LDE3OC41NGgtODQuMzVjMS44MSw4LjMsNi4wMiwxNS4wMywxMi42NSwyMC4zNyw2LjYzLDUuMzQsMTQuMjYsNy45MSwyMi41LDcuOTEsMTIuODUsMCwyMi45LTQuNzUsMjkuOTItMTQuMjRsMTUuNDYsMTIuNDZjLTEwLjI0LDEzLjQ0LTI4LjEyLDIxLjc1LTQ4LjgxLDIxLjc1LTE2LjI3LDAtMjkuNTItNS4zNC0zOS45Ny0xNi4wMS0xMC40NC0xMC42OC0xNS42Ny0yMy43My0xNS42Ny0zOS4xNXM1LjIyLTI4LjY3LDE1LjY3LTM5LjM1YzEwLjQ0LTEwLjY4LDIzLjctMTYuMDEsMzkuOTctMTYuMDFzMjguOTIsNS4xNCwzOC4zNiwxNS42MmM5LjY0LDEwLjQ4LDE0LjQ2LDIzLjkyLDE0LjQ2LDQwLjMzbC0uMiw2LjMzWk02NDkuMzksMTYxLjkzaDYxLjA2Yy0xLjYxLTE2LjAxLTExLjI1LTI3LjA5LTI5LjcyLTI3LjA5LTE2LjA3LDAtMjguMzIsMTEuNDctMzEuMzMsMjcuMDlaIi8+CiAgICAgIDxwYXRoIGQ9Ik04MTkuMTEsMTM3LjIyaC0zMi43NHY0NC4yOWMwLDE5LjU3LDQuNjIsMjUuNSwxOC40OCwyNS41LDQuMjIsMCw4Ljg0LS40LDEzLjg2LTEuMTl2MTcuNGMtNy4yMywyLjM3LTE1LjI2LDMuNTYtMjQuMSwzLjU2LTE4LjY4LDAtMzIuMzQtMTEuODYtMzIuMzQtMzMuMjJ2LTU2LjM1aC0xNi40N3YtMTguOThoMTYuNDd2LTMyLjI3aDI0LjF2MzIuMjdoMzIuNzR2MTguOThaIi8+CiAgICAgIDxwYXRoIGQ9Ik05NDQuODQsMTg1LjY2YzAsMTIuODUtNC44MiwyMy4xMy0xNC42NiwzMC40NS05Ljg0LDcuMzItMjIuOSwxMS4wNy0zOS4xNiwxMS4wNy0xMi4yNSwwLTIyLjI5LS43OS0zMC4xMy0yLjU3LTcuNjMtMS43OC0xNi44Ny01LjM0LTI3LjkyLTEwLjY4bDkuMDQtMTguMzljOS4yNCw0LjM1LDE3LjQ3LDcuMzIsMjQuNSw4LjksNy4yMywxLjM4LDE1LjY2LDIuMTcsMjUuMzEsMi4xNywxNy40NywwLDI4LjEyLTcuMTIsMjguMTItMTguOTgsMC0xMC44OC05Ljg0LTE2LjAyLTMyLjU0LTIxLjM1LTEzLjY2LTMuMTYtMjEuMDktNS4xNC0zMC45My05LjY5LTE0LjI2LTYuMzMtMjAuODktMTUuMDMtMjEuNjktMzEuNDQsMC0xMi4wNiw0LjYyLTIxLjc1LDEzLjg2LTI5LjI2LDkuMjQtNy41MSwyMS42OS0xMS4yNywzNy41Ni0xMS4yNywxOS4wOCwwLDM2Ljc2LDMuNzYsNTMuMjIsMTEuMjdsLTEwLjA0LDE4Ljc4Yy0xNC40Ni02LjMzLTI5LjEyLTkuNDktNDMuNzgtOS40OS0xNi4wNywwLTI1LjkxLDcuMzItMjUuOTEsMTguMTlzMTAuMDQsMTYuMDEsMzQuMzQsMjEuNTVjMzMuNzQsNy4zMiw1MC44MSwxNy42LDUwLjgxLDQwLjczWiIvPgogICAgICA8cGF0aCBkPSJNMTA2NC4zNCwxMzEuODhjMTAuNjQsMTAuMjgsMTYuMDcsMjMuNTMsMTYuMDcsMzkuNzRzLTUuNDIsMjkuMDYtMTYuMDcsMzkuNTRjLTEwLjY0LDEwLjQ4LTIzLjksMTUuNjItMzkuMzYsMTUuNjItMTIuNDUsMC0yMy43LTMuMTYtMzMuNzQtOS4yOXYzOS43OGgtMjQuMVYxMTguMjRoMjQuMXY3LjcxYzkuNDQtNi41MiwyMC42OS05LjY5LDMzLjc0LTkuNjksMTUuNDYsMCwyOC43Miw1LjE0LDM5LjM2LDE1LjYyWk0xMDQ2LjQ3LDE5Ni4zM2M2LjgzLTYuNTIsMTAuMjQtMTQuNjMsMTAuMjQtMjQuNzJzLTMuNDItMTcuOTktMTAuMjQtMjQuNTJjLTYuODMtNi43Mi0xNS4yNi0xMC4wOC0yNS41MS0xMC4wOC0xMS44NSwwLTIxLjg5LDMuNTYtMjkuNzIsMTAuNjh2NDcuODVjNy44Myw2LjkyLDE3LjY3LDEwLjQ4LDI5LjcyLDEwLjQ4LDEwLjI0LDAsMTguNjgtMy4xNiwyNS41MS05LjY5WiIvPgogICAgICA8cGF0aCBkPSJNMTE4NS44NSwxMTguMjRoMjQuMXYxMDcuMTZoLTI0LjF2LTguOWMtMTAuMDQsNi45Mi0yMS4yOSwxMC4yOC0zMy43NCwxMC4yOC0xNi4yNywwLTI5LjUyLTUuNTQtMzkuNTYtMTYuNDEtMTAuMDQtMTAuODctMTUuMDYtMjMuOTItMTUuMDYtMzguOTVzNS4wMi0yOC4wOCwxNS4wNi0zOC45NWMxMC4wNC0xMC44NywyMy4zLTE2LjQxLDM5LjU2LTE2LjQxLDEyLjI1LDAsMjMuNSwzLjM2LDMzLjc0LDEwLjA4di03LjkxWk0xMTg1Ljg1LDE0Ny42OWMtNy44My03LjEyLTE3Ljg4LTEwLjY4LTI5LjcyLTEwLjY4LTEwLjQ0LDAtMTkuMDgsMy4zNi0yNS43MSwxMC4wOC02LjYzLDYuNzItOS44NCwxNC44My05Ljg0LDI0LjMyczMuNDIsMTcuNiwxMC4wNCwyNC41MmM2LjYzLDYuNzIsMTUuMjYsMTAuMDgsMjUuNTEsMTAuMDgsMTIuMDUsMCwyMS44OS0zLjU2LDI5LjcyLTEwLjQ4di00Ny44NVoiLz4KICAgICAgPHBhdGggZD0iTTEzMzIuMjcsMjA2LjAyYy05Ljg0LDEyLjg1LTI0LjksMjAuNzYtNDEuNTcsMjAuNzZzLTMwLjMzLTUuMzQtNDEuOTgtMTYuMjFjLTExLjY1LTEwLjg3LTE3LjQ3LTIzLjczLTE3LjQ3LTM4Ljk1czUuODItMjguMjcsMTcuNDctMzkuMTVjMTEuNjUtMTAuODcsMjUuNzEtMTYuMjEsNDEuOTgtMTYuMjEsMTcuMjcsMCwzMS4zMyw2LjkyLDQxLjk4LDIwLjU2bC0xNS42NiwxMy44NGMtNi40My05LjA5LTE1LjI2LTEzLjY0LTI2LjMxLTEzLjY0LTkuODQsMC0xOC40OCwzLjM2LTI1LjUxLDEwLjA4LTcuMDMsNi43Mi0xMC40NCwxNC44My0xMC40NCwyNC41MnMzLjQyLDE3LjYsMTAuNDQsMjQuMzJjNy4wMyw2LjcyLDE1LjY2LDEwLjA4LDI1LjUxLDEwLjA4LDExLjA1LDAsMTkuNjgtNC41NSwyNi4zMS0xMy44NGwxNS4yNiwxMy44NFoiLz4KICAgICAgPHBhdGggZD0iTTE0NTIuNzgsMTc4LjU0aC04NC4zNWMxLjgxLDguMyw2LjAyLDE1LjAzLDEyLjY1LDIwLjM3LDYuNjMsNS4zNCwxNC4yNiw3LjkxLDIyLjUsNy45MSwxMi44NSwwLDIyLjktNC43NSwyOS45Mi0xNC4yNGwxNS40NiwxMi40NmMtMTAuMjQsMTMuNDQtMjguMTIsMjEuNzUtNDguODEsMjEuNzUtMTYuMjcsMC0yOS41Mi01LjM0LTM5Ljk3LTE2LjAxLTEwLjQ0LTEwLjY4LTE1LjY3LTIzLjczLTE1LjY3LTM5LjE1czUuMjItMjguNjcsMTUuNjctMzkuMzVjMTAuNDQtMTAuNjgsMjMuNy0xNi4wMSwzOS45Ny0xNi4wMXMyOC45Miw1LjE0LDM4LjM2LDE1LjYyYzkuNjQsMTAuNDgsMTQuNDYsMjMuOTIsMTQuNDYsNDAuMzNsLS4yLDYuMzNaTTEzNjguODMsMTYxLjkzaDYxLjA2Yy0xLjYxLTE2LjAxLTExLjI1LTI3LjA5LTI5LjcyLTI3LjA5LTE2LjA3LDAtMjguMzIsMTEuNDctMzEuMzMsMjcuMDlaIi8+CiAgICA8L2c+CiAgPC9nPgogIDxsaW5lIGNsYXNzPSJjbHMtMiIgeDE9IjE1MTMuMSIgeTE9IjEwNi45NCIgeDI9IjE1MTMuMSIgeTI9IjIzNS45Ii8+CiAgPGc+CiAgICA8cGF0aCBkPSJNMTYzMi40OCwxNzQuMDFoLTQyLjMzdjM5LjI2aDQ3LjE4djExLjhoLTYxLjI0di0xMDguOTFoNTguODJ2MTEuOGgtNDQuNzZ2MzQuNDJoNDIuMzN2MTEuNjNaIi8+CiAgICA8cGF0aCBkPSJNMTY1OS40NiwxNDYuODZsMTUuMzUsNDMuOTVjMi41OCw3LjExLDQuNjksMTMuNTcsNi4zLDIwLjA0aC40OGMxLjc4LTYuNDYsNC4wNC0xMi45Myw2LjYyLTIwLjA0bDE1LjE5LTQzLjk1aDE0Ljg3bC0zMC43LDc4LjIxaC0xMy41N2wtMjkuNzMtNzguMjFoMTUuMTlaIi8+CiAgICA8cGF0aCBkPSJNMTczNy45OSwxODguNTVjLjMyLDE5LjIzLDEyLjYsMjcuMTUsMjYuODIsMjcuMTUsMTAuMTgsMCwxNi4zMi0xLjc4LDIxLjY1LTQuMDRsMi40MiwxMC4xOGMtNS4wMSwyLjI2LTEzLjU3LDQuODUtMjYuMDEsNC44NS0yNC4wOCwwLTM4LjQ2LTE1Ljg0LTM4LjQ2LTM5LjQzczEzLjktNDIuMTcsMzYuNjgtNDIuMTdjMjUuNTMsMCwzMi4zMiwyMi40NiwzMi4zMiwzNi44NCwwLDIuOTEtLjMyLDUuMTctLjQ4LDYuNjJoLTU0Ljk0Wk0xNzc5LjY4LDE3OC4zN2MuMTYtOS4wNS0zLjcyLTIzLjExLTE5LjcxLTIzLjExLTE0LjM4LDAtMjAuNjgsMTMuMjUtMjEuODEsMjMuMTFoNDEuNTNaIi8+CiAgICA8cGF0aCBkPSJNMTgxMS4wMiwxNjguMDNjMC04LjA4LS4xNi0xNC43LS42NS0yMS4xN2gxMi42bC44MSwxMi45M2guMzJjMy44OC03LjQzLDEyLjkzLTE0LjcsMjUuODUtMTQuNywxMC44MywwLDI3LjYzLDYuNDYsMjcuNjMsMzMuMjl2NDYuN2gtMTQuMjJ2LTQ1LjA4YzAtMTIuNi00LjY5LTIzLjExLTE4LjEtMjMuMTEtOS4zNywwLTE2LjY0LDYuNjItMTkuMDcsMTQuNTQtLjY1LDEuNzgtLjk3LDQuMi0uOTcsNi42MnY0Ny4wMmgtMTQuMjJ2LTU3LjA0WiIvPgogICAgPHBhdGggZD0iTTE5MTcuMTcsMTI0LjR2MjIuNDZoMjAuMzZ2MTAuODNoLTIwLjM2djQyLjE3YzAsOS42OSwyLjc1LDE1LjE5LDEwLjY2LDE1LjE5LDMuNzIsMCw2LjQ2LS40OCw4LjI0LS45N2wuNjUsMTAuNjZjLTIuNzUsMS4xMy03LjExLDEuOTQtMTIuNiwxLjk0LTYuNjMsMC0xMS45Ni0yLjEtMTUuMzUtNS45OC00LjA0LTQuMi01LjQ5LTExLjE1LTUuNDktMjAuMzZ2LTQyLjY2aC0xMi4xMnYtMTAuODNoMTIuMTJ2LTE4Ljc0bDEzLjktMy43MloiLz4KICA8L2c+Cjwvc3ZnPg==" alt="NetEvent" style="height: 40px; width: auto; display: block;"></a>
+<nav class="ne-navlinks" aria-label="Điều hướng chính" style="display: flex; gap: 32px; font-size: 14px; font-weight: 500;">
+<a href="/gioi-thieu/#loai-hinh" style="color: #333333; text-decoration: none;">Loại hình sự kiện</a>
+<a href="/gioi-thieu/#tinh-nang" style="color: #333333; text-decoration: none;">Tính năng</a>
+<a href="/gioi-thieu/#minigame" style="color: #333333; text-decoration: none;">Minigame</a>
+<a href="/gioi-thieu/#tu-van" style="color: #333333; text-decoration: none;">Tư vấn</a>
+</nav>
+<div style="min-width: 140px; display: flex; justify-content: flex-end;"><a href="/tao-su-kien" class="ns-btn ns-btn--primary ns-btn--pill hd__cta">Tạo sự kiện</a><button type="button" class="hd__menu" id="burger" aria-expanded="false" aria-controls="drawer" aria-label="Mở menu"><svg class="ico" id="burgerIcon" width="20" height="20"><use href="#i-menu"/></svg></button></div>
+</div>
+</header>
+<div class="drawer ns-root" id="drawer" data-open="false">
+  <a href="/gioi-thieu/#loai-hinh">Loại hình sự kiện</a>
+  <a href="/gioi-thieu/#tinh-nang">Tính năng</a>
+  <a href="/gioi-thieu/#minigame">Minigame</a>
+  <a href="/gioi-thieu/#tu-van">Tư vấn</a>
+  <a class="ns-btn ns-btn--primary ns-btn--lg ns-btn--pill" href="/tao-su-kien">Tạo sự kiện</a>
+</div>
+<main id="main">
+<span id="top"></span>
+
+<div class="ns-root">
+<section class="hr gbg gbg--hero" style="position: relative; overflow: hidden;">
+<div style="position: relative; max-width: 1280px; margin: 0 auto; padding: 96px 24px 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 24px;">
+<h1 class="ne-h1" style="margin: 0; max-width: 820px; font-size: 60px; line-height: 1.12; font-weight: 700; letter-spacing: -0.025em; color: #000000;">Tổ chức dễ dàng.<br><span class="ac-grad">Kết nối trọn vẹn.</span></h1>
+<p style="margin: 0; max-width: 600px; font-size: 18px; line-height: 1.6; color: #444444;">Từ đăng ký, gửi vé đến check-in và minigame, NetEvent giúp bạn kết nối các bước tổ chức trên một nền tảng.</p>
+<div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; padding-top: 4px;">
+<a href="/tao-su-kien" class="ns-btn ns-btn--primary ns-btn--lg ns-btn--pill sb"><span class="sb__fx" aria-hidden="true"></span><span class="sb__label">Tạo sự kiện<svg class="sb__arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+</div>
+
+<!-- floating chips -->
+<div class="ne-float ne-shadow" aria-hidden="true" style="position: absolute; left: 8px; top: 230px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #ffffff; border-radius: 14px; text-align: left;">
+<div style="width: 36px; height: 36px; border-radius: 10px; background: #dff0ff; color: #0075bc; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4V3h6v1M9 11h6M9 15h4"></path></svg></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; font-weight: 600;">Trang đăng ký</span><div class="ne-bar" style="width: 72px;"></div></div>
+</div>
+<div class="ne-float ne-shadow" aria-hidden="true" style="position: absolute; right: 8px; top: 200px; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; width: 180px; background: #ffffff; border-radius: 14px; text-align: left;">
+<div style="display: flex; align-items: center; gap: 10px;"><div style="width: 32px; height: 32px; border-radius: 10px; background: #ffe4e7; color: #141414; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="13" rx="2"></rect><path d="M12 8v13M3 13h18M12 8c-2-3-6-3-6-1s3 1 6 1c3 0 6 1 6-1s-4-2-6 1z"></path></svg></div><span style="font-size: 13px; font-weight: 600;">Minigame</span></div>
+<div class="ne-bar" style="width: 100%; background: linear-gradient(90deg,#1eaaff,#9462fb);"></div>
+<div class="ne-bar" style="width: 60%;"></div>
+</div>
+
+<!-- dashboard composition -->
+<div aria-hidden="true" class="hx" style="position: relative; width: 100%; max-width: 1100px; margin-top: 24px;">
+<div class="hx-crop">
+<div class="hx-laptop">
+<div class="hx-screen">
+<div class="hx-app">
+<div class="hx-side">
+<img class="hx-logo" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgMTkzNy41MyAzNDMiPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuY2xzLTEgewogICAgICAgIGZpbGw6IHVybCgjbGluZWFyLWdyYWRpZW50LTIpOwogICAgICB9CgogICAgICAuY2xzLTIgewogICAgICAgIGZpbGw6IG5vbmU7CiAgICAgICAgc3Ryb2tlOiAjMDAwOwogICAgICAgIHN0cm9rZS1taXRlcmxpbWl0OiAxMDsKICAgICAgICBzdHJva2Utd2lkdGg6IDE1cHg7CiAgICAgIH0KCiAgICAgIC5jbHMtMyB7CiAgICAgICAgZmlsbDogdXJsKCNsaW5lYXItZ3JhZGllbnQtNCk7CiAgICAgIH0KCiAgICAgIC5jbHMtNCB7CiAgICAgICAgZmlsbDogdXJsKCNsaW5lYXItZ3JhZGllbnQtMyk7CiAgICAgIH0KCiAgICAgIC5jbHMtNSB7CiAgICAgICAgZmlsbDogdXJsKCNsaW5lYXItZ3JhZGllbnQpOwogICAgICB9CiAgICA8L3N0eWxlPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJsaW5lYXItZ3JhZGllbnQiIHgxPSIxOC4wNiIgeTE9IjIxNi4zMSIgeDI9IjE0OC40MiIgeTI9IjEuMDQiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjNmFkYmUzIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzFlYWFmZiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0ibGluZWFyLWdyYWRpZW50LTIiIHgxPSIxNjAuNTUiIHkxPSItMzIuNTciIHgyPSIyNTYuNiIgeTI9IjEzOC45NSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMxZWFhZmYiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTQ2MmZiIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJsaW5lYXItZ3JhZGllbnQtMyIgeDE9IjM2Ny43MSIgeTE9IjEzMi41NCIgeDI9IjI0NS45MyIgeTI9IjMzOC4zNiIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmYWUwOTYiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZjg2ODgwIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJsaW5lYXItZ3JhZGllbnQtNCIgeDE9IjIzNC4xMSIgeTE9IjM4MC4wNSIgeDI9IjEzMi4wNSIgeTI9IjIwNy42NyIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmODY4ODAiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTQ2MmZiIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8Zz4KICAgIDxnPgogICAgICA8cGF0aCBjbGFzcz0iY2xzLTUiIGQ9Ik0xNDUuNTcsODUuNDFsLTQ5LjY1LDg2aDBzLTQzLjMxLDc1LjA0LTQzLjMxLDc1LjA0Yy0yLjgxLDQuODctOS44NCw0Ljg3LTEyLjY2LDBsLTE2Ljg2LTI5LjJMMi45MiwxODIuMzRjLTMuOS02Ljc1LTMuOS0xNS4wOCwwLTIxLjgzbDIwLjE2LTM0LjkzLDIzLjE5LTQwLjE2LDMyLjktNTYuOTksMi45My01LjA2YzMuMjgtMy45OSw4LjI1LTYuNTMsMTMuODEtNi41M3MxMC42MywyLjU5LDEzLjksNi42NWwyLjc4LDQuODIsMzIuOTgsNTcuMTFaIi8+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTI4NS41LS4xNkgxMDYuMzljLTYuNjMsMC0xMi43NSwzLjU0LTE2LjA2LDkuMjdsLTguMjMsMTQuMjVjMy4yOC0zLjk5LDguMjUtNi41MywxMy44MS02LjUzczEwLjYzLDIuNTksMTMuOSw2LjY1bDIuNzgsNC44MiwzMi45OCw1Ny4xMSw0OS42NSw4Ni4wMSw0OS42NS04NkwyODkuODksNy40NmMxLjk2LTMuMzgtLjQ5LTcuNjItNC4zOS03LjYyWiIvPgogICAgICA8cGF0aCBjbGFzcz0iY2xzLTQiIGQ9Ik0yNDQuODgsMjU3LjQzbDQ5LjY1LTg2aDBzNDMuMzEtNzUuMDQsNDMuMzEtNzUuMDRjMi44MS00Ljg3LDkuODQtNC44NywxMi42NiwwbDE2Ljg2LDI5LjIsMjAuMTYsMzQuOTJjMy45LDYuNzUsMy45LDE1LjA4LDAsMjEuODNsLTIwLjE2LDM0LjkzLTIzLjE5LDQwLjE2LTMyLjksNTYuOTktMi45Myw1LjA2Yy0zLjI4LDMuOTktOC4yNSw2LjUzLTEzLjgxLDYuNTMtNS42MiwwLTEwLjYzLTIuNTktMTMuOS02LjY1bC0yLjc4LTQuODItMzIuOTgtNTcuMTFaIi8+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMyIgZD0iTTEwNC45NSwzNDNoMTc5LjExYzYuNjMsMCwxMi43NS0zLjU0LDE2LjA2LTkuMjdsOC4yMy0xNC4yNWMtMy4yOCwzLjk5LTguMjUsNi41My0xMy44MSw2LjUzLTUuNjIsMC0xMC42My0yLjU5LTEzLjktNi42NWwtMi43OC00LjgyLTMyLjk4LTU3LjExLTQ5LjY1LTg2LjAxLTQ5LjY1LDg2LTQ1LjAxLDc3Ljk2Yy0xLjk2LDMuMzguNDksNy42Miw0LjM5LDcuNjJaIi8+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgPHBhdGggZD0iTTU3Ni44OSw4Ni4wMWgyNC43djEzOS4zOWgtMTIuMjVsLTg4LjE3LTk1LjV2OTUuNWgtMjQuN1Y4Ni4wMWgxMi4yNWw4OC4xNyw5NS41di05NS41WiIvPgogICAgICA8cGF0aCBkPSJNNzMzLjM1LDE3OC41NGgtODQuMzVjMS44MSw4LjMsNi4wMiwxNS4wMywxMi42NSwyMC4zNyw2LjYzLDUuMzQsMTQuMjYsNy45MSwyMi41LDcuOTEsMTIuODUsMCwyMi45LTQuNzUsMjkuOTItMTQuMjRsMTUuNDYsMTIuNDZjLTEwLjI0LDEzLjQ0LTI4LjEyLDIxLjc1LTQ4LjgxLDIxLjc1LTE2LjI3LDAtMjkuNTItNS4zNC0zOS45Ny0xNi4wMS0xMC40NC0xMC42OC0xNS42Ny0yMy43My0xNS42Ny0zOS4xNXM1LjIyLTI4LjY3LDE1LjY3LTM5LjM1YzEwLjQ0LTEwLjY4LDIzLjctMTYuMDEsMzkuOTctMTYuMDFzMjguOTIsNS4xNCwzOC4zNiwxNS42MmM5LjY0LDEwLjQ4LDE0LjQ2LDIzLjkyLDE0LjQ2LDQwLjMzbC0uMiw2LjMzWk02NDkuMzksMTYxLjkzaDYxLjA2Yy0xLjYxLTE2LjAxLTExLjI1LTI3LjA5LTI5LjcyLTI3LjA5LTE2LjA3LDAtMjguMzIsMTEuNDctMzEuMzMsMjcuMDlaIi8+CiAgICAgIDxwYXRoIGQ9Ik04MTkuMTEsMTM3LjIyaC0zMi43NHY0NC4yOWMwLDE5LjU3LDQuNjIsMjUuNSwxOC40OCwyNS41LDQuMjIsMCw4Ljg0LS40LDEzLjg2LTEuMTl2MTcuNGMtNy4yMywyLjM3LTE1LjI2LDMuNTYtMjQuMSwzLjU2LTE4LjY4LDAtMzIuMzQtMTEuODYtMzIuMzQtMzMuMjJ2LTU2LjM1aC0xNi40N3YtMTguOThoMTYuNDd2LTMyLjI3aDI0LjF2MzIuMjdoMzIuNzR2MTguOThaIi8+CiAgICAgIDxwYXRoIGQ9Ik05NDQuODQsMTg1LjY2YzAsMTIuODUtNC44MiwyMy4xMy0xNC42NiwzMC40NS05Ljg0LDcuMzItMjIuOSwxMS4wNy0zOS4xNiwxMS4wNy0xMi4yNSwwLTIyLjI5LS43OS0zMC4xMy0yLjU3LTcuNjMtMS43OC0xNi44Ny01LjM0LTI3LjkyLTEwLjY4bDkuMDQtMTguMzljOS4yNCw0LjM1LDE3LjQ3LDcuMzIsMjQuNSw4LjksNy4yMywxLjM4LDE1LjY2LDIuMTcsMjUuMzEsMi4xNywxNy40NywwLDI4LjEyLTcuMTIsMjguMTItMTguOTgsMC0xMC44OC05Ljg0LTE2LjAyLTMyLjU0LTIxLjM1LTEzLjY2LTMuMTYtMjEuMDktNS4xNC0zMC45My05LjY5LTE0LjI2LTYuMzMtMjAuODktMTUuMDMtMjEuNjktMzEuNDQsMC0xMi4wNiw0LjYyLTIxLjc1LDEzLjg2LTI5LjI2LDkuMjQtNy41MSwyMS42OS0xMS4yNywzNy41Ni0xMS4yNywxOS4wOCwwLDM2Ljc2LDMuNzYsNTMuMjIsMTEuMjdsLTEwLjA0LDE4Ljc4Yy0xNC40Ni02LjMzLTI5LjEyLTkuNDktNDMuNzgtOS40OS0xNi4wNywwLTI1LjkxLDcuMzItMjUuOTEsMTguMTlzMTAuMDQsMTYuMDEsMzQuMzQsMjEuNTVjMzMuNzQsNy4zMiw1MC44MSwxNy42LDUwLjgxLDQwLjczWiIvPgogICAgICA8cGF0aCBkPSJNMTA2NC4zNCwxMzEuODhjMTAuNjQsMTAuMjgsMTYuMDcsMjMuNTMsMTYuMDcsMzkuNzRzLTUuNDIsMjkuMDYtMTYuMDcsMzkuNTRjLTEwLjY0LDEwLjQ4LTIzLjksMTUuNjItMzkuMzYsMTUuNjItMTIuNDUsMC0yMy43LTMuMTYtMzMuNzQtOS4yOXYzOS43OGgtMjQuMVYxMTguMjRoMjQuMXY3LjcxYzkuNDQtNi41MiwyMC42OS05LjY5LDMzLjc0LTkuNjksMTUuNDYsMCwyOC43Miw1LjE0LDM5LjM2LDE1LjYyWk0xMDQ2LjQ3LDE5Ni4zM2M2LjgzLTYuNTIsMTAuMjQtMTQuNjMsMTAuMjQtMjQuNzJzLTMuNDItMTcuOTktMTAuMjQtMjQuNTJjLTYuODMtNi43Mi0xNS4yNi0xMC4wOC0yNS41MS0xMC4wOC0xMS44NSwwLTIxLjg5LDMuNTYtMjkuNzIsMTAuNjh2NDcuODVjNy44Myw2LjkyLDE3LjY3LDEwLjQ4LDI5LjcyLDEwLjQ4LDEwLjI0LDAsMTguNjgtMy4xNiwyNS41MS05LjY5WiIvPgogICAgICA8cGF0aCBkPSJNMTE4NS44NSwxMTguMjRoMjQuMXYxMDcuMTZoLTI0LjF2LTguOWMtMTAuMDQsNi45Mi0yMS4yOSwxMC4yOC0zMy43NCwxMC4yOC0xNi4yNywwLTI5LjUyLTUuNTQtMzkuNTYtMTYuNDEtMTAuMDQtMTAuODctMTUuMDYtMjMuOTItMTUuMDYtMzguOTVzNS4wMi0yOC4wOCwxNS4wNi0zOC45NWMxMC4wNC0xMC44NywyMy4zLTE2LjQxLDM5LjU2LTE2LjQxLDEyLjI1LDAsMjMuNSwzLjM2LDMzLjc0LDEwLjA4di03LjkxWk0xMTg1Ljg1LDE0Ny42OWMtNy44My03LjEyLTE3Ljg4LTEwLjY4LTI5LjcyLTEwLjY4LTEwLjQ0LDAtMTkuMDgsMy4zNi0yNS43MSwxMC4wOC02LjYzLDYuNzItOS44NCwxNC44My05Ljg0LDI0LjMyczMuNDIsMTcuNiwxMC4wNCwyNC41MmM2LjYzLDYuNzIsMTUuMjYsMTAuMDgsMjUuNTEsMTAuMDgsMTIuMDUsMCwyMS44OS0zLjU2LDI5LjcyLTEwLjQ4di00Ny44NVoiLz4KICAgICAgPHBhdGggZD0iTTEzMzIuMjcsMjA2LjAyYy05Ljg0LDEyLjg1LTI0LjksMjAuNzYtNDEuNTcsMjAuNzZzLTMwLjMzLTUuMzQtNDEuOTgtMTYuMjFjLTExLjY1LTEwLjg3LTE3LjQ3LTIzLjczLTE3LjQ3LTM4Ljk1czUuODItMjguMjcsMTcuNDctMzkuMTVjMTEuNjUtMTAuODcsMjUuNzEtMTYuMjEsNDEuOTgtMTYuMjEsMTcuMjcsMCwzMS4zMyw2LjkyLDQxLjk4LDIwLjU2bC0xNS42NiwxMy44NGMtNi40My05LjA5LTE1LjI2LTEzLjY0LTI2LjMxLTEzLjY0LTkuODQsMC0xOC40OCwzLjM2LTI1LjUxLDEwLjA4LTcuMDMsNi43Mi0xMC40NCwxNC44My0xMC40NCwyNC41MnMzLjQyLDE3LjYsMTAuNDQsMjQuMzJjNy4wMyw2LjcyLDE1LjY2LDEwLjA4LDI1LjUxLDEwLjA4LDExLjA1LDAsMTkuNjgtNC41NSwyNi4zMS0xMy44NGwxNS4yNiwxMy44NFoiLz4KICAgICAgPHBhdGggZD0iTTE0NTIuNzgsMTc4LjU0aC04NC4zNWMxLjgxLDguMyw2LjAyLDE1LjAzLDEyLjY1LDIwLjM3LDYuNjMsNS4zNCwxNC4yNiw3LjkxLDIyLjUsNy45MSwxMi44NSwwLDIyLjktNC43NSwyOS45Mi0xNC4yNGwxNS40NiwxMi40NmMtMTAuMjQsMTMuNDQtMjguMTIsMjEuNzUtNDguODEsMjEuNzUtMTYuMjcsMC0yOS41Mi01LjM0LTM5Ljk3LTE2LjAxLTEwLjQ0LTEwLjY4LTE1LjY3LTIzLjczLTE1LjY3LTM5LjE1czUuMjItMjguNjcsMTUuNjctMzkuMzVjMTAuNDQtMTAuNjgsMjMuNy0xNi4wMSwzOS45Ny0xNi4wMXMyOC45Miw1LjE0LDM4LjM2LDE1LjYyYzkuNjQsMTAuNDgsMTQuNDYsMjMuOTIsMTQuNDYsNDAuMzNsLS4yLDYuMzNaTTEzNjguODMsMTYxLjkzaDYxLjA2Yy0xLjYxLTE2LjAxLTExLjI1LTI3LjA5LTI5LjcyLTI3LjA5LTE2LjA3LDAtMjguMzIsMTEuNDctMzEuMzMsMjcuMDlaIi8+CiAgICA8L2c+CiAgPC9nPgogIDxsaW5lIGNsYXNzPSJjbHMtMiIgeDE9IjE1MTMuMSIgeTE9IjEwNi45NCIgeDI9IjE1MTMuMSIgeTI9IjIzNS45Ii8+CiAgPGc+CiAgICA8cGF0aCBkPSJNMTYzMi40OCwxNzQuMDFoLTQyLjMzdjM5LjI2aDQ3LjE4djExLjhoLTYxLjI0di0xMDguOTFoNTguODJ2MTEuOGgtNDQuNzZ2MzQuNDJoNDIuMzN2MTEuNjNaIi8+CiAgICA8cGF0aCBkPSJNMTY1OS40NiwxNDYuODZsMTUuMzUsNDMuOTVjMi41OCw3LjExLDQuNjksMTMuNTcsNi4zLDIwLjA0aC40OGMxLjc4LTYuNDYsNC4wNC0xMi45Myw2LjYyLTIwLjA0bDE1LjE5LTQzLjk1aDE0Ljg3bC0zMC43LDc4LjIxaC0xMy41N2wtMjkuNzMtNzguMjFoMTUuMTlaIi8+CiAgICA8cGF0aCBkPSJNMTczNy45OSwxODguNTVjLjMyLDE5LjIzLDEyLjYsMjcuMTUsMjYuODIsMjcuMTUsMTAuMTgsMCwxNi4zMi0xLjc4LDIxLjY1LTQuMDRsMi40MiwxMC4xOGMtNS4wMSwyLjI2LTEzLjU3LDQuODUtMjYuMDEsNC44NS0yNC4wOCwwLTM4LjQ2LTE1Ljg0LTM4LjQ2LTM5LjQzczEzLjktNDIuMTcsMzYuNjgtNDIuMTdjMjUuNTMsMCwzMi4zMiwyMi40NiwzMi4zMiwzNi44NCwwLDIuOTEtLjMyLDUuMTctLjQ4LDYuNjJoLTU0Ljk0Wk0xNzc5LjY4LDE3OC4zN2MuMTYtOS4wNS0zLjcyLTIzLjExLTE5LjcxLTIzLjExLTE0LjM4LDAtMjAuNjgsMTMuMjUtMjEuODEsMjMuMTFoNDEuNTNaIi8+CiAgICA8cGF0aCBkPSJNMTgxMS4wMiwxNjguMDNjMC04LjA4LS4xNi0xNC43LS42NS0yMS4xN2gxMi42bC44MSwxMi45M2guMzJjMy44OC03LjQzLDEyLjkzLTE0LjcsMjUuODUtMTQuNywxMC44MywwLDI3LjYzLDYuNDYsMjcuNjMsMzMuMjl2NDYuN2gtMTQuMjJ2LTQ1LjA4YzAtMTIuNi00LjY5LTIzLjExLTE4LjEtMjMuMTEtOS4zNywwLTE2LjY0LDYuNjItMTkuMDcsMTQuNTQtLjY1LDEuNzgtLjk3LDQuMi0uOTcsNi42MnY0Ny4wMmgtMTQuMjJ2LTU3LjA0WiIvPgogICAgPHBhdGggZD0iTTE5MTcuMTcsMTI0LjR2MjIuNDZoMjAuMzZ2MTAuODNoLTIwLjM2djQyLjE3YzAsOS42OSwyLjc1LDE1LjE5LDEwLjY2LDE1LjE5LDMuNzIsMCw2LjQ2LS40OCw4LjI0LS45N2wuNjUsMTAuNjZjLTIuNzUsMS4xMy03LjExLDEuOTQtMTIuNiwxLjk0LTYuNjMsMC0xMS45Ni0yLjEtMTUuMzUtNS45OC00LjA0LTQuMi01LjQ5LTExLjE1LTUuNDktMjAuMzZ2LTQyLjY2aC0xMi4xMnYtMTAuODNoMTIuMTJ2LTE4Ljc0bDEzLjktMy43MloiLz4KICA8L2c+Cjwvc3ZnPg==" alt="">
+<span class="hx-nav"><svg viewBox="0 0 24 24"><use href="#i-layers"/></svg>Tổng quan</span>
+<span class="hx-nav is-on"><svg viewBox="0 0 24 24"><use href="#i-cal"/></svg>Sự kiện</span>
+<span class="hx-nav"><svg viewBox="0 0 24 24"><use href="#i-users"/></svg>Vai trò</span>
+<span class="hx-nav"><svg viewBox="0 0 24 24"><use href="#i-sliders"/></svg>Cài đặt</span>
+</div>
+<div class="hx-main">
+<div class="hx-top"><b>Sự kiện</b><span class="hx-cta">+ Tạo sự kiện</span></div>
+<div class="hx-bar"><span class="hx-tab is-on">Đang diễn ra</span><span class="hx-tab">Đã kết thúc</span><span class="hx-search">Tìm sự kiện...</span><span class="hx-select">Tất cả hình thức</span></div>
+<div class="hx-list">
+<div class="hx-row">
+<div class="hx-date"><b>Hôm nay</b><span>Thứ Hai</span><i class="hx-dot hx-dot--live"></i></div>
+<div class="hx-ev hx-ev--live">
+<div class="hx-ev__body">
+<div class="hx-ev__meta"><span class="hx-badge hx-badge--live"><i></i>Đang diễn ra</span><span class="hx-time">16:00</span></div>
+<b class="hx-ev__title">NetEvent Demo Conference 2026</b>
+<span class="hx-ev__line"><svg viewBox="0 0 24 24"><use href="#i-pin"/></svg>NetSpace — Công ty Công nghệ &amp; Truyền thông</span>
+<span class="hx-ev__stats"><span><svg viewBox="0 0 24 24"><use href="#i-users"/></svg>328 người đăng ký</span><span><svg viewBox="0 0 24 24"><use href="#i-check-circle"/></svg>138 đã check-in</span></span>
+<span class="hx-ev__btns"><span class="hx-btn hx-btn--blue"><svg viewBox="0 0 24 24"><use href="#i-qr"/></svg>Check-in QR</span><span class="hx-btn">Quản lý sự kiện →</span></span>
+</div>
+<span class="hx-thumb" style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);"><svg viewBox="0 0 24 24"><use href="#i-cal"/></svg></span>
+</div>
+</div>
+<div class="hx-row">
+<div class="hx-date"><b>1 Thg 7</b><span>Thứ Tư</span><i class="hx-dot"></i></div>
+<div class="hx-ev">
+<div class="hx-ev__body">
+<div class="hx-ev__meta"><span class="hx-badge hx-badge--wait">Chờ diễn ra</span><span class="hx-time">18:30</span></div>
+<b class="hx-ev__title">Sun Festival 2026</b>
+<span class="hx-ev__line"><svg viewBox="0 0 24 24"><use href="#i-pin"/></svg>SECC, Quận 7, TP.HCM</span>
+<span class="hx-ev__stats"><span><svg viewBox="0 0 24 24"><use href="#i-users"/></svg>402 người đăng ký</span></span>
+<span class="hx-ev__btns"><span class="hx-btn">Quản lý sự kiện →</span></span>
+</div>
+<span class="hx-thumb" style="background: linear-gradient(135deg, #7c2d12 0%, #f97316 100%);"><svg viewBox="0 0 24 24"><use href="#i-cal"/></svg></span>
+</div>
+</div>
+<div class="hx-row">
+<div class="hx-date"><b>12 Thg 7</b><span>Chủ Nhật</span><i class="hx-dot"></i></div>
+<div class="hx-ev">
+<div class="hx-ev__body">
+<div class="hx-ev__meta"><span class="hx-badge hx-badge--wait">Chờ diễn ra</span><span class="hx-draft">Chưa xuất bản</span></div>
+<b class="hx-ev__title">Workshop Marketing Automation</b>
+<span class="hx-ev__line"><svg viewBox="0 0 24 24"><use href="#i-globe"/></svg>Online</span>
+<span class="hx-prog"><i></i>2/3 hoàn tất</span>
+<span class="hx-ev__btns"><span class="hx-btn">Quản lý sự kiện →</span></span>
+</div>
+<span class="hx-thumb" style="background: linear-gradient(135deg, #1eaaff 0%, #6a4bff 100%);"><svg viewBox="0 0 24 24"><use href="#i-cal"/></svg></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<img class="hx-frame" src="/gioi-thieu/assets/img/laptop.webp" alt="" width="1600" height="966" decoding="async">
+</div>
+</div>
+<div class="hx-phone">
+<div class="hx-phone__frame">
+<span class="hx-phone__island"></span>
+<div class="hx-phone__screen">
+<div class="hxp-status"><b>9:41</b><span><i></i><i></i><i></i></span></div>
+<div class="hxp-head"><b>Sự kiện</b><span class="hx-cta">+ Tạo sự kiện</span></div>
+<div class="hxp-tabs"><span class="is-on">Đang diễn ra</span><span>Đã kết thúc</span></div>
+<div class="hxp-list">
+<div class="hx-ev hx-ev--live"><div class="hx-ev__body">
+<div class="hx-ev__meta"><span class="hx-badge hx-badge--live"><i></i>Đang diễn ra</span><span class="hx-time">16:00</span></div>
+<b class="hx-ev__title">NetEvent Demo Conference 2026</b>
+<span class="hx-ev__line"><svg width="13" height="13" viewBox="0 0 24 24"><use href="#i-pin"/></svg>NetSpace — Công ty Công nghệ &amp; Truyền thông</span>
+<span class="hx-ev__stats"><span><svg width="13" height="13" viewBox="0 0 24 24"><use href="#i-users"/></svg>328 đăng ký</span><span><svg width="13" height="13" viewBox="0 0 24 24"><use href="#i-check-circle"/></svg>138 check-in</span></span>
+<span class="hx-ev__btns"><span class="hx-btn hx-btn--blue"><svg width="13" height="13" viewBox="0 0 24 24"><use href="#i-qr"/></svg>Check-in QR</span><span class="hx-btn">Quản lý →</span></span>
+</div></div>
+<div class="hx-ev"><div class="hx-ev__body">
+<div class="hx-ev__meta"><span class="hx-badge hx-badge--wait">Chờ diễn ra</span><span class="hx-time">18:30</span></div>
+<b class="hx-ev__title">Sun Festival 2026</b>
+<span class="hx-ev__line"><svg width="13" height="13" viewBox="0 0 24 24"><use href="#i-pin"/></svg>SECC, Quận 7, TP.HCM</span>
+<span class="hx-ev__stats"><span><svg width="13" height="13" viewBox="0 0 24 24"><use href="#i-users"/></svg>402 đăng ký</span></span>
+</div></div>
+</div>
+</div>
+</div>
+</div>
+<div class="ne-float ne-shadow" style="position: absolute; left: 24px; bottom: 78px; width: 230px; background: #ffffff; border-radius: 16px; padding: 18px; box-sizing: border-box; text-align: left; display: flex; flex-direction: column; gap: 14px;">
+<span style="font-size: 14px; font-weight: 600;">Vé QR</span>
+<div style="display: flex; gap: 14px; align-items: center;">
+<div style="width: 64px; height: 64px; border-radius: 10px; background: #f6f6f6; display: flex; align-items: center; justify-content: center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#141414" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"></path></svg></div>
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 8px;"><div class="ne-bar" style="width: 100%;"></div><div class="ne-bar" style="width: 70%;"></div><div class="ne-bar" style="width: 50%;"></div></div>
+</div>
+</div>
+<div class="ne-float ne-shadow" style="position: absolute; right: 24px; bottom: 60px; width: 220px; background: #ffffff; border-radius: 16px; padding: 18px; box-sizing: border-box; text-align: left; display: flex; flex-direction: column; gap: 12px;">
+<span style="font-size: 14px; font-weight: 600;">Check-in</span>
+<div style="display: flex; align-items: center; gap: 12px;"><div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(90deg,#1eaaff,#9462fb); color: #ffffff; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></div><div style="flex-grow: 1; display: flex; flex-direction: column; gap: 8px;"><div class="ne-bar" style="width: 90%;"></div><div class="ne-bar" style="width: 60%;"></div></div></div>
+</div>
+</div>
+</div>
+</section>
+
+<section id="loai-hinh" class="lh-white" style="background: #ffffff;">
+<div class="ne-sec" style="max-width: 1280px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 56px;">
+<div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px;">
+<h2 class="ne-h2" style="margin: 0; max-width: 780px; font-size: 44px; line-height: 1.2; font-weight: 700; letter-spacing: -0.02em;">Bạn đang lên kế hoạch cho <span class="ac-grad" style="white-space: nowrap;">sự kiện nào?</span></h2>
+<p style="margin: 0; max-width: 560px; font-size: 17px; line-height: 1.6; color: #444444;">Chọn loại hình phù hợp, khám phá sự kiện mẫu và bắt đầu cùng NetEvent.</p>
+</div>
+
+<div class="ne-grid3 lh-grid" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px;">
+
+<!-- COL 1 -->
+<div class="lh-col">
+
+<article class="lh-card bg-card" style="--tint: #f3f8fd;">
+<span class="edge-light" aria-hidden="true"></span>
+<div class="bg-inner">
+<div class="lh-vis lh-vis--stage" aria-hidden="true" style="background: linear-gradient(180deg, #ffffff 0%, #f3f8fd 100%);">
+<div class="lh-beam"></div>
+<div class="lh-stage">
+<img src="/gioi-thieu/assets/img/av-1.webp" alt="" width="38" height="38" loading="lazy" decoding="async" style="position: absolute; left: 12%; top: 14px; width: 38px; height: 38px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 3px #ffffff, 0 6px 14px rgba(20,40,90,.18);">
+<img src="/gioi-thieu/assets/img/av-2.webp" alt="" width="40" height="40" loading="lazy" decoding="async" style="position: absolute; left: 30%; top: 44px; width: 40px; height: 40px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 3px #ffffff, 0 6px 14px rgba(20,40,90,.18);">
+<img src="/gioi-thieu/assets/img/av-3.webp" alt="" width="36" height="36" loading="lazy" decoding="async" style="position: absolute; left: 50%; margin-left: -18px; top: 8px; width: 36px; height: 36px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 3px #ffffff, 0 6px 14px rgba(20,40,90,.18);">
+<img src="/gioi-thieu/assets/img/av-4.webp" alt="" width="40" height="40" loading="lazy" decoding="async" style="position: absolute; right: 28%; top: 40px; width: 40px; height: 40px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 3px #ffffff, 0 6px 14px rgba(20,40,90,.18);">
+<img src="/gioi-thieu/assets/img/av-5.webp" alt="" width="38" height="38" loading="lazy" decoding="async" style="position: absolute; right: 12%; top: 12px; width: 38px; height: 38px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 3px #ffffff, 0 6px 14px rgba(20,40,90,.18);">
+<img src="/gioi-thieu/assets/img/av-6.webp" alt="" width="40" height="40" loading="lazy" decoding="async" style="position: absolute; left: 50%; margin-left: -20px; top: 82px; width: 40px; height: 40px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 3px #ffffff, 0 6px 14px rgba(20,40,90,.18);">
+<div style="position: absolute; left: 50%; margin-left: -36px; top: 136px; width: 72px; height: 72px; border-radius: 50%; background: linear-gradient(90deg,#1eaaff,#9462fb); box-shadow: 0 12px 28px rgba(30,170,255,0.4); color: #ffffff; display: flex; align-items: center; justify-content: center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1.5"></rect><path d="M12 16v4M8 20h8M7 12l3-3 2 2 4-4"></path></svg></div>
+<div class="ne-shadow" style="position: absolute; left: 50%; transform: translateX(-50%); bottom: 12px; display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: #ffffff; border-radius: 10px; white-space: nowrap;"><span style="width: 18px; height: 18px; border-radius: 50%; background: #dff0ff; color: #0075bc; display: inline-flex; align-items: center; justify-content: center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span style="font-size: 12px; font-weight: 600;">Check-in</span></div>
+</div>
+</div>
+<div class="lh-txt">
+<h3>Hội nghị &amp; hội thảo</h3>
+<p>Từ đăng ký đến đón khách, theo dõi người tham dự thuận tiện trên cùng một hệ thống.</p>
+</div></div>
+</article>
+
+<article class="lh-card bg-card" style="--tint: #faf9ff;">
+<span class="edge-light" aria-hidden="true"></span>
+<div class="bg-inner">
+<div class="lh-vis" aria-hidden="true" style="display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 50%, #ddd5ff 0%, #f1edff 35%, #ffffff 70%);">
+<div class="ne-shadow" style="width: 220px; background: #ffffff; border-radius: 14px; padding: 14px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px;">
+<div style="display: flex; align-items: center; justify-content: space-between;"><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="13" rx="2"></rect><path d="M12 8v13M3 13h18M12 8c-2-3-6-3-6-1s3 1 6 1c3 0 6 1 6-1s-4-2-6 1z"></path></svg>Lucky Draw</span><span style="width: 28px; height: 8px; border-radius: 999px; background: #e2e3e4;"></span></div>
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; background: #f6f6f6;"><span style="width: 32px; height: 32px; border-radius: 8px; background: #fdced5;"></span><div style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px;"><div class="ne-bar" style="width: 80%; height: 6px;"></div><div class="ne-bar" style="width: 40%; height: 6px;"></div></div></div>
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; background: #f6f6f6;"><span style="width: 32px; height: 32px; border-radius: 8px; background: #c5b3ff;"></span><div style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px;"><div class="ne-bar" style="width: 70%; height: 6px;"></div><div class="ne-bar" style="width: 45%; height: 6px;"></div></div></div>
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 10px; border: 1px dashed #c5b3ff;"><div class="ne-bar" style="width: 60%; height: 6px;"></div><span style="width: 20px; height: 20px; border-radius: 50%; background: #f6f6f6; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; color: #555555;">+</span></div>
+</div>
+</div>
+<div class="lh-txt">
+<h3>Tri ân khách hàng</h3>
+<p>Chuẩn bị chu đáo từ khâu mời khách, đón tiếp đến những khoảnh khắc trao giải đáng nhớ.</p>
+</div></div>
+</article>
+</div>
+
+<!-- COL 2 -->
+<div class="lh-col">
+
+<article class="lh-card bg-card" style="--tint: #ffffff;">
+<span class="edge-light" aria-hidden="true"></span>
+<div class="bg-inner">
+<div class="lh-vis lh-vis--sm" aria-hidden="true" style="padding: 20px 24px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px;">
+<span style="display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; background: #f6f6f6; font-size: 12px; font-weight: 600;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #1eaaff;"></span>Form đăng ký</span>
+<div style="flex-grow: 1; display: flex; align-items: center; gap: 5px;">
+<div style="flex-grow: 1; height: 40%; border-radius: 999px; background: #b8e2ff;"></div><div style="flex-grow: 1; height: 64%; border-radius: 999px; background: #78cbff;"></div><div style="flex-grow: 1; height: 82%; border-radius: 999px; background: #1eaaff;"></div><div style="flex-grow: 1; height: 56%; border-radius: 999px; background: #78cbff;"></div><div style="flex-grow: 1; height: 90%; border-radius: 999px; background: #1eaaff;"></div><div style="flex-grow: 1; height: 70%; border-radius: 999px; background: #a888fd;"></div><div style="flex-grow: 1; height: 46%; border-radius: 999px; background: #c5b3ff;"></div><div style="flex-grow: 1; height: 78%; border-radius: 999px; background: #9462fb;"></div><div style="flex-grow: 1; height: 60%; border-radius: 999px; background: #a888fd;"></div><div style="flex-grow: 1; height: 88%; border-radius: 999px; background: #1eaaff;"></div><div style="flex-grow: 1; height: 52%; border-radius: 999px; background: #78cbff;"></div><div style="flex-grow: 1; height: 72%; border-radius: 999px; background: #1eaaff;"></div><div style="flex-grow: 1; height: 38%; border-radius: 999px; background: #b8e2ff;"></div><div style="flex-grow: 1; height: 58%; border-radius: 999px; background: #78cbff;"></div>
+</div>
+</div>
+<div class="lh-txt">
+<h3>Đào tạo &amp; workshop</h3>
+<p>Giới thiệu chương trình, tiếp nhận đăng ký và quản lý danh sách học viên cho từng buổi.</p>
+</div></div>
+</article>
+
+<article class="lh-card bg-card" style="--tint: #f6faff;">
+<span class="edge-light" aria-hidden="true"></span>
+<div class="bg-inner">
+<div class="lh-vis lh-vis--sm" aria-hidden="true" style="position: relative; background: radial-gradient(circle at 50% 50%, #dff0ff 0%, #f3f9ff 40%, #ffffff 72%);">
+<div style="position: absolute; left: 50%; top: 50%; width: 220px; height: 220px; margin: -110px 0 0 -110px; border-radius: 50%; border: 1px solid #e2eefa;"></div>
+<div style="position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: linear-gradient(90deg,#1eaaff,#9462fb); box-shadow: 0 12px 28px rgba(30,170,255,0.4); color: #ffffff; display: flex; align-items: center; justify-content: center;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"></circle><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"></path><circle cx="17" cy="9" r="2.5"></circle><path d="M16 14.2c2.9.4 5 2.9 5 5.8"></path></svg></div>
+<div class="ne-shadow" style="position: absolute; left: 18%; top: 22px; width: 44px; height: 44px; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#141414" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><path d="M14 14h3v3h-3zM17 20h4v-3"></path></svg></div>
+<div class="ne-shadow" style="position: absolute; right: 20%; top: 40px; width: 40px; height: 40px; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0075bc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></div>
+<div class="ne-shadow" style="position: absolute; left: 10%; bottom: 26px; width: 40px; height: 40px; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#141414" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 11h6M9 15h4"></path></svg></div>
+<div class="ne-shadow" style="position: absolute; right: 8%; bottom: 18px; width: 46px; height: 46px; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8349fa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="13" rx="2"></rect><path d="M12 8v13M3 13h18M12 8c-2-3-6-3-6-1s3 1 6 1c3 0 6 1 6-1s-4-2-6 1z"></path></svg></div>
+</div>
+<div class="lh-txt">
+<h3>Sự kiện nội bộ</h3>
+<p>Kết nối đồng nghiệp qua những buổi gặp gỡ, hoạt động chung và minigame sôi nổi.</p>
+</div></div>
+</article>
+
+<article class="lh-card bg-card" style="--tint: #f5f7fa;">
+<span class="edge-light" aria-hidden="true"></span>
+<div class="bg-inner">
+<div class="lh-vis lh-vis--sm" aria-hidden="true" style="position: relative; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #ffffff 0%, #f5f7fa 100%);">
+<div style="position: absolute; width: 190px; height: 44px; top: 34px; left: 50%; margin-left: -80px; border-radius: 12px; background: #ffffff; box-shadow: 0 0 0 1px #eeeeef;"></div>
+<div style="position: absolute; width: 190px; height: 44px; bottom: 34px; left: 50%; margin-left: -80px; border-radius: 12px; background: #ffffff; box-shadow: 0 0 0 1px #eeeeef;"></div>
+<div class="ne-shadow" style="position: relative; width: 210px; height: 56px; margin-left: -20px; border-radius: 14px; background: #ffffff; display: flex; align-items: center; gap: 12px; padding: 0 14px; box-sizing: border-box;">
+<span style="width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(90deg,#1eaaff,#9462fb); color: #ffffff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px;"><div class="ne-bar" style="width: 85%; height: 7px;"></div><div class="ne-bar" style="width: 50%; height: 7px;"></div></div>
+</div>
+</div>
+<div class="lh-txt">
+<h3>Ngày hội &amp; giao lưu</h3>
+<p>Mở đăng ký thuận tiện, hỗ trợ đón khách và tạo thêm cơ hội để mọi người cùng tham gia.</p>
+</div></div>
+</article>
+</div>
+
+<!-- COL 3 -->
+<div class="lh-col">
+
+<article class="lh-card bg-card" style="--tint: #ffffff;">
+<span class="edge-light" aria-hidden="true"></span>
+<div class="bg-inner">
+<div class="lh-vis lh-vis--stage" aria-hidden="true" style="background: #ffffff;">
+<div class="lh-stage rl">
+<span class="rl-glow"></span>
+<span class="rl-spark rl-spark--a"><svg viewBox="0 0 24 24"><path d="M12 2c.6 4.6 2.4 7.4 10 10-7.6 2.6-9.4 5.4-10 10-.6-4.6-2.4-7.4-10-10 7.6-2.6 9.4-5.4 10-10z"/></svg></span><span class="rl-spark rl-spark--b"><svg viewBox="0 0 24 24"><path d="M12 2c.6 4.6 2.4 7.4 10 10-7.6 2.6-9.4 5.4-10 10-.6-4.6-2.4-7.4-10-10 7.6-2.6 9.4-5.4 10-10z"/></svg></span><span class="rl-spark rl-spark--c"><svg viewBox="0 0 24 24"><path d="M12 2c.6 4.6 2.4 7.4 10 10-7.6 2.6-9.4 5.4-10 10-.6-4.6-2.4-7.4-10-10 7.6-2.6 9.4-5.4 10-10z"/></svg></span>
+<div class="rl-card">
+<span class="rl-card__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-star"/></svg></span>
+<div><span class="rl-card__lbl">Lễ ra mắt</span><b class="rl-card__name">NetEvent</b><span class="rl-card__time"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-cal"/></svg>20.11 · 19:00</span></div>
+</div>
+<span class="rl-chip rl-chip--mail"><span class="rl-chip__ico rl-chip__ico--b"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-mail"/></svg></span>Mời khách qua email</span>
+<span class="rl-chip rl-chip--qr"><span class="rl-chip__ico rl-chip__ico--p"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-qr"/></svg></span>Vé QR</span>
+</div>
+</div>
+<div class="lh-txt">
+<h3>Ra mắt sản phẩm</h3>
+<p>Tạo ấn tượng từ lời mời đầu tiên và khuấy động chương trình bằng những hoạt động tương tác.</p>
+</div></div>
+</article>
+
+<article class="lh-card lh-card--cta bg-card" style="--tint: #f3eeff;">
+<span class="edge-light" aria-hidden="true"></span>
+<div class="bg-inner">
+<div class="lh-vis cta-vis" aria-hidden="true">
+<div class="cta-art">
+<div class="cta-card">
+<div class="cta-card__top"><span class="cta-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-cal"/></svg></span><div><b>Sự kiện mới</b><span>Bản nháp</span></div></div>
+<i class="cta-bar" style="width: 78%;"></i><i class="cta-bar" style="width: 52%;"></i>
+<div class="cta-row"><span class="cta-chip"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-cal"/></svg>20/11 · 18:00</span><span class="cta-chip"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-pin"/></svg>TP.HCM</span></div>
+<span class="cta-btn">Xuất bản sự kiện</span>
+</div>
+<span class="cta-float cta-float--a"><span class="cta-ok"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg></span>Đã mở đăng ký</span>
+<span class="cta-float cta-float--b"><span class="cta-avs"><i></i><i></i><i></i></span>+128 người tham dự</span>
+</div>
+</div>
+<div class="lh-txt">
+<h3>Sự kiện tiếp theo, bắt đầu từ đây</h3>
+<p>Cùng NetEvent tạo sự kiện, đón khách và kết nối người tham dự.</p>
+<div class="cta-act"><a href="/tao-su-kien" class="ns-btn ns-btn--pill" style="height: 44px; padding: 0 20px; background: #141414; color: #ffffff; box-shadow: 0 8px 20px rgba(20,20,20,0.25);">Tạo sự kiện</a></div>
+</div>
+</div>
+</article>
+</div>
+
+</div>
+</div>
+</section>
+
+<section id="tinh-nang" class="gbg gbg--feat">
+<div class="ne-sec ne-grid2" style="max-width: 1280px; margin: 0 auto; padding: 96px 24px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 56px; align-items: center;">
+<div style="display: flex; flex-direction: column; gap: 20px; align-items: flex-start;">
+<h2 class="ne-h2" style="margin: 0; font-size: 46px; line-height: 1.18; font-weight: 700; letter-spacing: -0.02em;">Một nền tảng.<br><span class="ac-grad">Trọn hành trình sự&nbsp;kiện.</span></h2>
+<p style="margin: 0; max-width: 500px; font-size: 16px; line-height: 1.65; color: #555555;">Từ chuẩn bị, đón khách đến tổng kết, NetEvent tích hợp các tính năng cần thiết để bạn tổ chức và quản lý sự kiện trên cùng một nền tảng.</p>
+<a href="/tao-su-kien" class="ns-btn ns-btn--pill" style="height: 48px; padding: 0 24px; font-size: 15px; background: #141414; color: #ffffff; box-shadow: 0 10px 24px rgba(20,20,20,0.25);">Tạo sự kiện<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+</div>
+
+<div class="fd" id="fd" data-open="true">
+<ul class="fd__cards" id="fdCards">
+<li class="fd__card" style="--i:0;--r:-6deg;--x:2%;--y:10px"><span class="fd__ico fd__ico--b" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-monitor"/></svg></span><h3>Tạo trang sự kiện</h3></li>
+<li class="fd__card" style="--i:1;--r:4deg;--x:50%;--y:0px"><span class="fd__ico fd__ico--b" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-mail"/></svg></span><h3>Mời khách &amp; gửi email</h3></li>
+<li class="fd__card" style="--i:2;--r:5deg;--x:15%;--y:86px"><span class="fd__ico fd__ico--p" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-ticket"/></svg></span><h3>Phát hành vé QR</h3></li>
+<li class="fd__card" style="--i:3;--r:-5deg;--x:55%;--y:80px"><span class="fd__ico fd__ico--p" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-users"/></svg></span><h3>Quản lý người tham dự</h3></li>
+<li class="fd__card" style="--i:4;--r:3deg;--x:4%;--y:164px"><span class="fd__ico fd__ico--k" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-qr"/></svg></span><h3>Check-in tại sự kiện</h3></li>
+<li class="fd__card" style="--i:5;--r:-7deg;--x:47%;--y:166px"><span class="fd__ico fd__ico--k" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-chart"/></svg></span><h3>Thống kê &amp; báo cáo</h3></li>
+</ul>
+<div class="fd__dock">
+<button type="button" class="fd__folder" aria-expanded="true" aria-controls="fdCards" aria-label="Xem 6 tính năng">
+<img class="fd__img" src="/gioi-thieu/assets/img/folder.webp" alt="" width="396" height="360" decoding="async">
+</button>
+<p class="fd__hint" hidden></p>
+</div>
+</div>
+</div>
+</section>
+
+<section id="minigame" style="background: #ffffff;">
+<div class="ne-sec" style="max-width: 1280px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; align-items: center; gap: 56px;">
+<div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px;">
+<h2 class="ne-h2" style="margin: 0; max-width: 760px; font-size: 44px; line-height: 1.2; font-weight: 700; letter-spacing: -0.02em;">Thêm tương tác,<br><span class="ac-grad mg-h2-grad">thêm khoảnh khắc đáng nhớ</span></h2>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #444444;">Chọn minigame phù hợp và trải nghiệm ngay.</p>
+</div>
+
+<div class="mg-stack" style="width: 100%; max-width: 1280px; display: flex; flex-direction: column; gap: 24px;">
+
+<!-- 01 -->
+<article class="ne-step mg-card" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #ffffff; border-radius: 22px; overflow: hidden; min-height: 300px;">
+<div class="mg-copy">
+<span aria-hidden="true" class="mg-num">01</span>
+<h3>Vòng quay may mắn</h3>
+<p>Khơi hứng thú với mỗi lượt quay và những phần quà bất ngờ.</p>
+<button type="button" id="mg1Btn" class="ns-btn ns-btn--pill ns-btn--sm mg-play">Trải nghiệm ngay<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><p class="mg-out" id="mg1Out" role="status"></p>
+</div>
+<div aria-hidden="true" class="mg-panel">
+<div class="mg-art" style="--ar: .9886;">
+<img src="/gioi-thieu/assets/img/mg-wheel.webp" alt="" width="613" height="620" loading="lazy" decoding="async">
+<img id="mgWheel" class="mg-art__disk" src="/gioi-thieu/assets/img/mg-wheel-disk.webp" alt="" width="370" height="370" loading="lazy" decoding="async">
+</div>
+</div>
+</article>
+
+<!-- 02 -->
+<article class="ne-step mg-card" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #ffffff; border-radius: 22px; overflow: hidden; min-height: 300px;">
+<div class="mg-copy">
+<span aria-hidden="true" class="mg-num">02</span>
+<h3>Bốc thăm check-in</h3>
+<p>Thêm niềm vui cho khách tham dự với cơ hội nhận quà khi check-in.</p>
+<button type="button" id="mg2Btn" class="ns-btn ns-btn--pill ns-btn--sm mg-play">Trải nghiệm ngay<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><p class="mg-out" id="mg2Out" role="status"></p>
+</div>
+<div aria-hidden="true" class="mg-panel">
+<div class="mg-art" style="--ar: .975;">
+<img src="/gioi-thieu/assets/img/mg-checkin.webp" alt="" width="604" height="620" loading="lazy" decoding="async">
+</div>
+<div class="mg-chip"><span id="mg2Bars" class="mg-chip__hint">Chờ bốc thăm</span><b class="mg-name" id="mg2Name" hidden></b></div>
+</div>
+</article>
+
+<!-- 03 -->
+<article class="ne-step mg-card" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #ffffff; border-radius: 22px; overflow: hidden; min-height: 300px;">
+<div class="mg-copy">
+<span aria-hidden="true" class="mg-num">03</span>
+<h3>Lucky Draw</h3>
+<p>Cùng hồi hộp chờ đón cái tên may mắn được xướng lên tại sự kiện.</p>
+<button type="button" id="mg3Btn" class="ns-btn ns-btn--pill ns-btn--sm mg-play">Trải nghiệm ngay<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><p class="mg-out" id="mg3Out" role="status"></p>
+</div>
+<div aria-hidden="true" class="mg-panel">
+<div class="mg-art" style="--ar: 1.0428;">
+<img src="/gioi-thieu/assets/img/mg-lucky.webp" alt="" width="647" height="620" loading="lazy" decoding="async">
+</div>
+<div class="mg-chip mg-chip--grad"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/></svg><b id="mg3Code" class="mg-code">NE-2026-00•••</b></div>
+</div>
+</article>
+<div class="mg-stack__end" aria-hidden="true"></div>
+
+</div>
+</div>
+</section>
+</div>
+
+<section id="tu-van" class="ns-root tv gbg gbg--soft" style="padding: 96px 24px;">
+<div class="ne-grid2" style="position: relative; overflow: hidden; max-width: 1280px; margin: 0 auto; box-sizing: border-box; padding: 56px; border-radius: 28px; background: radial-gradient(55% 75% at 8% 0%, rgba(30,170,255,.85) 0%, rgba(30,170,255,0) 70%), radial-gradient(45% 65% at 100% 100%, rgba(255,92,170,.9) 0%, rgba(255,92,170,0) 70%), linear-gradient(115deg, #1460f2 0%, #4f46ef 38%, #7b3ff2 66%, #a83df0 100%); color: #ffffff; box-shadow: 0 40px 80px -36px rgba(60,70,240,.5); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px; align-items: center;">
+<div aria-hidden="true" style="position: absolute; left: 32%; top: -220px; width: 620px; height: 620px; border-radius: 50%; border: 70px solid rgba(255,255,255,0.05); pointer-events: none;"></div>
+<div aria-hidden="true" style="position: absolute; left: -180px; bottom: -260px; width: 520px; height: 520px; border-radius: 50%; border: 60px solid rgba(255,255,255,0.05); pointer-events: none;"></div>
+<div style="position: relative; display: flex; flex-direction: column; gap: 18px; align-items: flex-start;">
+<h2 class="ne-h2" style="margin: 0; font-size: 42px; line-height: 1.2; font-weight: 700; letter-spacing: -0.02em; color: #ffffff;">Cùng <span class="ac-grad-light">NetEvent</span> chuẩn bị cho sự kiện của bạn</h2>
+<p style="margin: 0; max-width: 440px; font-size: 16px; line-height: 1.6; color: #ffffff;">Chia sẻ nhu cầu để được tư vấn cách triển khai phù hợp.</p>
+</div>
+
+<div class="tvf">
+<form id="regForm" class="tvf__form" novalidate aria-label="Đăng ký nhận tư vấn">
+<div class="ne-form2 tvf__row">
+<div class="ns-field"><label class="ns-field__label" for="regName">Họ và tên<span class="tvf__req" aria-hidden="true">*</span></label><input class="ns-field__input" id="regName" aria-describedby="err-name" name="name" type="text" aria-required="true" placeholder="Nhập họ và tên" autocomplete="name"><p class="err" id="err-name" hidden>Vui lòng nhập họ và tên.</p></div>
+<div class="ns-field"><label class="ns-field__label" for="regPhone">Số điện thoại<span class="tvf__req" aria-hidden="true">*</span></label><input class="ns-field__input" id="regPhone" aria-describedby="err-phone" name="phone" type="tel" aria-required="true" placeholder="Nhập số điện thoại" autocomplete="tel"><p class="err" id="err-phone" hidden>Số điện thoại chưa hợp lệ.</p></div>
+</div>
+<div class="ns-field"><label class="ns-field__label" for="regEmail">Email</label><input class="ns-field__input" id="regEmail" aria-describedby="err-email" name="email" type="email" placeholder="Nhập địa chỉ email" autocomplete="email"><p class="err" id="err-email" hidden>Email chưa đúng định dạng.</p></div>
+<div class="ns-field"><label class="ns-field__label" for="regNeed">Nhu cầu tổ chức</label><textarea class="ns-field__input" id="regNeed" name="need" rows="3" placeholder="Loại sự kiện, số khách dự kiến hoặc điều bạn cần hỗ trợ"></textarea></div>
+<button type="submit" class="ns-btn ns-btn--pill tvf__submit">Nhận tư vấn<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
+<p class="tvf__note"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>Thông tin được sử dụng để liên hệ tư vấn theo yêu cầu của bạn.</p>
+</form>
+<div id="regDone" role="status" tabindex="-1" hidden style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; padding: 48px 8px;">
+<div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(90deg,#1eaaff,#9462fb); color: #ffffff; display: flex; align-items: center; justify-content: center;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></div>
+<p style="margin: 0; font-size: 24px; line-height: 1.3; font-weight: 600;">Đã nhận yêu cầu!</p>
+<p style="margin: 0; max-width: 380px; font-size: 16px; line-height: 1.55; color: #333333;">Đội ngũ NetEvent sẽ liên hệ để trao đổi về sự kiện của bạn.</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<footer class="ns-root" style="background: #ffffff; overflow: hidden;">
+<div style="max-width: 1280px; margin: 0 auto; padding: 56px 24px 0; display: flex; flex-direction: column;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 28px; border-bottom: 1px solid #eeeeef;">
+<img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgMTkzNy41MyAzNDMiPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuY2xzLTEgewogICAgICAgIGZpbGw6IHVybCgjbGluZWFyLWdyYWRpZW50LTIpOwogICAgICB9CgogICAgICAuY2xzLTIgewogICAgICAgIGZpbGw6IG5vbmU7CiAgICAgICAgc3Ryb2tlOiAjMDAwOwogICAgICAgIHN0cm9rZS1taXRlcmxpbWl0OiAxMDsKICAgICAgICBzdHJva2Utd2lkdGg6IDE1cHg7CiAgICAgIH0KCiAgICAgIC5jbHMtMyB7CiAgICAgICAgZmlsbDogdXJsKCNsaW5lYXItZ3JhZGllbnQtNCk7CiAgICAgIH0KCiAgICAgIC5jbHMtNCB7CiAgICAgICAgZmlsbDogdXJsKCNsaW5lYXItZ3JhZGllbnQtMyk7CiAgICAgIH0KCiAgICAgIC5jbHMtNSB7CiAgICAgICAgZmlsbDogdXJsKCNsaW5lYXItZ3JhZGllbnQpOwogICAgICB9CiAgICA8L3N0eWxlPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJsaW5lYXItZ3JhZGllbnQiIHgxPSIxOC4wNiIgeTE9IjIxNi4zMSIgeDI9IjE0OC40MiIgeTI9IjEuMDQiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjNmFkYmUzIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzFlYWFmZiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0ibGluZWFyLWdyYWRpZW50LTIiIHgxPSIxNjAuNTUiIHkxPSItMzIuNTciIHgyPSIyNTYuNiIgeTI9IjEzOC45NSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMxZWFhZmYiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTQ2MmZiIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJsaW5lYXItZ3JhZGllbnQtMyIgeDE9IjM2Ny43MSIgeTE9IjEzMi41NCIgeDI9IjI0NS45MyIgeTI9IjMzOC4zNiIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmYWUwOTYiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZjg2ODgwIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJsaW5lYXItZ3JhZGllbnQtNCIgeDE9IjIzNC4xMSIgeTE9IjM4MC4wNSIgeDI9IjEzMi4wNSIgeTI9IjIwNy42NyIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmODY4ODAiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTQ2MmZiIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8Zz4KICAgIDxnPgogICAgICA8cGF0aCBjbGFzcz0iY2xzLTUiIGQ9Ik0xNDUuNTcsODUuNDFsLTQ5LjY1LDg2aDBzLTQzLjMxLDc1LjA0LTQzLjMxLDc1LjA0Yy0yLjgxLDQuODctOS44NCw0Ljg3LTEyLjY2LDBsLTE2Ljg2LTI5LjJMMi45MiwxODIuMzRjLTMuOS02Ljc1LTMuOS0xNS4wOCwwLTIxLjgzbDIwLjE2LTM0LjkzLDIzLjE5LTQwLjE2LDMyLjktNTYuOTksMi45My01LjA2YzMuMjgtMy45OSw4LjI1LTYuNTMsMTMuODEtNi41M3MxMC42MywyLjU5LDEzLjksNi42NWwyLjc4LDQuODIsMzIuOTgsNTcuMTFaIi8+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTI4NS41LS4xNkgxMDYuMzljLTYuNjMsMC0xMi43NSwzLjU0LTE2LjA2LDkuMjdsLTguMjMsMTQuMjVjMy4yOC0zLjk5LDguMjUtNi41MywxMy44MS02LjUzczEwLjYzLDIuNTksMTMuOSw2LjY1bDIuNzgsNC44MiwzMi45OCw1Ny4xMSw0OS42NSw4Ni4wMSw0OS42NS04NkwyODkuODksNy40NmMxLjk2LTMuMzgtLjQ5LTcuNjItNC4zOS03LjYyWiIvPgogICAgICA8cGF0aCBjbGFzcz0iY2xzLTQiIGQ9Ik0yNDQuODgsMjU3LjQzbDQ5LjY1LTg2aDBzNDMuMzEtNzUuMDQsNDMuMzEtNzUuMDRjMi44MS00Ljg3LDkuODQtNC44NywxMi42NiwwbDE2Ljg2LDI5LjIsMjAuMTYsMzQuOTJjMy45LDYuNzUsMy45LDE1LjA4LDAsMjEuODNsLTIwLjE2LDM0LjkzLTIzLjE5LDQwLjE2LTMyLjksNTYuOTktMi45Myw1LjA2Yy0zLjI4LDMuOTktOC4yNSw2LjUzLTEzLjgxLDYuNTMtNS42MiwwLTEwLjYzLTIuNTktMTMuOS02LjY1bC0yLjc4LTQuODItMzIuOTgtNTcuMTFaIi8+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMyIgZD0iTTEwNC45NSwzNDNoMTc5LjExYzYuNjMsMCwxMi43NS0zLjU0LDE2LjA2LTkuMjdsOC4yMy0xNC4yNWMtMy4yOCwzLjk5LTguMjUsNi41My0xMy44MSw2LjUzLTUuNjIsMC0xMC42My0yLjU5LTEzLjktNi42NWwtMi43OC00LjgyLTMyLjk4LTU3LjExLTQ5LjY1LTg2LjAxLTQ5LjY1LDg2LTQ1LjAxLDc3Ljk2Yy0xLjk2LDMuMzguNDksNy42Miw0LjM5LDcuNjJaIi8+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgPHBhdGggZD0iTTU3Ni44OSw4Ni4wMWgyNC43djEzOS4zOWgtMTIuMjVsLTg4LjE3LTk1LjV2OTUuNWgtMjQuN1Y4Ni4wMWgxMi4yNWw4OC4xNyw5NS41di05NS41WiIvPgogICAgICA8cGF0aCBkPSJNNzMzLjM1LDE3OC41NGgtODQuMzVjMS44MSw4LjMsNi4wMiwxNS4wMywxMi42NSwyMC4zNyw2LjYzLDUuMzQsMTQuMjYsNy45MSwyMi41LDcuOTEsMTIuODUsMCwyMi45LTQuNzUsMjkuOTItMTQuMjRsMTUuNDYsMTIuNDZjLTEwLjI0LDEzLjQ0LTI4LjEyLDIxLjc1LTQ4LjgxLDIxLjc1LTE2LjI3LDAtMjkuNTItNS4zNC0zOS45Ny0xNi4wMS0xMC40NC0xMC42OC0xNS42Ny0yMy43My0xNS42Ny0zOS4xNXM1LjIyLTI4LjY3LDE1LjY3LTM5LjM1YzEwLjQ0LTEwLjY4LDIzLjctMTYuMDEsMzkuOTctMTYuMDFzMjguOTIsNS4xNCwzOC4zNiwxNS42MmM5LjY0LDEwLjQ4LDE0LjQ2LDIzLjkyLDE0LjQ2LDQwLjMzbC0uMiw2LjMzWk02NDkuMzksMTYxLjkzaDYxLjA2Yy0xLjYxLTE2LjAxLTExLjI1LTI3LjA5LTI5LjcyLTI3LjA5LTE2LjA3LDAtMjguMzIsMTEuNDctMzEuMzMsMjcuMDlaIi8+CiAgICAgIDxwYXRoIGQ9Ik04MTkuMTEsMTM3LjIyaC0zMi43NHY0NC4yOWMwLDE5LjU3LDQuNjIsMjUuNSwxOC40OCwyNS41LDQuMjIsMCw4Ljg0LS40LDEzLjg2LTEuMTl2MTcuNGMtNy4yMywyLjM3LTE1LjI2LDMuNTYtMjQuMSwzLjU2LTE4LjY4LDAtMzIuMzQtMTEuODYtMzIuMzQtMzMuMjJ2LTU2LjM1aC0xNi40N3YtMTguOThoMTYuNDd2LTMyLjI3aDI0LjF2MzIuMjdoMzIuNzR2MTguOThaIi8+CiAgICAgIDxwYXRoIGQ9Ik05NDQuODQsMTg1LjY2YzAsMTIuODUtNC44MiwyMy4xMy0xNC42NiwzMC40NS05Ljg0LDcuMzItMjIuOSwxMS4wNy0zOS4xNiwxMS4wNy0xMi4yNSwwLTIyLjI5LS43OS0zMC4xMy0yLjU3LTcuNjMtMS43OC0xNi44Ny01LjM0LTI3LjkyLTEwLjY4bDkuMDQtMTguMzljOS4yNCw0LjM1LDE3LjQ3LDcuMzIsMjQuNSw4LjksNy4yMywxLjM4LDE1LjY2LDIuMTcsMjUuMzEsMi4xNywxNy40NywwLDI4LjEyLTcuMTIsMjguMTItMTguOTgsMC0xMC44OC05Ljg0LTE2LjAyLTMyLjU0LTIxLjM1LTEzLjY2LTMuMTYtMjEuMDktNS4xNC0zMC45My05LjY5LTE0LjI2LTYuMzMtMjAuODktMTUuMDMtMjEuNjktMzEuNDQsMC0xMi4wNiw0LjYyLTIxLjc1LDEzLjg2LTI5LjI2LDkuMjQtNy41MSwyMS42OS0xMS4yNywzNy41Ni0xMS4yNywxOS4wOCwwLDM2Ljc2LDMuNzYsNTMuMjIsMTEuMjdsLTEwLjA0LDE4Ljc4Yy0xNC40Ni02LjMzLTI5LjEyLTkuNDktNDMuNzgtOS40OS0xNi4wNywwLTI1LjkxLDcuMzItMjUuOTEsMTguMTlzMTAuMDQsMTYuMDEsMzQuMzQsMjEuNTVjMzMuNzQsNy4zMiw1MC44MSwxNy42LDUwLjgxLDQwLjczWiIvPgogICAgICA8cGF0aCBkPSJNMTA2NC4zNCwxMzEuODhjMTAuNjQsMTAuMjgsMTYuMDcsMjMuNTMsMTYuMDcsMzkuNzRzLTUuNDIsMjkuMDYtMTYuMDcsMzkuNTRjLTEwLjY0LDEwLjQ4LTIzLjksMTUuNjItMzkuMzYsMTUuNjItMTIuNDUsMC0yMy43LTMuMTYtMzMuNzQtOS4yOXYzOS43OGgtMjQuMVYxMTguMjRoMjQuMXY3LjcxYzkuNDQtNi41MiwyMC42OS05LjY5LDMzLjc0LTkuNjksMTUuNDYsMCwyOC43Miw1LjE0LDM5LjM2LDE1LjYyWk0xMDQ2LjQ3LDE5Ni4zM2M2LjgzLTYuNTIsMTAuMjQtMTQuNjMsMTAuMjQtMjQuNzJzLTMuNDItMTcuOTktMTAuMjQtMjQuNTJjLTYuODMtNi43Mi0xNS4yNi0xMC4wOC0yNS41MS0xMC4wOC0xMS44NSwwLTIxLjg5LDMuNTYtMjkuNzIsMTAuNjh2NDcuODVjNy44Myw2LjkyLDE3LjY3LDEwLjQ4LDI5LjcyLDEwLjQ4LDEwLjI0LDAsMTguNjgtMy4xNiwyNS41MS05LjY5WiIvPgogICAgICA8cGF0aCBkPSJNMTE4NS44NSwxMTguMjRoMjQuMXYxMDcuMTZoLTI0LjF2LTguOWMtMTAuMDQsNi45Mi0yMS4yOSwxMC4yOC0zMy43NCwxMC4yOC0xNi4yNywwLTI5LjUyLTUuNTQtMzkuNTYtMTYuNDEtMTAuMDQtMTAuODctMTUuMDYtMjMuOTItMTUuMDYtMzguOTVzNS4wMi0yOC4wOCwxNS4wNi0zOC45NWMxMC4wNC0xMC44NywyMy4zLTE2LjQxLDM5LjU2LTE2LjQxLDEyLjI1LDAsMjMuNSwzLjM2LDMzLjc0LDEwLjA4di03LjkxWk0xMTg1Ljg1LDE0Ny42OWMtNy44My03LjEyLTE3Ljg4LTEwLjY4LTI5LjcyLTEwLjY4LTEwLjQ0LDAtMTkuMDgsMy4zNi0yNS43MSwxMC4wOC02LjYzLDYuNzItOS44NCwxNC44My05Ljg0LDI0LjMyczMuNDIsMTcuNiwxMC4wNCwyNC41MmM2LjYzLDYuNzIsMTUuMjYsMTAuMDgsMjUuNTEsMTAuMDgsMTIuMDUsMCwyMS44OS0zLjU2LDI5LjcyLTEwLjQ4di00Ny44NVoiLz4KICAgICAgPHBhdGggZD0iTTEzMzIuMjcsMjA2LjAyYy05Ljg0LDEyLjg1LTI0LjksMjAuNzYtNDEuNTcsMjAuNzZzLTMwLjMzLTUuMzQtNDEuOTgtMTYuMjFjLTExLjY1LTEwLjg3LTE3LjQ3LTIzLjczLTE3LjQ3LTM4Ljk1czUuODItMjguMjcsMTcuNDctMzkuMTVjMTEuNjUtMTAuODcsMjUuNzEtMTYuMjEsNDEuOTgtMTYuMjEsMTcuMjcsMCwzMS4zMyw2LjkyLDQxLjk4LDIwLjU2bC0xNS42NiwxMy44NGMtNi40My05LjA5LTE1LjI2LTEzLjY0LTI2LjMxLTEzLjY0LTkuODQsMC0xOC40OCwzLjM2LTI1LjUxLDEwLjA4LTcuMDMsNi43Mi0xMC40NCwxNC44My0xMC40NCwyNC41MnMzLjQyLDE3LjYsMTAuNDQsMjQuMzJjNy4wMyw2LjcyLDE1LjY2LDEwLjA4LDI1LjUxLDEwLjA4LDExLjA1LDAsMTkuNjgtNC41NSwyNi4zMS0xMy44NGwxNS4yNiwxMy44NFoiLz4KICAgICAgPHBhdGggZD0iTTE0NTIuNzgsMTc4LjU0aC04NC4zNWMxLjgxLDguMyw2LjAyLDE1LjAzLDEyLjY1LDIwLjM3LDYuNjMsNS4zNCwxNC4yNiw3LjkxLDIyLjUsNy45MSwxMi44NSwwLDIyLjktNC43NSwyOS45Mi0xNC4yNGwxNS40NiwxMi40NmMtMTAuMjQsMTMuNDQtMjguMTIsMjEuNzUtNDguODEsMjEuNzUtMTYuMjcsMC0yOS41Mi01LjM0LTM5Ljk3LTE2LjAxLTEwLjQ0LTEwLjY4LTE1LjY3LTIzLjczLTE1LjY3LTM5LjE1czUuMjItMjguNjcsMTUuNjctMzkuMzVjMTAuNDQtMTAuNjgsMjMuNy0xNi4wMSwzOS45Ny0xNi4wMXMyOC45Miw1LjE0LDM4LjM2LDE1LjYyYzkuNjQsMTAuNDgsMTQuNDYsMjMuOTIsMTQuNDYsNDAuMzNsLS4yLDYuMzNaTTEzNjguODMsMTYxLjkzaDYxLjA2Yy0xLjYxLTE2LjAxLTExLjI1LTI3LjA5LTI5LjcyLTI3LjA5LTE2LjA3LDAtMjguMzIsMTEuNDctMzEuMzMsMjcuMDlaIi8+CiAgICA8L2c+CiAgPC9nPgogIDxsaW5lIGNsYXNzPSJjbHMtMiIgeDE9IjE1MTMuMSIgeTE9IjEwNi45NCIgeDI9IjE1MTMuMSIgeTI9IjIzNS45Ii8+CiAgPGc+CiAgICA8cGF0aCBkPSJNMTYzMi40OCwxNzQuMDFoLTQyLjMzdjM5LjI2aDQ3LjE4djExLjhoLTYxLjI0di0xMDguOTFoNTguODJ2MTEuOGgtNDQuNzZ2MzQuNDJoNDIuMzN2MTEuNjNaIi8+CiAgICA8cGF0aCBkPSJNMTY1OS40NiwxNDYuODZsMTUuMzUsNDMuOTVjMi41OCw3LjExLDQuNjksMTMuNTcsNi4zLDIwLjA0aC40OGMxLjc4LTYuNDYsNC4wNC0xMi45Myw2LjYyLTIwLjA0bDE1LjE5LTQzLjk1aDE0Ljg3bC0zMC43LDc4LjIxaC0xMy41N2wtMjkuNzMtNzguMjFoMTUuMTlaIi8+CiAgICA8cGF0aCBkPSJNMTczNy45OSwxODguNTVjLjMyLDE5LjIzLDEyLjYsMjcuMTUsMjYuODIsMjcuMTUsMTAuMTgsMCwxNi4zMi0xLjc4LDIxLjY1LTQuMDRsMi40MiwxMC4xOGMtNS4wMSwyLjI2LTEzLjU3LDQuODUtMjYuMDEsNC44NS0yNC4wOCwwLTM4LjQ2LTE1Ljg0LTM4LjQ2LTM5LjQzczEzLjktNDIuMTcsMzYuNjgtNDIuMTdjMjUuNTMsMCwzMi4zMiwyMi40NiwzMi4zMiwzNi44NCwwLDIuOTEtLjMyLDUuMTctLjQ4LDYuNjJoLTU0Ljk0Wk0xNzc5LjY4LDE3OC4zN2MuMTYtOS4wNS0zLjcyLTIzLjExLTE5LjcxLTIzLjExLTE0LjM4LDAtMjAuNjgsMTMuMjUtMjEuODEsMjMuMTFoNDEuNTNaIi8+CiAgICA8cGF0aCBkPSJNMTgxMS4wMiwxNjguMDNjMC04LjA4LS4xNi0xNC43LS42NS0yMS4xN2gxMi42bC44MSwxMi45M2guMzJjMy44OC03LjQzLDEyLjkzLTE0LjcsMjUuODUtMTQuNywxMC44MywwLDI3LjYzLDYuNDYsMjcuNjMsMzMuMjl2NDYuN2gtMTQuMjJ2LTQ1LjA4YzAtMTIuNi00LjY5LTIzLjExLTE4LjEtMjMuMTEtOS4zNywwLTE2LjY0LDYuNjItMTkuMDcsMTQuNTQtLjY1LDEuNzgtLjk3LDQuMi0uOTcsNi42MnY0Ny4wMmgtMTQuMjJ2LTU3LjA0WiIvPgogICAgPHBhdGggZD0iTTE5MTcuMTcsMTI0LjR2MjIuNDZoMjAuMzZ2MTAuODNoLTIwLjM2djQyLjE3YzAsOS42OSwyLjc1LDE1LjE5LDEwLjY2LDE1LjE5LDMuNzIsMCw2LjQ2LS40OCw4LjI0LS45N2wuNjUsMTAuNjZjLTIuNzUsMS4xMy03LjExLDEuOTQtMTIuNiwxLjk0LTYuNjMsMC0xMS45Ni0yLjEtMTUuMzUtNS45OC00LjA0LTQuMi01LjQ5LTExLjE1LTUuNDktMjAuMzZ2LTQyLjY2aC0xMi4xMnYtMTAuODNoMTIuMTJ2LTE4Ljc0bDEzLjktMy43MloiLz4KICA8L2c+Cjwvc3ZnPg==" alt="NetEvent" style="height: 40px; width: auto; display: block;">
+<p style="margin: 0; max-width: 420px; font-size: 14px; line-height: 1.6; color: #555555;">Nền tảng hỗ trợ tổ chức sự kiện, từ đăng ký đến check-in và tương tác.</p>
+</div>
+<div class="ft-grid">
+<div class="ft-contact">
+<span class="ft-h">Thông tin liên hệ</span>
+<div class="ft-contact__grid">
+<div class="ft-item"><span class="ft-ico" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-pin"/></svg></span><div><b>Địa chỉ</b>
+<p><strong>Trụ sở chính:</strong> Tầng 3, Tòa nhà Mipec, 229 Tây Sơn, Phường Kim Liên, Hà Nội</p>
+<p><strong>Văn phòng đại diện:</strong> DD1 - DD1A Bạch Mã, phường Hòa Hưng, Quận 10, TP. Hồ Chí Minh</p></div></div>
+<div class="ft-contact__col">
+<div class="ft-item"><span class="ft-ico" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-phone"/></svg></span><div><b>Hotline</b><p><a href="tel:0888138888">0888 138 888</a></p></div></div>
+<div class="ft-item"><span class="ft-ico" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-mail"/></svg></span><div><b>Email</b><p><a href="mailto:contact@netspace.vn">contact@netspace.vn</a></p></div></div>
+</div>
+</div>
+</div>
+<nav aria-label="Khám phá" class="ft-nav">
+<span class="ft-h">Khám phá</span>
+<a href="/gioi-thieu/#loai-hinh">Loại hình sự kiện</a>
+<a href="/gioi-thieu/#minigame">Minigame</a>
+<a href="/gioi-thieu/#tu-van">Tư vấn</a>
+</nav>
+</div>
+<div aria-hidden="true" class="ne-giant" style="padding-top: 40px; font-size: 230px; line-height: 0.85; font-weight: 700; letter-spacing: -0.05em; text-align: center; white-space: nowrap; background: linear-gradient(180deg, rgba(148,98,251,.34) 0%, rgba(30,170,255,.14) 55%, #ffffff 95%); -webkit-background-clip: text; background-clip: text; color: transparent; user-select: none;">NetEvent</div>
+<div class="ft-bottom">
+<span>© 2026 NetSpace.vn | Bản quyền đã được bảo lưu</span>
+<span class="ft-bottom__links"><a href="/gioi-thieu/chinh-sach-bao-mat/">Chính sách bảo mật</a><a href="/gioi-thieu/dieu-khoan-su-dung/">Điều khoản sử dụng</a><span>Vận hành bởi <strong>NetSpace</strong></span></span>
+</div>
+</div>
+</footer>
+<script src="/gioi-thieu/assets/app.js?v=0d0794dd" defer></script>
+</body>
+</html>

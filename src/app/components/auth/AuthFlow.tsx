@@ -118,14 +118,28 @@ function GoogleAccountDialog({ onPick, onClose }: {
 
 // ── Shared layout ─────────────────────────────────────────────────────────────
 
+/** Trang /dang-nhap thì thẻ nằm giữa trang; mở dạng popup thì chỉ có thẻ. */
+const AuthLayout = React.createContext<"page" | "modal">("page");
+
 function AuthCard({ children, footer }: { children: React.ReactNode; footer?: React.ReactNode }) {
+  const layout = React.useContext(AuthLayout);
+  const card = (
+    <div className="w-full max-w-[380px] rounded-3xl p-6 shadow-xl overflow-hidden"
+      style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
+      {children}
+    </div>
+  );
+  if (layout === "modal") return (
+    <>
+      {card}
+      {/* Trên lớp nền tối của popup, dòng phụ cần một nền sáng riêng để đọc được */}
+      {footer && <div className="w-full max-w-[380px] mt-3 rounded-2xl px-4 pb-3 pt-0.5" style={{ backgroundColor: T.background }}>{footer}</div>}
+    </>
+  );
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center p-4"
       style={{ backgroundColor: T.pageSurface }}>
-      <div className="w-full max-w-[380px] rounded-3xl p-6 shadow-xl overflow-hidden"
-        style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-        {children}
-      </div>
+      {card}
       {footer && <div className="w-full max-w-[380px]">{footer}</div>}
     </div>
   );
@@ -540,6 +554,27 @@ function SuccessScreen({ onNavigate }: { onNavigate: (s: AuthScreen) => void }) 
         <Button className="w-full" size="lg" onClick={() => onNavigate("password")}>Đăng nhập ngay</Button>
       </div>
     </AuthCard>
+  );
+}
+
+// ── Popup ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Cùng luồng đăng nhập/đăng ký, mở đè lên trang đang xem — vd. bấm "Tạo sự kiện"
+ * trên landing page khi chưa đăng nhập: màn tạo sự kiện vẫn hiện phía sau, đăng
+ * nhập xong là làm tiếp ngay tại đó.
+ */
+export function AuthModal({ onLoginSuccess }: AuthFlowProps) {
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Đăng nhập hoặc đăng ký"
+      className="fixed inset-0 z-50 overflow-y-auto"
+      style={{ backgroundColor: "rgba(15,23,42,0.45)", backdropFilter: "blur(2px)" }}>
+      <div className="min-h-full flex flex-col items-center justify-center p-4">
+        <AuthLayout.Provider value="modal">
+          <AuthFlow onLoginSuccess={onLoginSuccess} />
+        </AuthLayout.Provider>
+      </div>
+    </div>
   );
 }
 

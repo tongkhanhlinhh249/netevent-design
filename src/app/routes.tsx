@@ -21,6 +21,8 @@ export const router = createBrowserRouter([
     path: "/",
     Component: DashboardRoute,
     children: [
+      // Nút "Tạo sự kiện" trên landing page: mở thẳng màn tạo sự kiện trong dashboard.
+      { path: "tao-su-kien", Component: () => null },
       {
         path: "event",
         children: [

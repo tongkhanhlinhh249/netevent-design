@@ -16,8 +16,27 @@ function figmaAssetResolver() {
   }
 }
 
+// Landing page tĩnh nằm ở public/gioi-thieu (nhập bằng scripts/import_landing.py).
+// Vercel tự trả index.html cho đường dẫn thư mục như /gioi-thieu/mini-game/,
+// còn dev server của Vite thì trả về app — thêm đúng việc đó cho lúc chạy local.
+function staticDirIndex(prefix) {
+  return {
+    name: 'static-dir-index',
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        const [pathname, query] = (req.url ?? '').split('?')
+        if (pathname === prefix || (pathname.startsWith(prefix + '/') && pathname.endsWith('/'))) {
+          req.url = pathname.replace(/\/?$/, '/index.html') + (query ? '?' + query : '')
+        }
+        next()
+      })
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
+    staticDirIndex('/gioi-thieu'),
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if
     // Tailwind is not being actively used – do not remove them

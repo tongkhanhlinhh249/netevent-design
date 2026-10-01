@@ -1,11 +1,12 @@
 import { useNavigate } from "react-router";
 import { StaffPortal } from "../components/staff/StaffPortal";
+import { clearSession } from "../data/session";
 
 export function StaffRoute() {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    sessionStorage.removeItem("netevent_role");
+    clearSession();
     navigate("/dang-nhap");
   };
 
