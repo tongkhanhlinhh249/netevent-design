@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, ArrowLeft, Mail, Lock, User, Phone, Building2, CheckCircle2, AlertCircle, RotateCcw } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Mail, Lock, User, CheckCircle2, AlertCircle, RotateCcw } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -246,7 +246,7 @@ function LoginScreen({ onNavigate, onLoginSuccess }:
 
 function RegisterScreen({ onNavigate, onEmailSet }:
   { onNavigate: (s: AuthScreen) => void; onEmailSet: (email: string) => void }) {
-  const [form, setForm] = useState({ name: "", email: "", phone: "", org: "", password: "", confirm: "", agree: false });
+  const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "", agree: false });
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -257,8 +257,6 @@ function RegisterScreen({ onNavigate, onEmailSet }:
     if (!form.name.trim()) e.name = "Vui lòng nhập họ và tên.";
     if (!form.email) e.email = "Vui lòng nhập email.";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Email không hợp lệ.";
-    if (!form.phone.trim()) e.phone = "Vui lòng nhập số điện thoại.";
-    if (!form.org.trim()) e.org = "Vui lòng nhập tên tổ chức.";
     if (!form.password) e.password = "Vui lòng nhập mật khẩu.";
     else if (form.password.length < 8) e.password = "Mật khẩu cần có tối thiểu 8 ký tự.";
     if (form.confirm !== form.password) e.confirm = "Mật khẩu xác nhận không khớp.";
@@ -279,7 +277,6 @@ function RegisterScreen({ onNavigate, onEmailSet }:
 
   const icons: Record<string, React.ReactNode> = {
     name: <User className="size-4" />, email: <Mail className="size-4" />,
-    phone: <Phone className="size-4" />, org: <Building2 className="size-4" />,
   };
 
   return (
@@ -289,15 +286,15 @@ function RegisterScreen({ onNavigate, onEmailSet }:
       <p style={{ color: T.mutedFg, fontSize: T.sm }} className="mb-6">Đăng ký để bắt đầu quản lý sự kiện.</p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {(["name", "email", "phone", "org"] as const).map((id) => (
+        {(["name", "email"] as const).map((id) => (
           <div key={id} className="flex flex-col gap-1.5">
             <Label htmlFor={id}>
-              {{ name: "Họ và tên", email: "Email", phone: "Số điện thoại", org: "Tên tổ chức / doanh nghiệp" }[id]}
+              {{ name: "Họ và tên", email: "Email" }[id]}
             </Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: T.mutedFg }}>{icons[id]}</span>
-              <Input id={id} type={id === "email" ? "email" : id === "phone" ? "tel" : "text"}
-                placeholder={{ name: "Nguyễn Văn A", email: "email@company.com", phone: "0901 234 567", org: "Công ty ABC" }[id]}
+              <Input id={id} type={id === "email" ? "email" : "text"}
+                placeholder={{ name: "Nguyễn Văn A", email: "email@company.com" }[id]}
                 className="pl-9" value={form[id] as string}
                 onChange={(e) => set(id)(e.target.value)} aria-invalid={!!errors[id]} />
             </div>
