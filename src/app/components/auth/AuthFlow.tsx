@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "../ui/dia
 import { cn } from "../ui/utils";
 import { toast } from "sonner";
 
-type AuthScreen = "start" | "password" | "register" | "otp-register" | "forgot-email" | "otp-reset" | "new-password" | "success";
+type AuthScreen = "login" | "register" | "otp-register" | "forgot-email" | "otp-reset" | "new-password" | "success";
 
 interface AuthFlowProps {
   /** `name` có khi tài khoản vừa tạo bằng Google; tài khoản demo dùng tên sẵn có theo vai trò. */
@@ -230,7 +230,7 @@ function useCountdown(seconds: number) {
   return { remaining, reset: () => setRemaining(seconds) };
 }
 
-// ── BẮT ĐẦU: một ô email cho cả đăng nhập lẫn đăng ký ────────────────────────
+// ── Mảnh dùng chung của thẻ đăng nhập / đăng ký ──────────────────────────────
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -244,16 +244,6 @@ function CardHeading({ icon: Icon, title, sub }: { icon: React.ElementType; titl
       <h1 style={{ color: T.foreground, fontSize: T.xl, fontWeight: T.fw_semi, lineHeight: 1.3 }}>{title}</h1>
       {sub && <p style={{ color: T.mutedFg, fontSize: T.sm, marginTop: 4 }}>{sub}</p>}
     </div>
-  );
-}
-
-/** Email đã nhập ở bước trước, kèm lối quay lại để đổi. */
-function EmailLine({ email, onChange }: { email: string; onChange: () => void }) {
-  return (
-    <span>
-      <span style={{ color: T.foreground, fontWeight: T.fw_medium }}>{email}</span>{" · "}
-      <button type="button" onClick={onChange} className="hover:underline" style={{ color: T.primary, fontSize: "inherit" }}>Đổi</button>
-    </span>
   );
 }
 
@@ -274,42 +264,36 @@ function PasswordInput({ id, value, onChange, placeholder, invalid, autoFocus }:
   );
 }
 
-function StartScreen({ email, onEmail, onContinue, onGoogle, onDemo }: {
-  email: string; onEmail: (v: string) => void;
-  onContinue: (email: string) => void; onGoogle: () => void; onDemo: () => void;
-}) {
-  const [error, setError] = useState("");
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const v = email.trim().toLowerCase();
-    if (!EMAIL_RE.test(v)) { setError(v ? "Email không hợp lệ." : "Vui lòng nhập email."); return; }
-    onContinue(v);
-  };
-  return (
-    <AuthCard footer={<DemoHint onDemo={onDemo} />}>
-      <CardHeading icon={LogIn} title="Chào mừng đến với NetEvent" sub="Vui lòng đăng nhập hoặc đăng ký bên dưới." />
-      <form onSubmit={submit} className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" placeholder="email@congty.vn" autoFocus value={email}
-            onChange={(e) => { onEmail(e.target.value); setError(""); }} aria-invalid={!!error} />
-          {error && <p style={{ color: T.destructive, fontSize: T.xs }}>{error}</p>}
-        </div>
-        <Button type="submit" className="w-full" size="lg">Tiếp tục với Email</Button>
-      </form>
+function FieldError({ children }: { children?: string }) {
+  return children ? <p style={{ color: T.destructive, fontSize: T.xs }}>{children}</p> : null;
+}
 
-      {/* Đường kẻ chạy hết bề ngang thẻ, tách lối đăng nhập nhanh khỏi form */}
+/** Lối Google, tách khỏi form bằng một đường kẻ chạy hết bề ngang thẻ. */
+function GoogleSection({ label, onGoogle }: { label: string; onGoogle: () => void }) {
+  return (
+    <>
       <div className="-mx-6 my-5" style={{ borderTop: `1px solid ${T.border}` }} />
       <Button type="button" variant="secondary" size="lg" className="w-full gap-2.5" onClick={onGoogle}>
-        <GoogleIcon /> Tiếp tục với Google
+        <GoogleIcon /> {label}
       </Button>
-
-      <p className="mt-4 text-center" style={{ color: T.mutedFg, fontSize: T.xs, lineHeight: 1.5 }}>
+      {/* Đi đường Google có thể tạo tài khoản mới ngay, nên điều khoản nằm ngay đây */}
+      <p className="mt-3 text-center" style={{ color: T.mutedFg, fontSize: T.xs, lineHeight: 1.5 }}>
         Tiếp tục nghĩa là bạn đồng ý với{" "}
         <span style={{ color: T.primary }}>Điều khoản sử dụng</span> và{" "}
         <span style={{ color: T.primary }}>Chính sách bảo mật</span>.
       </p>
-    </AuthCard>
+    </>
+  );
+}
+
+/** Dòng chuyển qua lại giữa đăng nhập và đăng ký, ở cuối thẻ. */
+function SwitchLine({ question, action, onClick }: { question: string; action: string; onClick: () => void }) {
+  return (
+    <p className="mt-4 pt-4 text-center" style={{ color: T.mutedFg, fontSize: T.sm, borderTop: `1px solid ${T.border}` }}>
+      {question}{" "}
+      <button type="button" onClick={onClick} className="hover:underline"
+        style={{ color: T.primary, fontWeight: T.fw_medium, fontSize: "inherit" }}>{action}</button>
+    </p>
   );
 }
 
@@ -323,28 +307,36 @@ function DemoHint({ onDemo }: { onDemo: () => void }) {
   );
 }
 
-// ── ĐÃ CÓ TÀI KHOẢN: nhập mật khẩu ──────────────────────────────────────────
+// ── ĐĂNG NHẬP ─────────────────────────────────────────────────────────────────
 
-function PasswordScreen({ email, onBack, onForgot, onLoginSuccess }: {
-  email: string; onBack: () => void; onForgot: () => void; onLoginSuccess: (role: Role) => void;
+function LoginScreen({ email, onEmail, onLoginSuccess, onForgot, onRegister, onGoogle, onDemo }: {
+  email: string; onEmail: (v: string) => void;
+  onLoginSuccess: (role: Role) => void; onForgot: () => void; onRegister: () => void;
+  onGoogle: () => void; onDemo: () => void;
 }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password) { setError("Vui lòng nhập mật khẩu."); return; }
+    const v = email.trim().toLowerCase();
+    if (!v || !password) { setError("Vui lòng nhập email và mật khẩu."); return; }
     setLoading(true);
     setTimeout(() => {
-      const u = DEMO_USERS[email];
-      if (!u || u.password !== password) { setError("Mật khẩu không chính xác."); setLoading(false); return; }
+      const u = DEMO_USERS[v];
+      if (!u || u.password !== password) { setError("Email hoặc mật khẩu không chính xác."); setLoading(false); return; }
       onLoginSuccess(u.role);
     }, 700);
   };
   return (
-    <AuthCard>
-      <CardHeading icon={Lock} title="Chào mừng trở lại" sub={<EmailLine email={email} onChange={onBack} />} />
+    <AuthCard footer={<DemoHint onDemo={onDemo} />}>
+      <CardHeading icon={LogIn} title="Đăng nhập" sub="Chào mừng bạn quay lại NetEvent." />
       <form onSubmit={submit} className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" type="email" placeholder="email@congty.vn" autoFocus value={email}
+            onChange={(e) => { onEmail(e.target.value); setError(""); }} aria-invalid={!!error} />
+        </div>
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Mật khẩu</Label>
@@ -352,22 +344,25 @@ function PasswordScreen({ email, onBack, onForgot, onLoginSuccess }: {
               Quên mật khẩu?
             </button>
           </div>
-          <PasswordInput id="password" value={password} placeholder="Nhập mật khẩu" autoFocus invalid={!!error}
+          <PasswordInput id="password" value={password} placeholder="Nhập mật khẩu" invalid={!!error}
             onChange={(v) => { setPassword(v); setError(""); }} />
-          {error && <p style={{ color: T.destructive, fontSize: T.xs }}>{error}</p>}
+          <FieldError>{error}</FieldError>
         </div>
         <Button type="submit" className="w-full" size="lg" disabled={loading}>
           {loading ? "Đang đăng nhập..." : "Đăng nhập"}
         </Button>
       </form>
+      <GoogleSection label="Tiếp tục với Google" onGoogle={onGoogle} />
+      <SwitchLine question="Chưa có tài khoản?" action="Đăng ký" onClick={onRegister} />
     </AuthCard>
   );
 }
 
-// ── CHƯA CÓ TÀI KHOẢN: tên và mật khẩu ──────────────────────────────────────
+// ── ĐĂNG KÝ ───────────────────────────────────────────────────────────────────
 
-function RegisterScreen({ email, onBack, onSubmit }: {
-  email: string; onBack: () => void; onSubmit: (name: string) => void;
+function RegisterScreen({ email, onEmail, onSubmit, onLogin, onGoogle }: {
+  email: string; onEmail: (v: string) => void;
+  onSubmit: (name: string, email: string) => void; onLogin: () => void; onGoogle: () => void;
 }) {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -375,34 +370,46 @@ function RegisterScreen({ email, onBack, onSubmit }: {
   const [loading, setLoading] = useState(false);
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const v = email.trim().toLowerCase();
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = "Vui lòng nhập họ và tên.";
+    if (!EMAIL_RE.test(v)) errs.email = v ? "Email không hợp lệ." : "Vui lòng nhập email.";
+    else if (DEMO_USERS[v]) errs.email = "Email này đã có tài khoản. Hãy đăng nhập.";
     if (password.length < 8) errs.password = "Mật khẩu cần có tối thiểu 8 ký tự.";
     setErrors(errs);
     if (Object.keys(errs).length) return;
     setLoading(true);
-    setTimeout(() => onSubmit(name.trim()), 700);
+    setTimeout(() => onSubmit(name.trim(), v), 700);
   };
+  const clear = (k: string) => setErrors((e) => ({ ...e, [k]: "" }));
   return (
     <AuthCard>
-      <CardHeading icon={User} title="Tạo tài khoản" sub={<EmailLine email={email} onChange={onBack} />} />
+      <CardHeading icon={User} title="Tạo tài khoản" sub="Đăng ký để bắt đầu quản lý sự kiện." />
       <form onSubmit={submit} className="flex flex-col gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="name">Họ và tên</Label>
           <Input id="name" placeholder="Nguyễn Văn A" autoFocus value={name} aria-invalid={!!errors.name}
-            onChange={(e) => setName(e.target.value)} />
-          {errors.name && <p style={{ color: T.destructive, fontSize: T.xs }}>{errors.name}</p>}
+            onChange={(e) => { setName(e.target.value); clear("name"); }} />
+          <FieldError>{errors.name}</FieldError>
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="password">Mật khẩu</Label>
-          <PasswordInput id="password" value={password} placeholder="Tối thiểu 8 ký tự" invalid={!!errors.password}
-            onChange={setPassword} />
-          {errors.password && <p style={{ color: T.destructive, fontSize: T.xs }}>{errors.password}</p>}
+          <Label htmlFor="reg-email">Email</Label>
+          <Input id="reg-email" type="email" placeholder="email@congty.vn" value={email} aria-invalid={!!errors.email}
+            onChange={(e) => { onEmail(e.target.value); clear("email"); }} />
+          <FieldError>{errors.email}</FieldError>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="reg-password">Mật khẩu</Label>
+          <PasswordInput id="reg-password" value={password} placeholder="Tối thiểu 8 ký tự" invalid={!!errors.password}
+            onChange={(v) => { setPassword(v); clear("password"); }} />
+          <FieldError>{errors.password}</FieldError>
         </div>
         <Button type="submit" className="w-full" size="lg" disabled={loading}>
           {loading ? "Đang xử lý..." : "Tạo tài khoản"}
         </Button>
       </form>
+      <GoogleSection label="Đăng ký với Google" onGoogle={onGoogle} />
+      <SwitchLine question="Đã có tài khoản?" action="Đăng nhập" onClick={onLogin} />
     </AuthCard>
   );
 }
@@ -480,7 +487,7 @@ function ForgotEmailScreen({ initialEmail, onNavigate, onEmailSet }:
 
   return (
     <AuthCard>
-      <BackButton onClick={() => onNavigate("password")} label="Quay lại đăng nhập" />
+      <BackButton onClick={() => onNavigate("login")} label="Quay lại đăng nhập" />
       <CardHeading icon={Lock} title="Quên mật khẩu" sub="Nhập email đã đăng ký để nhận mã đặt lại mật khẩu." />
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div className="flex flex-col gap-1.5">
@@ -551,7 +558,7 @@ function SuccessScreen({ onNavigate }: { onNavigate: (s: AuthScreen) => void }) 
         <p style={{ color: T.mutedFg, fontSize: T.sm }} className="mb-5">
           Mật khẩu của bạn đã được đặt lại thành công. Vui lòng đăng nhập với mật khẩu mới.
         </p>
-        <Button className="w-full" size="lg" onClick={() => onNavigate("password")}>Đăng nhập ngay</Button>
+        <Button className="w-full" size="lg" onClick={() => onNavigate("login")}>Đăng nhập ngay</Button>
       </div>
     </AuthCard>
   );
@@ -581,20 +588,14 @@ export function AuthModal({ onLoginSuccess }: AuthFlowProps) {
 // ── Root ──────────────────────────────────────────────────────────────────────
 
 export function AuthFlow({ onLoginSuccess }: AuthFlowProps) {
-  const [screen, setScreen] = useState<AuthScreen>("start");
+  const [screen, setScreen] = useState<AuthScreen>("login");
+  // Email gõ ở màn đăng nhập đi theo sang màn đăng ký và ngược lại.
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [googleOpen, setGoogleOpen] = useState(false);
   const nav = (s: AuthScreen) => setScreen(s);
 
-  // Một ô email cho cả hai việc: email đã có tài khoản thì hỏi mật khẩu, chưa có
-  // thì mở bước tạo tài khoản. Người dùng không phải tự đoán mình thuộc nhánh nào.
-  const continueWithEmail = (value: string) => {
-    setEmail(value);
-    nav(DEMO_USERS[value] ? "password" : "register");
-  };
-
-  // Google cũng vậy: có tài khoản thì vào thẳng, chưa có thì tạo luôn. Google đã
+  // Google: email đã có tài khoản thì vào thẳng, chưa có thì tạo luôn. Google đã
   // xác minh email nên bỏ qua bước OTP.
   const continueWithGoogle = (account: { name: string; email: string }) => {
     setGoogleOpen(false);
@@ -603,24 +604,22 @@ export function AuthFlow({ onLoginSuccess }: AuthFlowProps) {
     toast.success("Đã tạo tài khoản NetEvent", { description: `Đăng ký bằng Google: ${account.email}` });
     onLoginSuccess("owner", account.name);
   };
+  const openGoogle = () => setGoogleOpen(true);
 
   const content = (() => {
     switch (screen) {
-      case "start": return (
-        <StartScreen email={email} onEmail={setEmail} onContinue={continueWithEmail}
-          onGoogle={() => setGoogleOpen(true)} onDemo={() => onLoginSuccess("owner")} />
-      );
-      case "password": return (
-        <PasswordScreen email={email} onBack={() => nav("start")} onForgot={() => nav("forgot-email")}
-          onLoginSuccess={onLoginSuccess} />
+      case "login": return (
+        <LoginScreen email={email} onEmail={setEmail} onLoginSuccess={onLoginSuccess}
+          onForgot={() => nav("forgot-email")} onRegister={() => nav("register")}
+          onGoogle={openGoogle} onDemo={() => onLoginSuccess("owner")} />
       );
       case "register": return (
-        <RegisterScreen email={email} onBack={() => nav("start")}
-          onSubmit={(n) => { setName(n); nav("otp-register"); }} />
+        <RegisterScreen email={email} onEmail={setEmail} onLogin={() => nav("login")} onGoogle={openGoogle}
+          onSubmit={(n, e) => { setName(n); setEmail(e); nav("otp-register"); }} />
       );
       case "otp-register": return (
         <OTPScreen email={email} title="Xác thực email" subtitle="Chúng tôi đã gửi mã OTP đến email:" ctaLabel="Xác thực tài khoản"
-          onVerify={() => onLoginSuccess("owner", name)} onBack={() => nav("register")} onChangeEmail={() => nav("start")} />
+          onVerify={() => onLoginSuccess("owner", name)} onBack={() => nav("register")} onChangeEmail={() => nav("register")} />
       );
       case "forgot-email": return <ForgotEmailScreen initialEmail={email} onNavigate={nav} onEmailSet={setEmail} />;
       case "otp-reset": return (
