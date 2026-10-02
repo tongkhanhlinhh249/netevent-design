@@ -7,7 +7,7 @@ import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
 import { Sheet, SheetContent } from "../../components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { RegistrationQuestionsSection, RegistrationEmailSection } from "../../components/dashboard/RegistrationQuestions";
+import { RegistrationQuestionsSection } from "../../components/dashboard/RegistrationQuestions";
 import { useCurrentEvent } from "../../data/currentEvent";
 
 const T = {
@@ -189,7 +189,7 @@ export function KhoVeRoute() {
             Vé & đăng ký
           </h2>
           <p style={{ fontSize: T.sm, color: T.mutedFg }}>
-            Hạng vé, câu hỏi khi đăng ký và email xác nhận gửi cho người tham dự.
+            Hạng vé và những gì người tham dự được hỏi khi đăng ký.
           </p>
         </div>
         <Button onClick={() => setSheet({ mode: "create" })}
@@ -293,7 +293,6 @@ export function KhoVeRoute() {
       </div>
 
       <RegistrationQuestionsSection eventId={event.id} />
-      <RegistrationEmailSection event={event} />
 
       {sheet && (
         <TierSheet

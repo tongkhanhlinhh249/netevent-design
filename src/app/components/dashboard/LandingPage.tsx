@@ -19,6 +19,8 @@ import { cn } from "../ui/utils";
 import { themePageBg } from "../../data/themes";
 import { longDateVi, shortDateVi } from "../../data/eventFormat";
 import { STANDARD_FIELDS, useRegistrationForm, type StandardField } from "../../data/registrationForm";
+import { LocationMap, mapsSearchUrl } from "./LocationMap";
+import { DEMO_VENUE, hasDemoVenue } from "../../data/mockEvent";
 
 // ── CSS tokens ─────────────────────────────────────────────────────────────────
 
@@ -1565,16 +1567,16 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
     : "linear-gradient(145deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%)";
   const aboutText = event?.description?.trim() ?? "";
   const showLocation = isDemo || (!isOnline && !!event?.location?.trim());
-  const locAddress = isDemo ? "Tầng 3, Tòa nhà MIPEC, 229 P. Tây Sơn, Kim Liên, Hà Nội" : "";
-  const mapLabel = isDemo ? "MIPEC Tower, Tây Sơn" : locTitle;
+  // Địa chỉ mẫu chỉ khi sự kiện mẫu còn giữ địa điểm mẫu; sửa rồi thì theo giá trị mới.
+  const locAddress = !event || hasDemoVenue(event) ? DEMO_VENUE.address : "";
+  // Bản đồ và nút chỉ đường dùng địa chỉ chi tiết nếu có, không thì tên địa điểm.
+  const mapQuery = locAddress || locTitle;
   const ticketLine = `${shortDateVi(event?.startDate) ?? ""} · ${event?.startTime ?? ""} — ${isOnline ? "Trực tuyến" : locTitle}`;
   const [step, setStep]         = useState<"select" | "form" | "payment" | "success">("select");
   const [selectedTier, setTier] = useState<string | null>(tiers.length === 1 ? tiers[0].id : null);
   const [name, setName]         = useState("");
   const [email, setEmail]       = useState("");
   const [phone, setPhone]       = useState("");
-  const [company, setCompany]   = useState("");
-  const [title, setTitle]       = useState("");
   const [agreed, setAgreed]     = useState(false);
   // Form hỏi gì do ban tổ chức cấu hình ở tab "Vé & Đăng ký".
   const [regForm] = useRegistrationForm(event?.id ?? "t1");
@@ -1585,16 +1587,17 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
   const [payLoading, setPayLoading] = useState(false);
 
   // Ba trường có sẵn: kiểm tra và hiển thị theo cấu hình.
-  const standardValue: Record<StandardField, string> = { phone, company, title };
-  const standardSetter: Record<StandardField, (v: string) => void> = { phone: setPhone, company: setCompany, title: setTitle };
+  const standardValue: Record<StandardField, string> = { phone, email };
+  const standardSetter: Record<StandardField, (v: string) => void> = { phone: setPhone, email: setEmail };
 
   const validate = () => {
     const e: Record<string, string> = {};
     if (!name.trim())  e.name  = "Vui lòng nhập họ và tên.";
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Vui lòng nhập email hợp lệ.";
     for (const f of STANDARD_FIELDS) {
       if (regForm.fields[f.id] === "required" && !standardValue[f.id].trim()) e[f.id] = `Vui lòng nhập ${f.label.toLowerCase()}.`;
     }
+    // Email không bắt buộc vẫn phải đúng định dạng nếu đã nhập.
+    if (!e.email && email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Email không hợp lệ.";
     for (const q of regForm.questions) {
       const a = answers[q.id];
       if (q.required && (!a || (Array.isArray(a) ? a.length === 0 : !a.trim()))) e[q.id] = "Vui lòng trả lời câu hỏi này.";
@@ -1986,11 +1989,10 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                       </div>
                     )}
 
-                    {/* Fields — họ tên, email luôn có; các trường còn lại theo cấu hình */}
+                    {/* Fields — họ tên luôn bắt buộc; SĐT và email bắt buộc hay không theo cấu hình */}
                     {[
                       { id: "name",    label: "Họ và tên",          type: "text",  ph: "Nhập họ và tên",          val: name,    set: setName,    err: errors.name,    req: true },
-                      { id: "email",   label: "Email",               type: "email", ph: "Nhập email",               val: email,   set: setEmail,   err: errors.email,   req: true },
-                      ...STANDARD_FIELDS.filter((f) => regForm.fields[f.id] !== "off").map((f) => ({
+                      ...STANDARD_FIELDS.map((f) => ({
                         id: f.id, label: f.label, type: f.type, ph: f.placeholder,
                         val: standardValue[f.id], set: standardSetter[f.id], err: errors[f.id],
                         req: regForm.fields[f.id] === "required",
@@ -2276,31 +2278,13 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
               <p style={{ fontSize: T.sm, color: T.mutedFg, marginTop: "2px", marginBottom: "16px" }}>
                 {locAddress}
               </p>
-              <div className="rounded-2xl overflow-hidden relative flex items-center justify-center"
-                style={{ height: "200px", backgroundColor: T.secondary, border: `1px solid ${T.border}` }}>
-                <div style={{ position: "absolute", inset: 0, opacity: 0.35 }}>
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={`h-${i}`} style={{ position: "absolute", top: `${(i + 1) * 12.5}%`, left: 0, right: 0, height: "1px", backgroundColor: T.border }} />
-                  ))}
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={`v-${i}`} style={{ position: "absolute", left: `${(i + 1) * 16.6}%`, top: 0, bottom: 0, width: "1px", backgroundColor: T.border }} />
-                  ))}
-                </div>
-                <div className="flex flex-col items-center gap-2 relative z-10">
-                  <div className="size-10 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: OG, boxShadow: "0 4px 12px rgba(255,134,68,0.4)" }}>
-                    <MapPin className="size-5" style={{ color: "white" }} />
-                  </div>
-                  <div className="px-3 py-1.5 rounded-xl" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-                    <p style={{ fontSize: T.xs, fontWeight: T.fw_medium, color: T.foreground }}>{mapLabel}</p>
-                  </div>
-                </div>
-              </div>
-              <button style={{ marginTop: "12px", display: "inline-flex", alignItems: "center", gap: "6px",
+              <LocationMap address={mapQuery} height={220} />
+              <a href={mapsSearchUrl(mapQuery)} target="_blank" rel="noopener noreferrer"
+                style={{ marginTop: "12px", display: "inline-flex", alignItems: "center", gap: "6px",
                 padding: "8px 16px", borderRadius: "10px", fontSize: T.sm, fontWeight: T.fw_medium,
-                backgroundColor: T.background, color: T.foreground, border: `1px solid ${T.border}`, cursor: "pointer" }}>
+                backgroundColor: T.background, color: T.foreground, border: `1px solid ${T.border}`, textDecoration: "none" }}>
                 <MapPin className="size-4" /> Xem chỉ đường
-              </button>
+              </a>
             </div>
             )}
 

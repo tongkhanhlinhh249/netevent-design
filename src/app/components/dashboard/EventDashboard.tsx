@@ -24,6 +24,10 @@ import { useCheckinConfig } from "../../data/attendeeFlow";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { dateParts, shortDateVi } from "../../data/eventFormat";
+import { isAnimatedTheme } from "../../data/themes";
+import { ThemeStrip, type ThemeValue } from "./ThemeStrip";
+import { LocationMap, mapsSearchUrl } from "./LocationMap";
+import { DEMO_VENUE, hasDemoVenue, mapAddressOf } from "../../data/mockEvent";
 
 // ── Tokens ───────────────────────────────────────────────────────────────────
 
@@ -495,13 +499,24 @@ function EventInfoSheet({ event, onClose, onSave }: {
     endDate: event.endDate ?? "", endTime: event.endTime ?? "",
     format: event.format ?? "offline", location: event.location ?? "",
   });
+  const [look, setLook] = useState<ThemeValue>({
+    theme: event.theme || "minimal", themeColor: event.themeColor,
+    themeEffectColors: event.themeEffectColors, pageImage: event.pageImage,
+  });
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
   const isOnline = form.format === "online";
   const nameError = !form.name.trim();
 
   const save = () => {
     if (nameError) return;
-    onSave({ ...form, name: form.name.trim(), location: form.location.trim() });
+    onSave({
+      ...form, name: form.name.trim(), location: form.location.trim(),
+      // Chỉ giữ phần cấu hình mà giao diện đang chọn thực sự dùng.
+      theme: look.theme,
+      themeColor: look.theme === "color" ? look.themeColor : undefined,
+      themeEffectColors: isAnimatedTheme(look.theme) ? look.themeEffectColors : undefined,
+      pageImage: look.theme === "custom" ? look.pageImage : undefined,
+    });
     toast.success("Đã lưu thông tin sự kiện");
     onClose();
   };
@@ -522,6 +537,11 @@ function EventInfoSheet({ event, onClose, onSave }: {
             <Input id="ev-name" value={form.name} aria-invalid={nameError}
               onChange={(e) => set("name")(e.target.value)} placeholder="Tên sự kiện" />
             {nameError && <p style={{ fontSize: T.xs, color: T.destructive }}>Nhập tên sự kiện.</p>}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Giao diện trang sự kiện</Label>
+            <ThemeStrip value={look} onChange={setLook} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -565,6 +585,17 @@ function EventInfoSheet({ event, onClose, onSave }: {
             <Label htmlFor="ev-location">{isOnline ? "Link tham gia" : "Địa điểm"}</Label>
             <Input id="ev-location" value={form.location} onChange={(e) => set("location")(e.target.value)}
               placeholder={isOnline ? "https://meet.example.com/su-kien" : "Tên địa điểm, số nhà, đường, quận"} />
+            {/* Bản đồ cập nhật theo địa chỉ đang gõ — đúng bản đồ hiện trên trang sự kiện */}
+            {!isOnline && form.location.trim() && (
+              <>
+                <LocationMap address={mapAddressOf({ ...event, ...form })} debounce={700} height={160} />
+                <a href={mapsSearchUrl(mapAddressOf({ ...event, ...form }))} target="_blank" rel="noopener noreferrer"
+                  className="self-start inline-flex items-center gap-1 hover:underline"
+                  style={{ fontSize: T.xs, color: T.primary }}>
+                  Mở trên Google Maps <ExternalLink className="size-3" />
+                </a>
+              </>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -805,16 +836,16 @@ export function EventDashboard() {
   const isDraftPage = currentEvent.visibility === "draft";
   const visibility = VISIBILITY_OPTIONS.find((o) => o.id === currentEvent.visibility) ?? VISIBILITY_OPTIONS[0];
   // Ngày giờ, địa điểm lấy theo sự kiện đang xem; sự kiện demo giữ địa chỉ chi tiết mẫu.
-  const isDemoEvent = currentEvent.id === "t1";
   const isOnline    = currentEvent.format === "online";
   const date        = dateParts(currentEvent.startDate);
   const multiDay    = !!currentEvent.endDate && currentEvent.endDate !== currentEvent.startDate;
   const timeLabel   = currentEvent.startTime
     ? `${currentEvent.startTime} – ${currentEvent.endTime} GMT+7${multiDay ? ` · đến ${shortDateVi(currentEvent.endDate)}` : ""}`
     : "";
-  const locPrimary   = isDemoEvent ? "NetSpace — Tòa nhà MIPEC"
+  const demoVenue    = hasDemoVenue(currentEvent);
+  const locPrimary   = demoVenue ? DEMO_VENUE.name
     : isOnline ? "Sự kiện trực tuyến" : (currentEvent.location?.trim() || "Chưa có địa điểm");
-  const locSecondary = isDemoEvent ? "Tòa nhà MIPEC, Tây Sơn, Hà Nội"
+  const locSecondary = demoVenue ? DEMO_VENUE.short
     : isOnline ? "Link tham gia gửi qua email sau khi đăng ký" : "";
   const navigate = useNavigate();
 
@@ -978,11 +1009,17 @@ export function EventDashboard() {
                         : <MapPin className="size-5" style={{ color: T.mutedFg }} />}
                     </div>
                     <div className="pt-1 min-w-0">
-                      <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground,
-                        display: "flex", alignItems: "center", gap: 4 }}>
-                        {locPrimary}
-                        {!isOnline && <ExternalLink className="size-3 shrink-0" style={{ color: T.mutedFg }} />}
-                      </p>
+                      {isOnline ? (
+                        <p style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground }}>{locPrimary}</p>
+                      ) : (
+                        <a href={mapsSearchUrl(mapAddressOf(currentEvent))} target="_blank" rel="noopener noreferrer"
+                          className="hover:underline"
+                          style={{ fontSize: T.sm, fontWeight: T.fw_semi, color: T.foreground,
+                            display: "flex", alignItems: "center", gap: 4 }}>
+                          {locPrimary}
+                          <ExternalLink className="size-3 shrink-0" style={{ color: T.mutedFg }} />
+                        </a>
+                      )}
                       {locSecondary && (
                         <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>
                           {locSecondary}

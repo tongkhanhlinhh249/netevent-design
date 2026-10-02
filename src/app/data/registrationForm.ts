@@ -1,15 +1,17 @@
 // Câu hỏi đăng ký của một sự kiện — cấu hình ở tab "Vé & Đăng ký", và chính form
 // đăng ký trên trang sự kiện đọc cấu hình này để biết phải hỏi gì.
 //
-// Họ và tên và email luôn bắt buộc: thiếu một trong hai thì không gửi được vé.
+// Form luôn có ba trường: họ và tên (luôn bắt buộc), số điện thoại và email —
+// hai trường sau ban tổ chức chọn bắt buộc hay không, mặc định bắt buộc. Thông
+// tin khác (công ty, chức danh…) thêm bằng câu hỏi riêng.
 
 import { useEffect, useState } from "react";
 
-export type FieldMode = "off" | "optional" | "required";
+export type FieldMode = "optional" | "required";
 export type QuestionType = "short" | "long" | "single" | "multi";
 
-/** Thông tin có sẵn mà ban tổ chức bật/tắt được. */
-export type StandardField = "phone" | "company" | "title";
+/** Trường có sẵn mà ban tổ chức chọn bắt buộc hay không. */
+export type StandardField = "phone" | "email";
 
 export interface CustomQuestion {
   id: string;
@@ -25,14 +27,13 @@ export interface RegistrationForm {
   questions: CustomQuestion[];
 }
 
-export const STANDARD_FIELDS: { id: StandardField; label: string; placeholder: string; type: "tel" | "text" }[] = [
-  { id: "phone",   label: "Số điện thoại",     placeholder: "Nhập số điện thoại",            type: "tel" },
-  { id: "company", label: "Công ty / Tổ chức", placeholder: "Nhập tên công ty hoặc tổ chức", type: "text" },
-  { id: "title",   label: "Chức danh",         placeholder: "Nhập chức danh",                type: "text" },
+export const STANDARD_FIELDS: { id: StandardField; label: string; placeholder: string; type: "tel" | "email" }[] = [
+  { id: "phone", label: "Số điện thoại", placeholder: "Nhập số điện thoại", type: "tel" },
+  { id: "email", label: "Email",         placeholder: "Nhập email",         type: "email" },
 ];
 
 export const MODE_LABEL: Record<FieldMode, string> = {
-  off: "Tắt", optional: "Không bắt buộc", required: "Bắt buộc",
+  required: "Bắt buộc", optional: "Không bắt buộc",
 };
 
 export const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
@@ -41,11 +42,13 @@ export const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
 
 export const isChoice = (t: QuestionType) => t === "single" || t === "multi";
 
-/** Đúng những gì form đăng ký hỏi trước khi có phần cấu hình này. */
 const DEFAULT_FORM: RegistrationForm = {
-  fields: { phone: "required", company: "optional", title: "optional" },
+  fields: { phone: "required", email: "required" },
   questions: [],
 };
+
+/** Chỉ "optional" mới là không bắt buộc; giá trị cũ ("off") hay thiếu đều về mặc định. */
+const asMode = (v: unknown): FieldMode => (v === "optional" ? "optional" : "required");
 
 const key = (eventId: string) => `netevent_reg_form_${eventId}`;
 const EVT = "netevent:reg-form";
@@ -55,7 +58,11 @@ export function readRegistrationForm(eventId: string): RegistrationForm {
     const raw = localStorage.getItem(key(eventId));
     if (!raw) return DEFAULT_FORM;
     const saved = JSON.parse(raw) as Partial<RegistrationForm>;
-    return { fields: { ...DEFAULT_FORM.fields, ...saved.fields }, questions: saved.questions ?? [] };
+    // Bản lưu trước có thể còn công ty/chức danh hoặc chế độ "Tắt" — chỉ đọc SĐT và email.
+    return {
+      fields: { phone: asMode(saved.fields?.phone), email: asMode(saved.fields?.email) },
+      questions: saved.questions ?? [],
+    };
   } catch {
     return DEFAULT_FORM;
   }

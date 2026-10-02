@@ -1,8 +1,7 @@
 import * as React from "react";
 import { useState } from "react";
 import {
-  AlignLeft, Briefcase, Building2, CircleDot, ListChecks, Mail, MessageCircleQuestion,
-  Pencil, Phone, Plus, Type, User, X,
+  AlignLeft, CircleDot, ListChecks, Mail, MessageCircleQuestion, Pencil, Phone, Plus, Type, User, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
@@ -11,17 +10,14 @@ import { Label } from "../ui/label";
 import { Switch } from "../ui/switch";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "../ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import type { EventDraft } from "./EventsPage";
-import { EmailTemplateEditor } from "./EmailSettings";
 import {
   MODE_LABEL, QUESTION_TYPE_LABEL, STANDARD_FIELDS, isChoice, useRegistrationForm,
   type CustomQuestion, type FieldMode, type QuestionType, type StandardField,
 } from "../../data/registrationForm";
 
 /**
- * Tab "Vé & Đăng ký" — hai khối sau phần hạng vé, theo bố cục trang Registration
- * của Luma: người tham dự được hỏi gì khi đăng ký, và email họ nhận sau đó.
- * Form đăng ký trên trang sự kiện đọc đúng cấu hình ở đây.
+ * Tab "Vé & Đăng ký" — khối câu hỏi đăng ký sau phần hạng vé, theo bố cục trang
+ * Registration của Luma. Form đăng ký trên trang sự kiện đọc đúng cấu hình ở đây.
  */
 
 const T = {
@@ -39,7 +35,7 @@ const T = {
   base: "var(--text-base)",
 };
 
-const FIELD_ICON: Record<StandardField, React.ElementType> = { phone: Phone, company: Building2, title: Briefcase };
+const FIELD_ICON: Record<StandardField, React.ElementType> = { phone: Phone, email: Mail };
 const TYPE_ICON: Record<QuestionType, React.ElementType> = { short: Type, long: AlignLeft, single: CircleDot, multi: ListChecks };
 
 // ── Câu hỏi đăng ký ──────────────────────────────────────────────────────────
@@ -71,12 +67,11 @@ export function RegistrationQuestionsSection({ eventId }: { eventId: string }) {
       </div>
 
       <GroupTitle icon={User} tint="#16a34a">Thông tin cá nhân</GroupTitle>
-      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-3">
-        {/* Thiếu tên hoặc email thì không gửi được vé, nên hai ô này luôn bắt buộc */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Không có tên thì không xuất được vé, nên ô này luôn bắt buộc */}
         <FieldCard icon={User} label="Họ và tên"><Locked /></FieldCard>
-        <FieldCard icon={Mail} label="Email"><Locked /></FieldCard>
         {STANDARD_FIELDS.map((f) => (
-          <FieldCard key={f.id} icon={FIELD_ICON[f.id]} label={f.label} off={form.fields[f.id] === "off"}>
+          <FieldCard key={f.id} icon={FIELD_ICON[f.id]} label={f.label}>
             <Select value={form.fields[f.id]} onValueChange={(v) => setMode(f.id, v as FieldMode)}>
               <SelectTrigger aria-label={`${f.label}: chế độ`} data-pill="off"
                 className="h-8 w-auto gap-1 border-0 bg-transparent shadow-none px-1.5 cursor-pointer"
@@ -139,15 +134,14 @@ function GroupTitle({ icon: Icon, tint, children }: { icon: React.ElementType; t
   );
 }
 
-function FieldCard({ icon: Icon, label, off, children }: {
-  icon: React.ElementType; label: string; off?: boolean; children: React.ReactNode;
+function FieldCard({ icon: Icon, label, children }: {
+  icon: React.ElementType; label: string; children: React.ReactNode;
 }) {
   return (
     <div className="flex items-center gap-2.5 rounded-xl pl-3.5 pr-2 h-11"
       style={{ border: `1px solid ${T.border}`, backgroundColor: T.background }}>
       <Icon className="size-4 shrink-0" style={{ color: T.mutedFg }} />
-      {/* Trường đang tắt nhạt đi để thấy ngay form không hỏi trường này */}
-      <span className="flex-1 min-w-0 truncate" style={{ fontSize: T.sm, color: off ? T.mutedFg : T.foreground }}>{label}</span>
+      <span className="flex-1 min-w-0 truncate" style={{ fontSize: T.sm, color: T.foreground }}>{label}</span>
       {children}
     </div>
   );
@@ -270,25 +264,5 @@ function QuestionSheet({ question, onSave, onRemove, onClose }: {
         </div>
       </SheetContent>
     </Sheet>
-  );
-}
-
-// ── Email xác nhận đăng ký ───────────────────────────────────────────────────
-
-export function RegistrationEmailSection({ event }: { event: EventDraft }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <section className="flex flex-col gap-3 pt-6" style={{ borderTop: `1px solid ${T.border}` }}>
-      <div>
-        <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Email xác nhận đăng ký</h3>
-        <p style={{ fontSize: T.sm, color: T.mutedFg, marginTop: 2, maxWidth: 640 }}>
-          Đăng ký thành công, người tham dự nhận email xác nhận kèm vé QR. Bạn có thể chỉnh tiêu đề và lời nhắn trong email.
-        </p>
-      </div>
-      <Button variant="secondary" className="self-start" onClick={() => setOpen(true)}>
-        <Mail className="size-4" /> Tuỳ chỉnh email
-      </Button>
-      {open && <EmailTemplateEditor event={event} kind="confirm" onClose={() => setOpen(false)} />}
-    </section>
   );
 }

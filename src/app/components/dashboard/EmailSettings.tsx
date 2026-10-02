@@ -315,20 +315,6 @@ function useEventEmail(event: EventDraft) {
   return { config, setConfig, from, senderName: active.name, fallback: active.fallback, replyTo, testBlock, sendTest };
 }
 
-/** Trình soạn một email, mở thẳng từ nơi khác — vd. "Tuỳ chỉnh email" ở tab Vé & Đăng ký. */
-export function EmailTemplateEditor({ event, kind = "confirm", onClose }: {
-  event: EventDraft; kind?: EmailKind; onClose: () => void;
-}) {
-  const { config, setConfig, from, senderName, replyTo, testBlock, sendTest } = useEventEmail(event);
-  return (
-    <TemplateSheet kind={kind} event={event} config={config} from={from} testBlock={testBlock}
-      senderName={senderName} replyTo={replyTo}
-      onAudience={(a) => setConfig((c) => ({ ...c, thanksAudience: a }))}
-      onSave={(t) => setConfig((c) => ({ ...c, templates: { ...c.templates, [kind]: t } }))}
-      onTest={() => sendTest(kind)} onClose={onClose} />
-  );
-}
-
 export function EmailSettingsCard({ event }: { event: EventDraft }) {
   const navigate = useNavigate();
   const { config, setConfig, from, senderName, fallback, replyTo, testBlock, sendTest } = useEventEmail(event);
