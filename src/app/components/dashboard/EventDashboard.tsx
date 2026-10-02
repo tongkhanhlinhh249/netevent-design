@@ -27,6 +27,7 @@ import { dateParts, shortDateVi } from "../../data/eventFormat";
 import { isAnimatedTheme } from "../../data/themes";
 import { ThemeStrip, type ThemeValue } from "./ThemeStrip";
 import { LocationMap, mapsSearchUrl } from "./LocationMap";
+import { EventPagePreview } from "./EventPagePreview";
 import { DEMO_VENUE, hasDemoVenue, mapAddressOf } from "../../data/mockEvent";
 
 // ── Tokens ───────────────────────────────────────────────────────────────────
@@ -885,12 +886,14 @@ export function EventDashboard() {
               {/* ── LEFT: Cover image + share ── */}
               <div className="flex flex-col" style={{ borderRight: `1px solid ${T.border}` }}>
 
-                {/* Cover image — fills card height */}
+                {/* Xem trước trang sự kiện — lấp đầy chiều cao thẻ, bấm vào là mở trang thật */}
                 <div style={{ position: "relative", flex: 1, minHeight: 260,
-                  background: currentEvent.coverImage
-                    ? `center / cover no-repeat url("${currentEvent.coverImage}")`
-                    : "linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #3b82f6 100%)",
                   display: "flex", flexDirection: "column", padding: 12 }}>
+                  <EventPagePreview fallback={currentEvent.coverImage
+                    ? `center / cover no-repeat url("${currentEvent.coverImage}")`
+                    : "linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #3b82f6 100%)"} />
+                  <a href="/demo" target="_blank" rel="noopener" aria-label="Mở trang sự kiện"
+                    className="absolute inset-0" />
 
                   {/* Top row: status badge + Thay đổi ảnh */}
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", zIndex: 1 }}>
@@ -928,10 +931,11 @@ export function EventDashboard() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
+                    {/* Nền tối mờ, giống thanh link bên dưới: bản xem trước có thể sáng hay tối tuỳ theme */}
                     <button style={{ display: "flex", alignItems: "center", gap: 5, fontSize: T.xs,
                       fontWeight: T.fw_medium, padding: "4px 10px", borderRadius: 10,
-                      backgroundColor: "rgba(255,255,255,0.18)", backdropFilter: "blur(6px)",
-                      border: "1px solid rgba(255,255,255,0.25)", color: "white", cursor: "pointer" }}>
+                      backgroundColor: "rgba(15,23,42,0.78)", backdropFilter: "blur(6px)",
+                      border: "1px solid rgba(255,255,255,0.18)", color: "white", cursor: "pointer" }}>
                       <Image className="size-3" /> Thay đổi ảnh
                     </button>
                   </div>
@@ -939,7 +943,7 @@ export function EventDashboard() {
                   <div style={{ flex: 1 }} />
 
                   {/* Slug pill — bottom of image */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px",
+                  <div style={{ zIndex: 1, display: "flex", alignItems: "center", gap: 6, padding: "6px 12px",
                     borderRadius: 10, backgroundColor: "rgba(0,0,0,0.9)", backdropFilter: "blur(6px)",
                     border: "1px solid rgba(255,255,255,0.12)" }}>
                     {isDraftPage
@@ -1062,7 +1066,7 @@ export function EventDashboard() {
                   {isDraft ? "Kho vé / Form đăng ký" : "Vé và doanh thu"}
                 </h3>
                 <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 2 }}>
-                  {isDraft ? "Chưa cấu hình hình thức đăng ký" : "Tình hình bán vé theo hạng"}
+                  {isDraft ? "Chưa cấu hình hình thức đăng ký" : "Người tham dự và tình hình bán vé theo hạng"}
                 </p>
               </div>
             </div>
@@ -1078,6 +1082,23 @@ export function EventDashboard() {
               </div>
             ) : (
               <div className="flex flex-col gap-3">
+                {/* Người tham dự: tổng đăng ký so với sức chứa, trước phần chi tiết từng hạng vé */}
+                <div className="pb-1">
+                  <div className="flex items-baseline justify-between gap-3 mb-2">
+                    <span className="flex items-baseline gap-1.5">
+                      <span className="inline-block size-2 rounded-full self-center shrink-0" style={{ backgroundColor: T.successText }} />
+                      <span style={{ fontSize: T.xl, fontWeight: T.fw_bold, color: T.successText, lineHeight: 1 }}>{totalRegistered}</span>
+                      <span style={{ fontSize: T.sm, color: T.successText }}>người đã đăng ký</span>
+                    </span>
+                    <span style={{ fontSize: T.sm, color: T.mutedFg }}>
+                      sức chứa <span style={{ fontWeight: T.fw_semi, color: T.foreground }}>{totalCapacity}</span>
+                    </span>
+                  </div>
+                  <div className="rounded-full overflow-hidden" style={{ height: 6, backgroundColor: T.border }}>
+                    <div className="h-full rounded-full transition-all"
+                      style={{ width: `${Math.round(totalRegistered / totalCapacity * 100)}%`, backgroundColor: T.successText }} />
+                  </div>
+                </div>
                 {TICKET_TIERS.map((tier) => {
                   const pct = Math.round(tier.sold / tier.total * 100);
                   return (
@@ -1184,7 +1205,7 @@ export function EventDashboard() {
               </Button>
             </div>
             <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.6, marginTop: 4, marginBottom: 14 }}>
-              Mời người đăng ký, danh bạ và khách cũ qua email hoặc SMS.
+              Gửi lời mời qua email tới người đăng ký, danh bạ và khách cũ.
             </p>
             <div className="flex items-start gap-3 rounded-xl p-4" style={{ border: `1px solid ${T.border}` }}>
               <Mail className="size-5 shrink-0 mt-0.5" style={{ color: T.mutedFg, opacity: 0.45 }} />
@@ -1194,25 +1215,6 @@ export function EventDashboard() {
                   Bạn có thể mời người đăng ký, danh bạ và khách cũ tới sự kiện.
                 </p>
               </div>
-            </div>
-          </div>
-
-          {/* ── Người tham dự ── */}
-          <div className="rounded-2xl p-5" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
-            <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Người tham dự</h3>
-            <div className="flex items-baseline justify-between gap-3 mt-3 mb-2">
-              <span className="flex items-baseline gap-1.5">
-                <span className="inline-block size-2 rounded-full self-center shrink-0" style={{ backgroundColor: T.successText }} />
-                <span style={{ fontSize: T.xl, fontWeight: T.fw_bold, color: T.successText, lineHeight: 1 }}>{totalRegistered}</span>
-                <span style={{ fontSize: T.sm, color: T.successText }}>đã đăng ký</span>
-              </span>
-              <span style={{ fontSize: T.sm, color: T.mutedFg }}>
-                sức chứa <span style={{ fontWeight: T.fw_semi, color: T.foreground }}>{totalCapacity}</span>
-              </span>
-            </div>
-            <div className="rounded-full overflow-hidden" style={{ height: 6, backgroundColor: T.border }}>
-              <div className="h-full rounded-full transition-all"
-                style={{ width: `${Math.round(totalRegistered / totalCapacity * 100)}%`, backgroundColor: T.successText }} />
             </div>
           </div>
 
