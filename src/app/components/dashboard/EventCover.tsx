@@ -22,27 +22,37 @@ const DEFAULT_GRADIENT = "linear-gradient(135deg, var(--primary) 0%, var(--accen
 
 // ── Crop Modal ────────────────────────────────────────────────────────────────
 
-function CropModal({ src, onSave, onCancel }: {
+export function CropModal({ src, onSave, onCancel }: {
   src: string;
   onSave: (url: string) => void;
   onCancel: () => void;
 }) {
-  const [offsetY, setOffsetY] = React.useState(50); // vertical center %
+  // Vị trí khung vuông dọc theo cạnh dài của ảnh (0–100%): ảnh ngang thì kéo
+  // ngang, ảnh dọc thì kéo dọc. Trước đây chỉ kéo dọc và khi lưu bỏ qua vị trí.
+  const [offset, setOffset] = React.useState(50);
   const [dragging, setDragging] = React.useState(false);
-  const startY = React.useRef(0);
+  const [size, setSize] = React.useState<{ w: number; h: number } | null>(null);
+  const landscape = !!size && size.w > size.h;
+  const startPos = React.useRef(0);
   const startOffset = React.useRef(50);
+
+  React.useEffect(() => {
+    const img = new Image();
+    img.onload = () => setSize({ w: img.naturalWidth, h: img.naturalHeight });
+    img.src = src;
+  }, [src]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setDragging(true);
-    startY.current = e.clientY;
-    startOffset.current = offsetY;
+    startPos.current = landscape ? e.clientX : e.clientY;
+    startOffset.current = offset;
   };
 
   const handleMouseMove = React.useCallback((e: MouseEvent) => {
     if (!dragging) return;
-    const delta = (e.clientY - startY.current) / 4;
-    setOffsetY(Math.max(0, Math.min(100, startOffset.current - delta)));
-  }, [dragging]);
+    const delta = ((landscape ? e.clientX : e.clientY) - startPos.current) / 4;
+    setOffset(Math.max(0, Math.min(100, startOffset.current - delta)));
+  }, [dragging, landscape]);
 
   const handleMouseUp = React.useCallback(() => setDragging(false), []);
 
@@ -57,7 +67,23 @@ function CropModal({ src, onSave, onCancel }: {
     };
   }, [dragging, handleMouseMove, handleMouseUp]);
 
-  const handleSave = () => onSave(src);
+  // Cắt thật ra một ảnh vuông đúng vùng đã chọn, để mọi nơi hiện ảnh giống bản xem trước.
+  const handleSave = () => {
+    if (!size) { onSave(src); return; }
+    const side = Math.min(size.w, size.h);
+    const out = Math.min(side, 1200);
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = out; c.height = out;
+      const sx = landscape ? (size.w - side) * offset / 100 : 0;
+      const sy = landscape ? 0 : (size.h - side) * offset / 100;
+      c.getContext("2d")?.drawImage(img, sx, sy, side, side, 0, 0, out, out);
+      onSave(c.toDataURL("image/jpeg", 0.88));
+    };
+    img.onerror = () => onSave(src);
+    img.src = src;
+  };
 
   return (
     <div style={{
@@ -108,7 +134,7 @@ function CropModal({ src, onSave, onCancel }: {
               style={{
                 width: "100%", height: "100%",
                 objectFit: "cover",
-                objectPosition: `center ${offsetY}%`,
+                objectPosition: landscape ? `${offset}% center` : `center ${offset}%`,
                 pointerEvents: "none",
               }}
             />

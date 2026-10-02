@@ -5,7 +5,7 @@ import {
   Users, Ticket, DollarSign, UserCheck, Globe,
   AlertCircle, ChevronRight, ExternalLink,
   Calendar, MapPin, Pencil, BarChart3, Mail, QrCode, Plus,
-  Download, Eye, Settings, Copy, Facebook, Twitter, Linkedin, MessageCircle,
+  Download, Eye, Settings, Copy, Facebook, Twitter, Linkedin, MessageCircle, Upload,
   ArrowLeft, UserPlus, Check, X, Sparkles, AtSign, Search, FilePen, ChevronDown, Video, Smartphone
 } from "lucide-react";
 import { Button } from "../ui/button";
@@ -28,6 +28,8 @@ import { isAnimatedTheme } from "../../data/themes";
 import { ThemeStrip, type ThemeValue } from "./ThemeStrip";
 import { LocationMap, mapsSearchUrl } from "./LocationMap";
 import { EventPagePreview } from "./EventPagePreview";
+import { CropModal, EventCoverSmall } from "./EventCover";
+import { downscaleToDataUrl } from "../../data/imageUtils";
 import { DEMO_VENUE, hasDemoVenue, mapAddressOf } from "../../data/mockEvent";
 
 // ── Tokens ───────────────────────────────────────────────────────────────────
@@ -489,6 +491,60 @@ function CheckinSettingsCard({ eventId }: { eventId: string }) {
 }
 
 /** Chỉnh nhanh thông tin chính của sự kiện: tên, thời gian, hình thức, địa điểm, mô tả. */
+/**
+ * Ảnh cover trong ngăn sửa thông tin: ảnh nhỏ bên trái, nút đổi/xoá bên phải.
+ * Ảnh không vuông thì qua bước cắt như ở màn tạo sự kiện; lưu dạng data URL đã
+ * thu nhỏ để trang sự kiện mở ở tab khác vẫn đọc được.
+ */
+function CoverField({ value, gradient, onChange }: {
+  value?: string; gradient?: string; onChange: (url: string | undefined) => void;
+}) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const finish = async (url: string) => {
+    setBusy(true);
+    try { onChange(await downscaleToDataUrl(url, 1200)); }
+    catch { toast.error("Không đọc được ảnh này. Thử ảnh JPG hoặc PNG khác."); }
+    finally { setBusy(false); }
+  };
+  const pick = (file?: File) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => (Math.abs(img.naturalWidth / img.naturalHeight - 1) > 0.05 ? setCropSrc(url) : void finish(url));
+    img.src = url;
+  };
+
+  return (
+    <div className="flex items-center gap-3">
+      <EventCoverSmall src={value} gradient={gradient} alt="Ảnh cover sự kiện" style={{ width: 88, flexShrink: 0 }} />
+      <div className="flex flex-col gap-2 min-w-0">
+        <p style={{ fontSize: T.xs, color: T.mutedFg, lineHeight: 1.5 }}>
+          Tỷ lệ 1:1 · 800 × 800px. Hiện trên trang sự kiện, tổng quan và danh sách sự kiện.
+        </p>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => inputRef.current?.click()}>
+            <Upload className="size-3.5" /> {busy ? "Đang xử lý..." : value ? "Đổi ảnh" : "Tải ảnh lên"}
+          </Button>
+          {value && !busy && (
+            <Button size="sm" variant="ghost" onClick={() => onChange(undefined)} style={{ color: T.mutedFg }}>
+              Xoá ảnh
+            </Button>
+          )}
+        </div>
+      </div>
+      <input ref={inputRef} type="file" accept="image/*" className="hidden"
+        onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
+      {cropSrc && (
+        <CropModal src={cropSrc} onCancel={() => setCropSrc(null)}
+          onSave={(url) => { setCropSrc(null); void finish(url); }} />
+      )}
+    </div>
+  );
+}
+
 function EventInfoSheet({ event, onClose, onSave }: {
   event: EventDraft;
   onClose: () => void;
@@ -500,6 +556,7 @@ function EventInfoSheet({ event, onClose, onSave }: {
     endDate: event.endDate ?? "", endTime: event.endTime ?? "",
     format: event.format ?? "offline", location: event.location ?? "",
   });
+  const [cover, setCover] = useState<string | undefined>(event.coverImage);
   const [look, setLook] = useState<ThemeValue>({
     theme: event.theme || "minimal", themeColor: event.themeColor,
     themeEffectColors: event.themeEffectColors, pageImage: event.pageImage,
@@ -512,6 +569,7 @@ function EventInfoSheet({ event, onClose, onSave }: {
     if (nameError) return;
     onSave({
       ...form, name: form.name.trim(), location: form.location.trim(),
+      coverImage: cover,
       // Chỉ giữ phần cấu hình mà giao diện đang chọn thực sự dùng.
       theme: look.theme,
       themeColor: look.theme === "color" ? look.themeColor : undefined,
@@ -597,6 +655,11 @@ function EventInfoSheet({ event, onClose, onSave }: {
                 </a>
               </>
             )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Ảnh cover</Label>
+            <CoverField value={cover} gradient={event.cover} onChange={setCover} />
           </div>
 
           <div className="flex flex-col gap-1.5">
