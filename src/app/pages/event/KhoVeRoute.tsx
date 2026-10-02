@@ -7,6 +7,8 @@ import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
 import { Sheet, SheetContent } from "../../components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
+import { RegistrationQuestionsSection, RegistrationEmailSection } from "../../components/dashboard/RegistrationQuestions";
+import { useCurrentEvent } from "../../data/currentEvent";
 
 const T = {
   background:    "var(--background)",
@@ -164,6 +166,7 @@ function TierSheet({ mode, tier, onClose, onSave }: {
 }
 
 export function KhoVeRoute() {
+  const { event } = useCurrentEvent();
   const [tiers, setTiers] = useState<Tier[]>(INITIAL_TIERS);
   const [sheet, setSheet] = useState<{ mode: "view" | "edit" | "create"; tier?: Tier } | null>(null);
 
@@ -183,10 +186,10 @@ export function KhoVeRoute() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 style={{ fontSize: T.xl, fontWeight: T.fw_bold, color: T.foreground, marginBottom: 4 }}>
-            Kho vé
+            Vé & đăng ký
           </h2>
           <p style={{ fontSize: T.sm, color: T.mutedFg }}>
-            Quản lý hạng vé, giá và số lượng cho sự kiện.
+            Hạng vé, câu hỏi khi đăng ký và email xác nhận gửi cho người tham dự.
           </p>
         </div>
         <Button onClick={() => setSheet({ mode: "create" })}
@@ -211,7 +214,7 @@ export function KhoVeRoute() {
       {/* Tier cards */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Danh sách hạng vé</h3>
+          <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Hạng vé</h3>
           <Button size="sm" variant="outline">
             <Download className="size-3.5" /> Xuất báo cáo
           </Button>
@@ -288,6 +291,9 @@ export function KhoVeRoute() {
           );
         })}
       </div>
+
+      <RegistrationQuestionsSection eventId={event.id} />
+      <RegistrationEmailSection event={event} />
 
       {sheet && (
         <TierSheet

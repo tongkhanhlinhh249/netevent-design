@@ -291,21 +291,49 @@ const STATUS_COL = 60;
 /** Tên email giữ trên một dòng; thời điểm gửi xuống dòng khi thẻ hẹp. */
 const EMAIL_COLS = "grid-cols-[126px_minmax(0,1fr)]";
 
-export function EmailSettingsCard({ event }: { event: EventDraft }) {
-  const navigate = useNavigate();
+/** Cấu hình email của một sự kiện cùng người gửi đang dùng — chung cho mọi nơi mở trình soạn. */
+function useEventEmail(event: EventDraft) {
   const [config, setConfig] = useStored<EventEmailConfig>(`netevent_email_v2_${event.id}`, initConfig, reviveConfig);
   const [sender] = useSenderEmail();
-  const [editing, setEditing] = useState<EmailKind | null>(null);
-
   // Người gửi là cấu hình của cả tài khoản; đổi ở Cài đặt → Email gửi.
   const active = activeSender(sender);
   const from = active.email;
-  const senderName = active.name;
   // Thư trả lời về chính địa chỉ gửi; gửi bằng email NetEvent thì về email tài khoản.
   const replyTo = from === NETEVENT_FROM ? ACCOUNT_EMAIL : from;
-  const openSenderSettings = () => navigate("/", { state: { page: "settings" } });
   const recentTests = config.testSends.filter((t) => Date.now() - t < HOUR);
   const testBlock = recentTests.length >= 5 ? "Đã đạt giới hạn 5 lần gửi thử mỗi giờ." : "";
+
+  const sendTest = (k: EmailKind) => {
+    if (testBlock) { toast.error(testBlock); return; }
+    setConfig((c) => ({ ...c, testSends: [...c.testSends.filter((t) => Date.now() - t < HOUR), Date.now()] }));
+    // Không khẳng định thư đã vào hộp thư đến — chỉ là nhà cung cấp đã nhận yêu cầu.
+    toast.success("Đã tiếp nhận yêu cầu gửi thử", {
+      description: `[GỬI THỬ] ${fill(config.templates[k].subject, sampleValues(event))} → ${ACCOUNT_EMAIL}`,
+    });
+  };
+
+  return { config, setConfig, from, senderName: active.name, fallback: active.fallback, replyTo, testBlock, sendTest };
+}
+
+/** Trình soạn một email, mở thẳng từ nơi khác — vd. "Tuỳ chỉnh email" ở tab Vé & Đăng ký. */
+export function EmailTemplateEditor({ event, kind = "confirm", onClose }: {
+  event: EventDraft; kind?: EmailKind; onClose: () => void;
+}) {
+  const { config, setConfig, from, senderName, replyTo, testBlock, sendTest } = useEventEmail(event);
+  return (
+    <TemplateSheet kind={kind} event={event} config={config} from={from} testBlock={testBlock}
+      senderName={senderName} replyTo={replyTo}
+      onAudience={(a) => setConfig((c) => ({ ...c, thanksAudience: a }))}
+      onSave={(t) => setConfig((c) => ({ ...c, templates: { ...c.templates, [kind]: t } }))}
+      onTest={() => sendTest(kind)} onClose={onClose} />
+  );
+}
+
+export function EmailSettingsCard({ event }: { event: EventDraft }) {
+  const navigate = useNavigate();
+  const { config, setConfig, from, senderName, fallback, replyTo, testBlock, sendTest } = useEventEmail(event);
+  const [editing, setEditing] = useState<EmailKind | null>(null);
+  const openSenderSettings = () => navigate("/", { state: { page: "settings" } });
 
   const toggle = (k: EmailKind, on: boolean) => {
     const label = KIND_LABEL[k].toLowerCase();
@@ -326,15 +354,6 @@ export function EmailSettingsCard({ event }: { event: EventDraft }) {
     });
   };
 
-  const sendTest = (k: EmailKind) => {
-    if (testBlock) { toast.error(testBlock); return; }
-    setConfig((c) => ({ ...c, testSends: [...c.testSends.filter((t) => Date.now() - t < HOUR), Date.now()] }));
-    // Không khẳng định thư đã vào hộp thư đến — chỉ là nhà cung cấp đã nhận yêu cầu.
-    toast.success("Đã tiếp nhận yêu cầu gửi thử", {
-      description: `[GỬI THỬ] ${fill(config.templates[k].subject, sampleValues(event))} → ${ACCOUNT_EMAIL}`,
-    });
-  };
-
   return (
     <div className="rounded-2xl p-5" style={{ backgroundColor: T.background, border: `1px solid ${T.border}` }}>
       <h3 style={{ fontSize: T.base, fontWeight: T.fw_semi, color: T.foreground }}>Email sự kiện</h3>
@@ -352,7 +371,7 @@ export function EmailSettingsCard({ event }: { event: EventDraft }) {
         <p className="truncate" style={{ fontSize: T.xs, color: T.mutedFg }}>{from}</p>
         <p style={{ fontSize: T.xs, color: T.mutedFg, marginTop: 4 }}>Email này được quản lý trong Cài đặt.</p>
       </div>
-      {active.fallback && (
+      {fallback && (
         <p className="mt-2 flex items-start gap-1.5 min-w-0" style={{ fontSize: T.xs, color: T.warningText, lineHeight: 1.5 }}>
           <AlertTriangle className="size-3.5 shrink-0 mt-0.5" />
           <span>Email của tổ chức hiện không thể sử dụng. NetEvent đang tạm thời gửi bằng email mặc định.</span>

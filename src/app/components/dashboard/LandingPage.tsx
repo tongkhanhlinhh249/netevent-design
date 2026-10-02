@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { cn } from "../ui/utils";
 import { themePageBg } from "../../data/themes";
 import { longDateVi, shortDateVi } from "../../data/eventFormat";
+import { STANDARD_FIELDS, useRegistrationForm, type StandardField } from "../../data/registrationForm";
 
 // ── CSS tokens ─────────────────────────────────────────────────────────────────
 
@@ -1575,16 +1576,29 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
   const [company, setCompany]   = useState("");
   const [title, setTitle]       = useState("");
   const [agreed, setAgreed]     = useState(false);
+  // Form hỏi gì do ban tổ chức cấu hình ở tab "Vé & Đăng ký".
+  const [regForm] = useRegistrationForm(event?.id ?? "t1");
+  const [answers, setAnswers]   = useState<Record<string, string | string[]>>({});
   const [errors, setErrors]     = useState<Record<string, string>>({});
   const [loading, setLoading]   = useState(false);
   const [ticketCode, setCode]   = useState("");
   const [payLoading, setPayLoading] = useState(false);
 
+  // Ba trường có sẵn: kiểm tra và hiển thị theo cấu hình.
+  const standardValue: Record<StandardField, string> = { phone, company, title };
+  const standardSetter: Record<StandardField, (v: string) => void> = { phone: setPhone, company: setCompany, title: setTitle };
+
   const validate = () => {
     const e: Record<string, string> = {};
     if (!name.trim())  e.name  = "Vui lòng nhập họ và tên.";
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Vui lòng nhập email hợp lệ.";
-    if (!phone.trim()) e.phone = "Vui lòng nhập số điện thoại.";
+    for (const f of STANDARD_FIELDS) {
+      if (regForm.fields[f.id] === "required" && !standardValue[f.id].trim()) e[f.id] = `Vui lòng nhập ${f.label.toLowerCase()}.`;
+    }
+    for (const q of regForm.questions) {
+      const a = answers[q.id];
+      if (q.required && (!a || (Array.isArray(a) ? a.length === 0 : !a.trim()))) e[q.id] = "Vui lòng trả lời câu hỏi này.";
+    }
     return e;
   };
 
@@ -1972,13 +1986,15 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                       </div>
                     )}
 
-                    {/* Fields */}
+                    {/* Fields — họ tên, email luôn có; các trường còn lại theo cấu hình */}
                     {[
                       { id: "name",    label: "Họ và tên",          type: "text",  ph: "Nhập họ và tên",          val: name,    set: setName,    err: errors.name,    req: true },
                       { id: "email",   label: "Email",               type: "email", ph: "Nhập email",               val: email,   set: setEmail,   err: errors.email,   req: true },
-                      { id: "phone",   label: "Số điện thoại",       type: "tel",   ph: "Nhập số điện thoại",       val: phone,   set: setPhone,   err: errors.phone,   req: true },
-                      { id: "company", label: "Công ty / Tổ chức",   type: "text",  ph: "Nhập tên công ty hoặc tổ chức", val: company, set: setCompany, err: "",           req: false },
-                      { id: "title",   label: "Chức danh",           type: "text",  ph: "Nhập chức danh",           val: title,   set: setTitle,   err: "",             req: false },
+                      ...STANDARD_FIELDS.filter((f) => regForm.fields[f.id] !== "off").map((f) => ({
+                        id: f.id, label: f.label, type: f.type, ph: f.placeholder,
+                        val: standardValue[f.id], set: standardSetter[f.id], err: errors[f.id],
+                        req: regForm.fields[f.id] === "required",
+                      })),
                     ].map((f) => (
                       <div key={f.id} className="flex flex-col gap-1.5">
                         <label style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>
@@ -1993,6 +2009,48 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
                         {f.err && <p style={{ fontSize: T.xs, color: T.destructive }}>{f.err}</p>}
                       </div>
                     ))}
+
+                    {/* Câu hỏi thêm của ban tổ chức */}
+                    {regForm.questions.map((q) => {
+                      const a = answers[q.id];
+                      const set = (v: string | string[]) => { setAnswers((x) => ({ ...x, [q.id]: v })); setErrors((x) => ({ ...x, [q.id]: "" })); };
+                      const box = { border: `1px solid ${errors[q.id] ? T.destructive : T.border}`, borderRadius: "10px",
+                        padding: "10px 12px", backgroundColor: T.background, fontSize: T.sm, color: T.foreground };
+                      return (
+                        <div key={q.id} className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: T.sm, fontWeight: T.fw_medium, color: T.foreground }}>
+                            {q.label}{q.required && <span style={{ color: T.destructive }}> *</span>}
+                          </label>
+                          {q.type === "short" && (
+                            <input value={(a as string) ?? ""} onChange={(e) => set(e.target.value)} aria-label={q.label}
+                              className="w-full outline-none" style={box} />
+                          )}
+                          {q.type === "long" && (
+                            <textarea rows={3} value={(a as string) ?? ""} onChange={(e) => set(e.target.value)} aria-label={q.label}
+                              className="w-full outline-none resize-y" style={box} />
+                          )}
+                          {(q.type === "single" || q.type === "multi") && (
+                            <div className="flex flex-col gap-1.5" role={q.type === "single" ? "radiogroup" : "group"} aria-label={q.label}>
+                              {q.options.map((o) => {
+                                const picked = q.type === "single" ? a === o : Array.isArray(a) && a.includes(o);
+                                return (
+                                  <label key={o} className="flex items-center gap-2.5 cursor-pointer rounded-lg px-3 py-2"
+                                    style={{ border: `1px solid ${picked ? OG : T.border}` }}>
+                                    <input type={q.type === "single" ? "radio" : "checkbox"} name={q.id} checked={picked}
+                                      style={{ accentColor: OG }}
+                                      onChange={() => q.type === "single"
+                                        ? set(o)
+                                        : set(picked ? (a as string[]).filter((x) => x !== o) : [...((a as string[]) ?? []), o])} />
+                                    <span style={{ fontSize: T.sm, color: T.foreground }}>{o}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {errors[q.id] && <p style={{ fontSize: T.xs, color: T.destructive }}>{errors[q.id]}</p>}
+                        </div>
+                      );
+                    })}
 
                     <label className="flex items-start gap-2 cursor-pointer">
                       <Checkbox checked={agreed} onCheckedChange={(v) => setAgreed(!!v)} />
