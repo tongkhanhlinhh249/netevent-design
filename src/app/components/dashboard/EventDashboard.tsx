@@ -6,7 +6,7 @@ import {
   AlertCircle, ChevronRight, ExternalLink,
   Calendar, MapPin, Pencil, BarChart3, Mail, QrCode, Plus,
   Download, Eye, Settings, Copy, Facebook, Twitter, Linkedin, MessageCircle, Image,
-  ArrowLeft, UserPlus, Check, X, Sparkles, AtSign, Search, Lock, ChevronDown, Video, Smartphone
+  ArrowLeft, UserPlus, Check, X, Sparkles, AtSign, Search, FilePen, ChevronDown, Video, Smartphone
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
@@ -587,7 +587,7 @@ function EventInfoSheet({ event, onClose, onSave }: {
 
 const VISIBILITY_OPTIONS = [
   { id: "public",  label: "Công khai", desc: "Ai cũng có thể tìm thấy trang sự kiện và đăng ký.", icon: Globe },
-  { id: "private", label: "Riêng tư",  desc: "Chỉ người có link mới xem và đăng ký được.",        icon: Lock },
+  { id: "draft",   label: "Nháp",      desc: "Chỉ ban tổ chức xem được, chưa ai tìm thấy hay đăng ký.", icon: FilePen },
 ] as const;
 
 // ── Sửa đơn vị tổ chức ────────────────────────────────────────────────────────
@@ -802,7 +802,7 @@ export function EventDashboard() {
   const [infoOpen, setInfoOpen] = useState(false);
   const { event: currentEvent, setEvent: setCurrentEvent } = useCurrentEvent();
   const orgName = currentEvent.organizer?.trim() || "NetSpace";
-  const isPrivate  = currentEvent.visibility === "private";
+  const isDraftPage = currentEvent.visibility === "draft";
   const visibility = VISIBILITY_OPTIONS.find((o) => o.id === currentEvent.visibility) ?? VISIBILITY_OPTIONS[0];
   // Ngày giờ, địa điểm lấy theo sự kiện đang xem; sự kiện demo giữ địa chỉ chi tiết mẫu.
   const isDemoEvent = currentEvent.id === "t1";
@@ -868,16 +868,16 @@ export function EventDashboard() {
                         backgroundColor: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
                         {cfg.label}
                       </span>
-                      {/* Công khai / riêng tư: nhãn cạnh trạng thái sự kiện, bấm để đổi.
+                      {/* Công khai / nháp: nhãn cạnh trạng thái sự kiện, bấm để đổi.
                           Trang sự kiện đọc cùng giá trị này. */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button type="button" aria-label="Đổi chế độ hiển thị"
                             className="inline-flex items-center gap-1 cursor-pointer transition-opacity hover:opacity-85"
                             style={{ fontSize: T.xs, fontWeight: T.fw_semi, padding: "2px 8px",
-                              backgroundColor: isPrivate ? "#fdf2f8" : "#ecfdf5",
-                              color: isPrivate ? "#be185d" : "#047857",
-                              border: `1px solid ${isPrivate ? "#fbcfe8" : "#a7f3d0"}` }}>
+                              backgroundColor: isDraftPage ? "#f1f5f9" : "#ecfdf5",
+                              color: isDraftPage ? "#475569" : "#047857",
+                              border: `1px solid ${isDraftPage ? "#e2e8f0" : "#a7f3d0"}` }}>
                             <visibility.icon className="size-3" /> {visibility.label}
                             <ChevronDown className="size-3" />
                           </button>
@@ -911,8 +911,8 @@ export function EventDashboard() {
                   <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px",
                     borderRadius: 10, backgroundColor: "rgba(0,0,0,0.9)", backdropFilter: "blur(6px)",
                     border: "1px solid rgba(255,255,255,0.12)" }}>
-                    {isPrivate
-                      ? <Lock className="size-3" style={{ color: "white", flexShrink: 0 }} />
+                    {isDraftPage
+                      ? <FilePen className="size-3" style={{ color: "white", flexShrink: 0 }} />
                       : <Globe className="size-3" style={{ color: "white", flexShrink: 0 }} />}
                     <span style={{ fontSize: T.xs, color: "white", fontWeight: T.fw_medium,
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
@@ -993,8 +993,8 @@ export function EventDashboard() {
                   <p style={{ fontSize: T.xs, color: T.mutedFg }}>
                     {isOnline
                       ? "Link tham gia chỉ gửi cho người đã đăng ký."
-                      : isPrivate
-                        ? "Địa chỉ chỉ hiển thị với người có link sự kiện."
+                      : isDraftPage
+                        ? "Địa chỉ sẽ hiển thị khi sự kiện được công khai."
                         : "Địa chỉ sẽ được hiển thị công khai trên trang sự kiện."}
                   </p>
                 </div>

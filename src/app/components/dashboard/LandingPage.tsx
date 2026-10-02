@@ -1537,7 +1537,7 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
   // mới hiển thị đúng những gì đã cấu hình; khối nào không có dữ liệu thì ẩn.
   const isDemo = !event || event.id === "t1";
   const eventName = event?.name?.trim() || "NetEvent Demo Conference 2026";
-  const isPrivate = event?.visibility === "private";
+  const isDraft = event?.visibility === "draft";
   const isOnline = event?.format === "online";
   const needsApproval = !isDemo && !!event?.requireApproval;
   const priceNum = Number(event?.ticketPrice || 0);
@@ -1779,11 +1779,12 @@ export function DemoPublicLandingPage({ bgStyle, bgColor, regMode, ticketsConfig
 
             {/* Event info header */}
             <div>
-              {isPrivate ? (
+              {isDraft ? (
+                // Bản nháp chỉ ban tổ chức mở được; nói rõ để không tưởng trang đã công khai.
                 <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 12px",
-                  borderRadius: "999px", backgroundColor: "rgba(219,39,119,0.08)", marginBottom: "14px" }}>
-                  <div className="size-1.5 rounded-full" style={{ backgroundColor: "#db2777" }} />
-                  <span style={{ fontSize: T.xs, fontWeight: T.fw_medium, color: "#db2777" }}>Sự kiện riêng tư</span>
+                  borderRadius: "999px", backgroundColor: "#f1f5f9", marginBottom: "14px" }}>
+                  <div className="size-1.5 rounded-full" style={{ backgroundColor: "#64748b" }} />
+                  <span style={{ fontSize: T.xs, fontWeight: T.fw_medium, color: "#475569" }}>Bản nháp · chỉ ban tổ chức xem được</span>
                 </div>
               ) : (
                 <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 12px",

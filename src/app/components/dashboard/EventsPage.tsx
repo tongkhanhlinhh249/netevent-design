@@ -2,7 +2,7 @@ import * as React from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import {
-  Plus, Calendar, MapPin, Clock, Globe, Eye, Lock, ExternalLink, Copy,
+  Plus, Calendar, MapPin, Clock, Globe, Eye, FilePen, ExternalLink, Copy,
   CheckCircle2, Circle, ChevronRight, ChevronLeft, ChevronDown, ArrowLeft,
   Image, Pencil, Share2, Users, FileText, Ticket, Mail, QrCode,
   BarChart3, Settings, X, Upload, ToggleLeft, ToggleRight,
@@ -1185,11 +1185,11 @@ function CreateEventScreen({ onCancel, onCreated }: { onCancel: () => void; onCr
       <div className="relative flex items-center justify-between gap-3 flex-wrap mb-3 w-full max-w-[1280px] mx-auto" style={{ zIndex: 1 }}>
         <h2 style={{ color: T.foreground, fontSize: T["2xl"], fontWeight: T.fw_semi }}>Tạo sự kiện</h2>
         <div className="flex items-center gap-3">
-          {/* Quyền riêng tư */}
+          {/* Công khai ngay, hay để nháp cho tới khi sẵn sàng */}
           <div className="flex gap-0.5 p-0.5 rounded-full shrink-0" style={{ backgroundColor: T.secondary, border: `1px solid ${T.border}` }}>
             {([
               { id: "public",  label: "Công khai", icon: Globe },
-              { id: "private", label: "Riêng tư",  icon: Lock },
+              { id: "draft",   label: "Nháp",      icon: FilePen },
             ]).map((v) => {
               const on = visibility === v.id;
               return (
@@ -2110,7 +2110,7 @@ export function EventsPage({ screen: externalScreen, onScreenChange }: { screen?
 
   const handleCreated = (ev: EventDraft) => {
     // Sự kiện vừa tạo trở thành sự kiện đang xem, để workspace và trang sự
-    // kiện dùng đúng theme / quyền riêng tư / giá vé người dùng vừa chọn.
+    // kiện dùng đúng theme / chế độ hiển thị / giá vé người dùng vừa chọn.
     setCurrentEvent(ev);
     const newTimelineEvent: TimelineEvent = {
       id: ev.id,

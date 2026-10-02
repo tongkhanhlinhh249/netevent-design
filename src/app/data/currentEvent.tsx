@@ -6,7 +6,7 @@ import type { EventDraft } from "../components/dashboard/EventsPage";
  * Sự kiện đang được xem trong workspace.
  *
  * Trước đây mọi route sự kiện đều import thẳng DEMO_EVENT, nên sự kiện vừa tạo
- * (kèm theme, quyền riêng tư, giá vé… người dùng chọn) không đi tới đâu cả —
+ * (kèm theme, chế độ hiển thị, giá vé… người dùng chọn) không đi tới đâu cả —
  * trang sự kiện luôn hiển thị theo DEMO_EVENT.
  *
  * State được ghi kèm localStorage vì trang sự kiện công khai (/demo) và trang
@@ -20,7 +20,10 @@ const STORAGE_KEY = "netevent_current_event";
 
 function parseStored(raw: string | null): EventDraft {
   try {
-    return raw ? (JSON.parse(raw) as EventDraft) : DEMO_EVENT;
+    if (!raw) return DEMO_EVENT;
+    const ev = JSON.parse(raw) as EventDraft;
+    // "Riêng tư" đã đổi thành "Nháp"; sự kiện lưu từ trước vẫn đọc đúng.
+    return ev.visibility === "private" ? { ...ev, visibility: "draft" } : ev;
   } catch {
     return DEMO_EVENT;
   }

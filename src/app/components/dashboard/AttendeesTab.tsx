@@ -254,10 +254,10 @@ function AttendeeDetailDrawer({ attendee, open, onClose, onCheckin }: {
 // ── Main AttendeesTab ─────────────────────────────────────────────────────────
 
 export function AttendeesTab({ event }: { event: EventDraft }) {
-  // Sự kiện không còn bước publish — chỉ Công khai / Riêng tư. Sự kiện mới tạo
+  // Chế độ hiển thị: Công khai hoặc Nháp (chưa ai thấy). Sự kiện mới tạo
   // (status "draft") chưa có ai đăng ký; sự kiện mẫu có sẵn danh sách.
   const hasAttendees = event.status !== "draft";
-  const isPrivate    = event.visibility === "private";
+  const isDraft      = event.visibility === "draft";
 
   const [attendees, setAttendees]     = useState<Attendee[]>(hasAttendees ? MOCK_ATTENDEES : []);
   const [search, setSearch]           = useState("");
@@ -353,8 +353,8 @@ export function AttendeesTab({ event }: { event: EventDraft }) {
               netevent.vn/e/{(event.name || "su-kien").toLowerCase().replace(/\s+/g, "-").slice(0, 30)}
             </span>
             <span style={{ fontSize: T.xs, padding: "1px 6px", borderRadius: "999px",
-              backgroundColor: isPrivate ? "#fdf2f8" : T.successSubtle, color: isPrivate ? "#be185d" : T.successText }}>
-              {isPrivate ? "Riêng tư" : "Công khai"}
+              backgroundColor: isDraft ? "#f1f5f9" : T.successSubtle, color: isDraft ? "#475569" : T.successText }}>
+              {isDraft ? "Nháp" : "Công khai"}
             </span>
           </div>
           <div className="flex gap-3 flex-wrap justify-center">
