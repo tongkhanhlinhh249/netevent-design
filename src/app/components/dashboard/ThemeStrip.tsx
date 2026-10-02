@@ -44,7 +44,9 @@ export function ThemeStrip({ value, onChange }: { value: ThemeValue; onChange: (
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex gap-2.5 overflow-x-auto pb-1.5 -mx-1 px-1" role="radiogroup" aria-label="Giao diện trang sự kiện">
+      {/* Hàng cuộn ngang cắt mọi thứ tràn ra ngoài, kể cả viền chọn (2px, cách 2px) —
+          chừa đủ chỗ quanh ảnh để viền không bị cắt và không dính vào nhãn phía trên. */}
+      <div className="flex gap-2.5 overflow-x-auto py-1.5 -mx-1.5 px-1.5" role="radiogroup" aria-label="Giao diện trang sự kiện">
         {THEMES.map((th) => (
           <Thumb key={th.id} label={th.label} on={value.theme === th.id} onClick={() => pick(th.id)}
             style={{ background: th.gradient }}>
