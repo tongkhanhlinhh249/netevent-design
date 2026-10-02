@@ -5,7 +5,7 @@ import {
   Users, Ticket, DollarSign, UserCheck, Globe,
   AlertCircle, ChevronRight, ExternalLink,
   Calendar, MapPin, Pencil, BarChart3, Mail, QrCode, Plus,
-  Download, Eye, Settings, Copy, Facebook, Twitter, Linkedin, MessageCircle, Image,
+  Download, Eye, Settings, Copy, Facebook, Twitter, Linkedin, MessageCircle,
   ArrowLeft, UserPlus, Check, X, Sparkles, AtSign, Search, FilePen, ChevronDown, Video, Smartphone
 } from "lucide-react";
 import { Button } from "../ui/button";
@@ -895,7 +895,7 @@ export function EventDashboard() {
                   <a href="/demo" target="_blank" rel="noopener" aria-label="Mở trang sự kiện"
                     className="absolute inset-0" />
 
-                  {/* Top row: status badge + Thay đổi ảnh */}
+                  {/* Top row: trạng thái + công khai/nháp */}
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", zIndex: 1 }}>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span style={{ fontSize: T.xs, fontWeight: T.fw_semi, padding: "2px 8px", borderRadius: "999px",
@@ -931,13 +931,6 @@ export function EventDashboard() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    {/* Nền tối mờ, giống thanh link bên dưới: bản xem trước có thể sáng hay tối tuỳ theme */}
-                    <button style={{ display: "flex", alignItems: "center", gap: 5, fontSize: T.xs,
-                      fontWeight: T.fw_medium, padding: "4px 10px", borderRadius: 10,
-                      backgroundColor: "rgba(15,23,42,0.78)", backdropFilter: "blur(6px)",
-                      border: "1px solid rgba(255,255,255,0.18)", color: "white", cursor: "pointer" }}>
-                      <Image className="size-3" /> Thay đổi ảnh
-                    </button>
                   </div>
 
                   <div style={{ flex: 1 }} />
