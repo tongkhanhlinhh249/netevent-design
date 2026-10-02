@@ -539,11 +539,6 @@ function EventInfoSheet({ event, onClose, onSave }: {
             {nameError && <p style={{ fontSize: T.xs, color: T.destructive }}>Nhập tên sự kiện.</p>}
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label>Giao diện trang sự kiện</Label>
-            <ThemeStrip value={look} onChange={setLook} />
-          </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ev-start-date">Bắt đầu</Label>
@@ -562,6 +557,11 @@ function EventInfoSheet({ event, onClose, onSave }: {
               <Input id="ev-end-time" type="time" value={form.endTime} onChange={(e) => set("endTime")(e.target.value)} />
             </div>
           </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="ev-desc">Mô tả ngắn</Label>
+            <Textarea id="ev-desc" rows={4} value={form.description}
+              onChange={(e) => set("description")(e.target.value)} placeholder="Sự kiện này dành cho ai? Nội dung chính là gì?" />
 
           <div className="flex flex-col gap-1.5">
             <Label>Hình thức tổ chức</Label>
@@ -599,9 +599,9 @@ function EventInfoSheet({ event, onClose, onSave }: {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="ev-desc">Mô tả ngắn</Label>
-            <Textarea id="ev-desc" rows={4} value={form.description}
-              onChange={(e) => set("description")(e.target.value)} placeholder="Sự kiện này dành cho ai? Nội dung chính là gì?" />
+            <Label>Giao diện trang sự kiện</Label>
+            <ThemeStrip value={look} onChange={setLook} />
+          </div>
           </div>
         </div>
 
