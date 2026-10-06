@@ -692,11 +692,14 @@ ul,ol{margin:0;padding:0;list-style:none;}
   #tinh-nang h2 .ac-grad{white-space:nowrap;}
 }
 
-/* MINIGAME — thu khoảng trống giữa chữ và hình: 2 cột theo nội dung, khoảng cách cố định, cả cụm căn giữa thẻ */
+/* MINIGAME — thẻ rộng hết khung 1280px: chữ bám trái, hình bám phải, hai đầu cách mép bằng nhau (72px).
+   Cột hình co theo hình, đệm hai bên bằng nhau để nhãn dưới hình (căn giữa khung hình) nằm đúng giữa hình. */
 @media (min-width:961px){
-  .mg-stack>.mg-card{grid-template-columns:minmax(0,440px) minmax(0,380px) !important;justify-content:center;column-gap:clamp(40px,5vw,72px);}
-  .mg-card .mg-panel{padding:28px 0;}
-  .mg-card p{max-width:380px !important;}
+  .mg-stack>.mg-card{grid-template-columns:minmax(0,1fr) auto !important;column-gap:0;}
+  .mg-card .mg-copy{padding:48px 24px 48px 72px;}
+  .mg-card .mg-panel{padding:28px 72px;}
+  .mg-card .mg-art{width:calc(400px * var(--ar));}
+  .mg-card p{max-width:460px !important;}
 }
 
 /* LOẠI HÌNH — card CTA "Sự kiện tiếp theo, bắt đầu từ đây": minh hoạ thẻ tạo sự kiện trên nền gradient thương hiệu */
