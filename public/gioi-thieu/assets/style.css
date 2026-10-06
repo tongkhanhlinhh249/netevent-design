@@ -302,8 +302,6 @@ ul,ol{margin:0;padding:0;list-style:none;}
 .mg-play:hover{background:#000000;}
 .mg-out{margin:0;min-height:20px;font-size:13.5px;font-weight:600;color:#0075bc;}
 #mgWheel{transition:transform 4.2s cubic-bezier(.17,.72,.16,1);}
-.mg-name{font-size:17px;font-weight:700;color:#141414;text-align:center;}
-.mg-code[data-on="true"]{height:auto !important;background:none !important;color:#ffffff;font-size:15px;font-weight:700;letter-spacing:.02em;}
 
 @media (max-width:1080px){
   .ne-float{display:none !important;}
@@ -557,13 +555,6 @@ ul,ol{margin:0;padding:0;list-style:none;}
   filter:drop-shadow(0 22px 26px rgba(40,40,140,.16));}
 .mg-art>img{display:block;width:100%;height:100%;}
 .mg-art>.mg-art__disk{position:absolute;left:20.755%;top:16.383%;width:60.377%;height:auto;}
-.mg-chip{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:8px;
-  min-height:38px;padding:0 16px;border-radius:999px;background:#ffffff;white-space:nowrap;
-  box-shadow:0 10px 24px -10px rgba(40,40,140,.35),0 0 0 1px rgba(40,40,140,.06);}
-.mg-chip__hint{font-size:13px;font-weight:600;color:#5b6472;}
-.mg-chip .mg-name{font-size:15px;}
-.mg-chip--grad{background:linear-gradient(90deg,#1460f2 0%,#6d3cf5 60%,#9b3cf0 100%);color:#ffffff;}
-.mg-chip--grad .mg-code{font-size:14px;font-weight:700;letter-spacing:.02em;color:#ffffff;}
 
 /* ============================================================
    FOOTER — thông tin liên hệ NetSpace, mạng xã hội (chưa có link), dòng bản quyền

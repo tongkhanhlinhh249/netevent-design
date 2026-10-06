@@ -26,27 +26,28 @@
   }
 
   /* ---------- 2. Minigame 2 & 3: bốc thăm check-in, Lucky Draw ---------- */
-  const draw = (btn, out, show, pool, label) => {
-    if (!btn) return;
+  // Tên / mã nhảy liên tục ngay trên dòng kết quả dưới nút rồi dừng ở người trúng.
+  // Trong lúc nhảy đánh dấu aria-busy để trình đọc màn hình chỉ đọc kết quả cuối.
+  const draw = (btn, out, pool, label) => {
+    if (!btn || !out) return;
     let busy = false;
+    const pick = () => pool[Math.floor(Math.random() * pool.length)];
     btn.addEventListener('click', () => {
       if (busy) return;
-      busy = true; btn.disabled = true; out.textContent = 'Đang bốc thăm…';
-      const win = pool[Math.floor(Math.random() * pool.length)];
-      const done = () => { show(win); out.textContent = label + win; busy = false; btn.disabled = false; };
+      busy = true; btn.disabled = true;
+      const win = pick();
+      const done = () => { out.removeAttribute('aria-busy'); out.textContent = label + win; busy = false; btn.disabled = false; };
       if (reduce.matches) return done();
-      const t = setInterval(() => show(pool[Math.floor(Math.random() * pool.length)]), 80);
+      out.setAttribute('aria-busy', 'true');
+      const t = setInterval(() => { out.textContent = label + pick(); }, 80);
       setTimeout(() => { clearInterval(t); done(); }, 2200);
     });
   };
   const NAMES = ['Nguyễn Minh Anh', 'Trần Bảo Ngọc', 'Lê Hoàng Nam', 'Phạm Thu Hà',
                  'Đỗ Quang Huy', 'Vũ Khánh Linh', 'Bùi Đức Anh', 'Hoàng Mai Chi'];
   const CODES = Array.from({ length: 12 }, (_, i) => 'NE-2026-00' + (312 + i * 7));
-  const nameEl = $('#mg2Name'), bars = $('#mg2Bars'), code = $('#mg3Code');
-  if (nameEl) draw($('#mg2Btn'), $('#mg2Out'),
-    v => { bars.hidden = true; nameEl.hidden = false; nameEl.textContent = v; }, NAMES, 'Người trúng: ');
-  if (code) draw($('#mg3Btn'), $('#mg3Out'),
-    v => { code.dataset.on = 'true'; code.textContent = v; }, CODES, 'Mã trúng: ');
+  draw($('#mg2Btn'), $('#mg2Out'), NAMES, 'Người trúng: ');
+  draw($('#mg3Btn'), $('#mg3Out'), CODES, 'Mã trúng: ');
 
   /* ---------- 3. Form nhận tư vấn ---------- */
   const form = $('#regForm'), doneBox = $('#regDone');
