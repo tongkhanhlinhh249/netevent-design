@@ -872,9 +872,3 @@ ul,ol{margin:0;padding:0;list-style:none;}
 
 /* minigame: thẻ thứ 4 — game theo yêu cầu, cùng khung với 3 thẻ game, nền gradient nhẹ */
 .mg-card--custom{background:linear-gradient(135deg,#eef7ff 0%,#f2edff 55%,#fdf0f8 100%);}
-.mg-tag{display:inline-flex;align-items:center;height:28px;margin-bottom:6px;padding:0 12px;border-radius:999px;
-  background:#ffffff;border:1px solid #e3e6ff;font-size:13px;font-weight:600;color:#6a3fe0;}
-/* nhãn dưới hình minh hoạ, cùng vị trí với nhãn của thẻ 02/03 */
-.mg-plus{position:absolute;left:50%;bottom:18px;z-index:2;transform:translateX(-50%);display:inline-flex;align-items:center;gap:6px;
-  height:40px;padding:0 16px;border-radius:999px;background:#ffffff;border:1.5px dashed #9462fb;
-  font-size:14px;font-weight:600;color:#6a3fe0;white-space:nowrap;}
