@@ -296,6 +296,9 @@ ul,ol{margin:0;padding:0;list-style:none;}
 .drawer.ns-root a:not(.ns-btn){padding:12px 10px;border-radius:10px;font-size:15px;font-weight:500;color:#333333;}
 .drawer.ns-root a:not(.ns-btn):hover{background:#f6f6f6;}
 .drawer.ns-root .ns-btn{margin-top:10px;width:100%;}
+/* nút trong menu mobile: luật chung .drawer a (chữ tối, bo 12px, nền xám khi rê) đè mất kiểu nút — trả lại chữ trắng, hình viên thuốc */
+.drawer.ns-root a.ns-btn{padding:0 24px;border-radius:var(--radius-pill);color:#ffffff;}
+.drawer.ns-root a.ns-btn:hover{background:var(--gradient-button-hover);}
 
 /* minigame: chơi thử ngay trong thẻ */
 .mg-play{margin-top:6px;background:#141414;color:#ffffff;}
