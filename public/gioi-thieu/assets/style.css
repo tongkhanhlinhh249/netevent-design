@@ -753,33 +753,46 @@ ul,ol{margin:0;padding:0;list-style:none;}
 
 /* tính năng theo quy trình triển khai: 5 bước, mỗi bước kèm thẻ liệt kê tính năng (icon + tên).
    Mỗi bước có màu riêng (--c) và màu bước kế (--c2); đoạn nối là gradient giữa hai màu nên cả dải đổi màu liền mạch.
-   Màn rộng: 5 cột, thẻ các cột thẳng hàng và cao bằng nhau (subgrid). Màn ≤1023px: xếp dọc, đường nối chạy dọc. */
-.qt{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:auto 1fr;column-gap:24px;}
-.qt__step{position:relative;display:grid;grid-row:span 2;grid-template-rows:subgrid;row-gap:18px;min-width:0;}
-.qt__step:not(:last-child)::after{content:'';position:absolute;top:21px;left:44px;right:-24px;height:2px;
-  background:linear-gradient(90deg,var(--c),var(--c2));opacity:.55;}
+   Thẻ phủ nhẹ màu của bước ở phía trên rồi nhạt dần về trắng.
+   Màn rộng: 5 cột, thẻ các cột thẳng hàng và cao bằng nhau (subgrid).
+   Màn ≤1023px: xếp dọc — số bên trái nối bằng đường dọc, tên bước cùng hàng với số, thẻ ngay dưới tên. */
+.qt{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:auto 1fr;column-gap:20px;}
+.qt__step{--tint:color-mix(in srgb,var(--c) 9%,#ffffff);--ring:color-mix(in srgb,var(--c) 22%,transparent);
+  position:relative;display:grid;grid-row:span 2;grid-template-rows:subgrid;row-gap:16px;min-width:0;}
+.qt__step:not(:last-child)::after{content:'';position:absolute;top:21px;left:44px;right:-20px;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,var(--c),var(--c2));opacity:.5;}
 .qt__head{display:flex;flex-direction:column;align-items:flex-start;gap:14px;}
 .qt__num{position:relative;z-index:1;flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
-  background:var(--c);color:#ffffff;font-size:15px;font-weight:700;box-shadow:0 0 0 5px #ffffff;}
-.qt__head h3{margin:0;font-size:17px;line-height:1.35;font-weight:700;color:#141414;}
-.qt__card{list-style:none;margin:0;padding:8px;display:flex;flex-direction:column;gap:2px;background:#ffffff;border:1px solid #e9edf3;border-radius:16px;
-  box-shadow:0 14px 32px -24px rgba(40,30,120,.4),0 1px 2px rgba(20,20,40,.04);}
-.qt__card li{display:flex;align-items:center;gap:10px;padding:8px;font-size:14.5px;line-height:1.4;font-weight:500;color:#2b2f38;}
-.qt__ico{flex:none;width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:var(--c);
-  background:#eef2fb;background:color-mix(in srgb,var(--c) 11%,#ffffff);}
+  background:var(--c);color:#ffffff;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;
+  box-shadow:0 0 0 5px #ffffff,0 10px 20px -8px color-mix(in srgb,var(--c) 70%,transparent);}
+.qt__head h3{margin:0;font-size:17px;line-height:1.35;font-weight:700;color:#141414;text-wrap:balance;}
+.qt__card{list-style:none;margin:0;padding:8px;display:flex;flex-direction:column;gap:2px;border-radius:18px;
+  background:linear-gradient(180deg,var(--tint) 0%,#ffffff 70%);
+  border:1px solid color-mix(in srgb,var(--c) 14%,#e9edf3);
+  box-shadow:0 18px 36px -28px rgba(40,30,120,.45),0 1px 2px rgba(20,20,40,.04);}
+.qt__card li{display:flex;align-items:center;gap:10px;min-width:0;padding:7px 8px;font-size:14.5px;line-height:1.4;font-weight:500;color:#2b2f38;text-wrap:pretty;}
+.qt__ico{flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:var(--c);
+  background:#ffffff;box-shadow:inset 0 0 0 1px var(--ring),0 2px 6px -3px var(--ring);}
 @media (max-width:1023px){
   .qt{display:flex;flex-direction:column;}
-  .qt__step{display:block;padding-bottom:28px;}
+  .qt__step{grid-template-columns:44px minmax(0,1fr);grid-template-rows:auto auto;column-gap:14px;row-gap:10px;padding-bottom:24px;}
   .qt__step:last-child{padding-bottom:0;}
   .qt__step:not(:last-child)::after{top:44px;bottom:0;left:21px;right:auto;width:2px;height:auto;background:linear-gradient(180deg,var(--c),var(--c2));}
-  .qt__head{flex-direction:row;align-items:center;}
-  .qt__card{margin:12px 0 0 58px;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));}
+  .qt__head{display:contents;}
+  .qt__num{grid-column:1;grid-row:1;}
+  .qt__head h3{grid-column:2;grid-row:1;align-self:center;}
+  .qt__card{grid-column:2;grid-row:2;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));}
 }
 @media (max-width:640px){
-  .qt__step:not(:last-child)::after{left:19px;top:40px;}
-  .qt__num{width:40px;height:40px;font-size:14px;}
-  .qt__head{gap:12px;}
-  .qt__card{margin-left:52px;grid-template-columns:minmax(0,1fr);}
+  #tinh-nang .ne-sec{gap:32px !important;}
+  #tinh-nang h2 br{display:none;}
+  .qt__step{grid-template-columns:36px minmax(0,1fr);column-gap:12px;row-gap:8px;padding-bottom:20px;}
+  .qt__step:not(:last-child)::after{top:36px;left:17px;}
+  .qt__num{width:36px;height:36px;font-size:13px;box-shadow:0 0 0 4px #ffffff,0 8px 16px -8px color-mix(in srgb,var(--c) 70%,transparent);}
+  .qt__head h3{font-size:16px;}
+  .qt__card{grid-template-columns:minmax(0,1fr);gap:0;padding:6px;border-radius:16px;}
+  .qt__card li{padding:6px 8px;font-size:14.5px;}
+  .qt__ico{width:28px;height:28px;border-radius:8px;}
 }
 
 /* minigame: hai ưu điểm dưới mô tả mỗi thẻ */
