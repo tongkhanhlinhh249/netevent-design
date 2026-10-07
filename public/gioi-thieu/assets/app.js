@@ -98,38 +98,6 @@
   }), { rootMargin: '0px 0px -8% 0px', threshold: .08 });
   $$('.rv').forEach(el => io.observe(el));
 
-  /* ---------- 5. Tính năng theo quy trình: thanh 6 bước là tab, mỗi lúc hiện thẻ của một bước ---------- */
-  // Không có JS thì mọi bước hiện lần lượt. Có JS: bấm một bước, hoặc dùng ←/→, Home/End khi đang ở thanh bước.
-  const qt = $('.qt');
-  if (qt) {
-    const strip = $('.qt__tabs', qt), tabs = $$('.qt__tab', qt), panels = $$('.qt__panel', qt);
-    const select = (i, focus) => {
-      tabs.forEach((t, k) => {
-        const on = k === i;
-        t.classList.toggle('is-on', on);
-        t.setAttribute('aria-selected', String(on));
-        t.tabIndex = on ? 0 : -1;
-        panels[k].classList.toggle('is-on', on);
-      });
-      if (focus) tabs[i].focus({ preventScroll: true });
-      // màn hẹp: thanh bước cuộn ngang, đưa bước đang chọn vào giữa (chỉ cuộn thanh, không cuộn trang)
-      if (strip.scrollWidth > strip.clientWidth) {
-        strip.scrollTo({ left: tabs[i].offsetLeft - (strip.clientWidth - tabs[i].offsetWidth) / 2, behavior: reduce.matches ? 'auto' : 'smooth' });
-      }
-    };
-    tabs.forEach((t, i) => {
-      t.addEventListener('click', () => select(i));
-      t.addEventListener('keydown', e => {
-        const n = tabs.length, k = { ArrowRight: i + 1, ArrowLeft: i - 1 + n, Home: 0, End: n - 1 }[e.key];
-        if (k === undefined) return;
-        e.preventDefault();
-        select(k % n, true);
-      });
-    });
-    qt.classList.add('qt--tabs');
-    select(0);
-  }
-
   /* ---------- 7. Viền sáng thẻ loại hình (phỏng theo BorderGlow của React Bits) ---------- */
   // Rê chuột gần mép: vệt sáng bám theo hướng con trỏ. Vừa rê vào: vệt sáng chạy một vòng quanh thẻ.
   const glowCards = $$('.bg-card');
