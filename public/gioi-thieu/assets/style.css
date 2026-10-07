@@ -399,6 +399,9 @@ ul,ol{margin:0;padding:0;list-style:none;}
 .tvf__submit{width:100%;height:52px;margin-top:4px;font-size:15.5px;color:#ffffff;
   background:var(--gradient-button);box-shadow:0 14px 30px -12px rgba(70,60,240,.55);}
 .tvf__submit:hover{filter:brightness(1.06);box-shadow:0 18px 36px -12px rgba(90,70,230,.6);}
+/* nhãn nút gửi: màn ≤640px dùng nhãn ngắn để nút giữ một dòng (nhãn bị ẩn bằng display:none nên không bị đọc hai lần) */
+.tvf__lbl--short{display:none;}
+@media (max-width:640px){.tvf__lbl:not(.tvf__lbl--short){display:none;}.tvf__lbl--short{display:inline;}}
 .tvf__note{display:flex;align-items:center;justify-content:center;gap:6px;margin:0;font-size:13px;line-height:1.5;
   color:#5b6472;text-align:center;}
 .tvf__note svg{flex:none;}
@@ -496,8 +499,29 @@ ul,ol{margin:0;padding:0;list-style:none;}
   .mg-stack>.mg-card:nth-of-type(3){--i:2;}
   .mg-stack>.mg-card:nth-of-type(4){--i:3;}
 }
-.mg-stack__end{height:1px;margin-top:-1px;}   /* mốc kết thúc: chồng thẻ giữ nguyên thêm một khoảng cách thẻ rồi mới trôi đi */
-@media not all and (min-width:961px) and (min-height:620px){.mg-stack__end{display:none;}}
+/* Màn ≤960px cao từ 640px (điện thoại, tablet dọc) cũng xếp chồng: thẻ dính ngay dưới header, mỗi thẻ lệch 12px.
+   Trên điện thoại thẻ được làm gọn (≤ ~560px) để cả thẻ nằm trọn trong màn khi dính. */
+@media (max-width:960px) and (min-height:640px){
+  .mg-stack{gap:40px !important;}
+  .mg-stack>.mg-card{position:sticky;top:calc(var(--hd-h, 60px) + 12px + var(--i, 0) * 12px);margin-bottom:calc((3 - var(--i, 0)) * 12px);
+    transform-origin:top center;will-change:transform;}
+  .mg-stack>.mg-card:nth-of-type(2){--i:1;}
+  .mg-stack>.mg-card:nth-of-type(3){--i:2;}
+  .mg-stack>.mg-card:nth-of-type(4){--i:3;}
+}
+@media (max-width:640px){
+  .mg-card .mg-copy{padding:22px 20px 4px;gap:8px;}
+  .mg-card .mg-copy .mg-num{font-size:36px;margin-bottom:0;}
+  .mg-card .mg-copy h3{font-size:20px;}
+  .mg-card .mg-copy p{font-size:15px;line-height:1.55;}
+  .mg-card .mg-perks li{font-size:14px;}
+  .mg-card .mg-play{margin-top:6px;}
+  .mg-card .mg-panel{padding:8px 20px 16px;}
+  .mg-card .mg-art{width:min(100%, calc(210px * var(--ar)));}
+}
+.mg-stack__end{display:none;height:1px;margin-top:-1px;}   /* mốc kết thúc: chồng thẻ giữ nguyên thêm một khoảng cách thẻ rồi mới trôi đi */
+@media (min-width:961px) and (min-height:620px){.mg-stack__end{display:block;}}
+@media (max-width:960px) and (min-height:640px){.mg-stack__end{display:block;}}
 
 /* ============================================================
    MINIGAME — ảnh minh hoạ 3D trong 3 thẻ (nền trong suốt sẵn).
