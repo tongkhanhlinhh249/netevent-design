@@ -767,8 +767,7 @@ ul,ol{margin:0;padding:0;list-style:none;}
   background:#ffffff;border:2px solid var(--c);color:var(--c);font-size:14px;font-weight:700;
   transition:background-color .2s ease,color .2s ease,box-shadow .2s ease;}
 .qt__tab.is-on .qt__num{background:var(--c);color:#ffffff;box-shadow:0 0 0 5px var(--bg);}
-.qt__phase{display:block;font-size:11.5px;line-height:1.4;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--c);}
-.qt__name{display:block;margin-top:2px;font-size:15px;line-height:1.35;font-weight:600;color:#5b6472;transition:color .2s ease;}
+.qt__name{display:block;font-size:15px;line-height:1.35;font-weight:600;color:#5b6472;transition:color .2s ease;}
 .qt__tab.is-on .qt__name{color:#141414;}
 @media (hover:hover){.qt__tab:hover .qt__name{color:#141414;}}
 
