@@ -751,44 +751,61 @@ ul,ol{margin:0;padding:0;list-style:none;}
 .hr-ghost{background:#ffffff;color:#141414;box-shadow:inset 0 0 0 1px #d6d9e0;}
 .hr-ghost:hover{background:#f6f7f9;}
 
-/* tính năng theo quy trình triển khai: 5 bước, mỗi bước kèm thẻ liệt kê tính năng (icon + tên).
-   Mỗi bước có màu riêng (--c) và màu bước kế (--c2); đoạn nối là gradient giữa hai màu nên cả dải đổi màu liền mạch.
-   Màn rộng: 5 cột, thẻ các cột thẳng hàng và cao bằng nhau (subgrid).
-   Màn ≤1023px: xếp dọc — số bên trái nối bằng đường dọc, tên bước cùng hàng với số, thẻ ngay dưới tên. */
-.qt{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:auto 1fr;column-gap:20px;}
-.qt__step{--ring:color-mix(in srgb,var(--c) 22%,transparent);
-  position:relative;display:grid;grid-row:span 2;grid-template-rows:subgrid;row-gap:16px;min-width:0;}
-.qt__step:not(:last-child)::after{content:'';position:absolute;top:17px;left:calc(50% + 24px);right:calc(-50% + 4px);height:1.5px;border-radius:2px;
-  background:linear-gradient(90deg,var(--c),var(--c2));opacity:.4;}
-.qt__head{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;}
-.qt__num{position:relative;flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;
-  background:color-mix(in srgb,var(--c) 10%,#ffffff);border:1px solid color-mix(in srgb,var(--c) 28%,transparent);
-  color:var(--c);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;}
-.qt__head h3{margin:0;font-size:16px;line-height:1.35;font-weight:600;color:#141414;text-wrap:balance;}
-/* danh sách tính năng không khung: cả cụm nằm giữa cột (dưới mốc), các dòng vẫn thẳng mép trái */
-.qt__card{list-style:none;margin:0;padding:0;justify-self:center;align-self:start;width:fit-content;max-width:100%;
-  display:flex;flex-direction:column;gap:4px;}
-.qt__card li{display:flex;align-items:center;gap:10px;min-width:0;padding:5px 0;font-size:14.5px;line-height:1.4;font-weight:500;color:#2b2f38;text-wrap:pretty;}
-.qt__ico{flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:var(--c);
-  background:#ffffff;box-shadow:inset 0 0 0 1px var(--ring),0 2px 6px -3px var(--ring);}
-@media (max-width:1023px){
-  .qt{display:flex;flex-direction:column;}
-  .qt__step{grid-template-columns:36px minmax(0,1fr);grid-template-rows:auto auto;column-gap:14px;row-gap:10px;padding-bottom:24px;}
-  .qt__step:last-child{padding-bottom:0;}
-  .qt__step:not(:last-child)::after{top:42px;bottom:6px;left:17px;right:auto;width:1.5px;height:auto;background:linear-gradient(180deg,var(--c),var(--c2));}
-  .qt__head{display:contents;}
-  .qt__num{grid-column:1;grid-row:1;}
-  .qt__head h3{grid-column:2;grid-row:1;align-self:center;text-align:left;}
-  .qt__card{grid-column:2;grid-row:2;justify-self:stretch;width:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));column-gap:16px;}
-}
+/* tính năng theo quy trình triển khai — 5 bước (tham khảo timeline GOV+ và Design Phases).
+   Mỗi bước có màu riêng (--c) và màu bước kế (--c2) nên trục đổi màu liền mạch từ xanh sang hồng.
+   Mặc định (mobile): trục chấm dọc bên trái, số tròn nằm trên trục, thẻ tính năng bên phải.
+   ≥641px: danh sách trong thẻ chia cột.
+   ≥1024px: trục ngang ở giữa, thẻ so le — bước lẻ phía trên, bước chẵn phía dưới — nối xuống số bằng đường chấm. */
+.qt{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
+.qt__step{--ny:7px;position:relative;display:grid;grid-template-columns:36px minmax(0,1fr);column-gap:16px;padding-bottom:16px;}
+.qt__step:last-child{padding-bottom:0;}
+.qt__step:not(:last-child)::before{content:'';position:absolute;left:17px;top:calc(var(--ny) + 42px);bottom:calc(6px - var(--ny));width:2px;
+  background:linear-gradient(180deg,var(--c),var(--c2));opacity:.55;
+  -webkit-mask:repeating-linear-gradient(180deg,#000 0 3px,transparent 3px 7px);mask:repeating-linear-gradient(180deg,#000 0 3px,transparent 3px 7px);}
+.qt__num{grid-column:1;grid-row:1;position:relative;z-index:1;margin-top:var(--ny);width:36px;height:36px;border-radius:50%;
+  display:grid;place-items:center;background:#ffffff;border:1.5px solid color-mix(in srgb,var(--c) 45%,transparent);
+  color:var(--c);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 9%,transparent),0 8px 16px -10px color-mix(in srgb,var(--c) 70%,transparent);}
+.qt__card{grid-column:2;grid-row:1;position:relative;min-width:0;padding:14px 16px 10px;background:#ffffff;
+  border:1px solid #e8ebf2;border-radius:18px;box-shadow:0 16px 36px -28px rgba(40,30,120,.4),0 1px 2px rgba(20,20,40,.04);}
+.qt__card::before{content:'';position:absolute;right:100%;top:calc(var(--ny) + 17px);width:16px;height:2px;background:var(--c);opacity:.5;
+  -webkit-mask:repeating-linear-gradient(90deg,#000 0 3px,transparent 3px 6px);mask:repeating-linear-gradient(90deg,#000 0 3px,transparent 3px 6px);}
+.qt__card h3{margin:0 0 6px;font-size:16px;line-height:1.35;font-weight:600;color:#141414;}
+.qt__list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);}
+.qt__list li{display:flex;align-items:center;gap:10px;min-width:0;padding:5px 0;font-size:14.5px;line-height:1.4;font-weight:500;color:#2b2f38;text-wrap:pretty;}
+.qt__ico{flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--c);background:color-mix(in srgb,var(--c) 10%,#ffffff);}
 @media (max-width:640px){
   #tinh-nang .ne-sec{gap:32px !important;}
   #tinh-nang h2 br{display:none;}
-  .qt__step{column-gap:12px;row-gap:8px;padding-bottom:20px;}
-  .qt__head h3{font-size:16px;}
-  .qt__card{grid-template-columns:minmax(0,1fr);gap:0;}
-  .qt__card li{padding:4px 0;}
-  .qt__ico{width:28px;height:28px;border-radius:8px;}
+}
+@media (min-width:641px){
+  .qt__step{padding-bottom:20px;}
+  .qt__list{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));column-gap:16px;}
+}
+@media (min-width:1024px){
+  .qt{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:auto 72px auto;row-gap:24px;}
+  .qt::before{content:'';grid-row:2;grid-column:1 / -1;
+    background:linear-gradient(90deg,rgba(30,170,255,0),rgba(30,170,255,.10) 12%,rgba(148,98,251,.10) 50%,rgba(226,85,127,.09) 88%,rgba(226,85,127,0));}
+  .qt::after{content:'';grid-row:2;grid-column:1 / -1;align-self:center;height:2px;opacity:.6;
+    background:linear-gradient(90deg,transparent,#0075bc 8%,#6a3fe0 50%,#c8325f 92%,transparent);
+    -webkit-mask:repeating-linear-gradient(90deg,#000 0 4px,transparent 4px 9px);mask:repeating-linear-gradient(90deg,#000 0 4px,transparent 4px 9px);}
+  .qt__step{--cx:50%;grid-row:1 / span 3;display:grid;grid-template-rows:subgrid;grid-template-columns:minmax(0,1fr);padding:0;}
+  .qt__step:nth-child(1){grid-column:1;--cx:calc(50% - 36px);}
+  .qt__step:nth-child(2){grid-column:2;}
+  .qt__step:nth-child(3){grid-column:3;}
+  .qt__step:nth-child(4){grid-column:4;}
+  .qt__step:nth-child(5){grid-column:5;--cx:calc(50% + 36px);}
+  .qt__step:not(:last-child)::before{display:none;}
+  .qt__num{grid-row:2;grid-column:1;align-self:center;justify-self:center;margin:0;width:40px;height:40px;font-size:14px;}
+  /* thẻ rộng hơn cột 72px (lấn sang khoảng trống của bước kế, vốn nằm phía bên kia trục); thẻ ở hai mép chỉ lấn vào trong */
+  .qt__card{grid-row:1;grid-column:1;align-self:end;margin:0 -36px;padding:16px 18px 12px;}
+  .qt__step:nth-child(1) .qt__card{margin:0 -72px 0 0;}
+  .qt__step:nth-child(5) .qt__card{margin:0 0 0 -72px;}
+  .qt__step:nth-child(even) .qt__card{grid-row:3;align-self:start;}
+  .qt__card::before{right:auto;left:var(--cx);top:100%;width:2px;height:40px;margin-left:-1px;
+    -webkit-mask:repeating-linear-gradient(180deg,#000 0 3px,transparent 3px 6px);mask:repeating-linear-gradient(180deg,#000 0 3px,transparent 3px 6px);}
+  .qt__step:nth-child(even) .qt__card::before{top:auto;bottom:100%;}
+  .qt__list{grid-template-columns:minmax(0,1fr);}
 }
 
 /* minigame: hai ưu điểm dưới mô tả mỗi thẻ */
