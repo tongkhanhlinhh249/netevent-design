@@ -755,25 +755,26 @@ ul,ol{margin:0;padding:0;list-style:none;}
    Mỗi bước có màu riêng (--c) và màu bước kế (--c2) nên trục đổi màu liền mạch từ xanh sang hồng.
    Mặc định (mobile): trục chấm dọc bên trái, số tròn nằm trên trục, thẻ tính năng bên phải.
    ≥641px: danh sách trong thẻ chia cột.
-   ≥1024px: trục ngang ở giữa, thẻ so le — bước lẻ phía trên, bước chẵn phía dưới — nối xuống số bằng đường chấm. */
+   ≥1024px: trục ngang ở giữa, thẻ so le — bước lẻ phía trên, bước chẵn phía dưới — nối xuống số bằng đường chấm.
+   Năm thẻ cùng rộng, cùng cao (hai hàng thẻ là 1fr nên cao bằng nhau) và đều căn giữa đúng số của mình. */
 .qt{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
-.qt__step{--ny:7px;position:relative;display:grid;grid-template-columns:36px minmax(0,1fr);column-gap:16px;padding-bottom:16px;}
+.qt__step{--ny:8px;position:relative;display:grid;grid-template-columns:36px minmax(0,1fr);column-gap:16px;padding-bottom:16px;}
 .qt__step:last-child{padding-bottom:0;}
-.qt__step:not(:last-child)::before{content:'';position:absolute;left:17px;top:calc(var(--ny) + 42px);bottom:calc(6px - var(--ny));width:2px;
-  background:linear-gradient(180deg,var(--c),var(--c2));opacity:.55;
+.qt__step:not(:last-child)::before{content:'';position:absolute;left:17px;top:calc(var(--ny) + 42px);bottom:calc(6px - var(--ny));width:1.5px;
+  background:linear-gradient(180deg,var(--c),var(--c2));opacity:.45;
   -webkit-mask:repeating-linear-gradient(180deg,#000 0 3px,transparent 3px 7px);mask:repeating-linear-gradient(180deg,#000 0 3px,transparent 3px 7px);}
 .qt__num{grid-column:1;grid-row:1;position:relative;z-index:1;margin-top:var(--ny);width:36px;height:36px;border-radius:50%;
-  display:grid;place-items:center;background:#ffffff;border:1.5px solid color-mix(in srgb,var(--c) 45%,transparent);
-  color:var(--c);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;
-  box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 9%,transparent),0 8px 16px -10px color-mix(in srgb,var(--c) 70%,transparent);}
-.qt__card{grid-column:2;grid-row:1;position:relative;min-width:0;padding:14px 16px 10px;background:#ffffff;
-  border:1px solid #e8ebf2;border-radius:18px;box-shadow:0 16px 36px -28px rgba(40,30,120,.4),0 1px 2px rgba(20,20,40,.04);}
-.qt__card::before{content:'';position:absolute;right:100%;top:calc(var(--ny) + 17px);width:16px;height:2px;background:var(--c);opacity:.5;
+  display:grid;place-items:center;background:#ffffff;border:1px solid color-mix(in srgb,var(--c) 35%,transparent);
+  color:var(--c);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 7%,transparent);}
+.qt__card{grid-column:2;grid-row:1;position:relative;min-width:0;padding:16px 18px 12px;background:rgba(255,255,255,.88);
+  border:1px solid rgba(20,30,60,.07);border-radius:18px;box-shadow:0 12px 32px -26px rgba(40,30,120,.35);}
+.qt__card::before{content:'';position:absolute;right:100%;top:calc(var(--ny) + 17px);width:16px;height:1.5px;background:var(--c);opacity:.4;
   -webkit-mask:repeating-linear-gradient(90deg,#000 0 3px,transparent 3px 6px);mask:repeating-linear-gradient(90deg,#000 0 3px,transparent 3px 6px);}
-.qt__card h3{margin:0 0 6px;font-size:16px;line-height:1.35;font-weight:600;color:#141414;}
-.qt__list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);}
-.qt__list li{display:flex;align-items:center;gap:10px;min-width:0;padding:5px 0;font-size:14.5px;line-height:1.4;font-weight:500;color:#2b2f38;text-wrap:pretty;}
-.qt__ico{flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--c);background:color-mix(in srgb,var(--c) 10%,#ffffff);}
+.qt__card h3{margin:0 0 8px;font-size:16px;line-height:1.35;font-weight:600;color:#141414;}
+.qt__list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);row-gap:2px;}
+.qt__list li{display:flex;align-items:center;gap:10px;min-width:0;padding:4px 0;font-size:14px;line-height:1.45;font-weight:500;color:#3a3f4a;text-wrap:pretty;}
+.qt__ico{flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--c);background:color-mix(in srgb,var(--c) 8%,#ffffff);}
 @media (max-width:640px){
   #tinh-nang .ne-sec{gap:32px !important;}
   #tinh-nang h2 br{display:none;}
@@ -783,26 +784,24 @@ ul,ol{margin:0;padding:0;list-style:none;}
   .qt__list{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));column-gap:16px;}
 }
 @media (min-width:1024px){
-  .qt{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:auto 72px auto;row-gap:24px;}
-  .qt::before{content:'';grid-row:2;grid-column:1 / -1;
-    background:linear-gradient(90deg,rgba(30,170,255,0),rgba(30,170,255,.10) 12%,rgba(148,98,251,.10) 50%,rgba(226,85,127,.09) 88%,rgba(226,85,127,0));}
-  .qt::after{content:'';grid-row:2;grid-column:1 / -1;align-self:center;height:2px;opacity:.6;
-    background:linear-gradient(90deg,transparent,#0075bc 8%,#6a3fe0 50%,#c8325f 92%,transparent);
+  /* lưới 5 cột lùi vào 40px hai bên; thẻ rộng hơn cột đúng 80px nên thẻ đầu/cuối căn giữa số mà vẫn không tràn khung */
+  .qt{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:1fr 64px 1fr;row-gap:24px;padding:8px 40px 0;}
+  .qt::before{content:'';grid-row:2;grid-column:1 / -1;margin:0 -40px;
+    background:linear-gradient(90deg,rgba(30,170,255,0),rgba(30,170,255,.07) 14%,rgba(148,98,251,.07) 50%,rgba(226,85,127,.06) 86%,rgba(226,85,127,0));}
+  .qt::after{content:'';grid-row:2;grid-column:1 / -1;align-self:center;height:1.5px;margin:0 -40px;opacity:.5;
+    background:linear-gradient(90deg,transparent,#0075bc 10%,#6a3fe0 50%,#c8325f 90%,transparent);
     -webkit-mask:repeating-linear-gradient(90deg,#000 0 4px,transparent 4px 9px);mask:repeating-linear-gradient(90deg,#000 0 4px,transparent 4px 9px);}
-  .qt__step{--cx:50%;grid-row:1 / span 3;display:grid;grid-template-rows:subgrid;grid-template-columns:minmax(0,1fr);padding:0;}
-  .qt__step:nth-child(1){grid-column:1;--cx:calc(50% - 36px);}
+  .qt__step{grid-row:1 / span 3;display:grid;grid-template-rows:subgrid;grid-template-columns:minmax(0,1fr);padding:0;}
+  .qt__step:nth-child(1){grid-column:1;}
   .qt__step:nth-child(2){grid-column:2;}
   .qt__step:nth-child(3){grid-column:3;}
   .qt__step:nth-child(4){grid-column:4;}
-  .qt__step:nth-child(5){grid-column:5;--cx:calc(50% + 36px);}
+  .qt__step:nth-child(5){grid-column:5;}
   .qt__step:not(:last-child)::before{display:none;}
-  .qt__num{grid-row:2;grid-column:1;align-self:center;justify-self:center;margin:0;width:40px;height:40px;font-size:14px;}
-  /* thẻ rộng hơn cột 72px (lấn sang khoảng trống của bước kế, vốn nằm phía bên kia trục); thẻ ở hai mép chỉ lấn vào trong */
-  .qt__card{grid-row:1;grid-column:1;align-self:end;margin:0 -36px;padding:16px 18px 12px;}
-  .qt__step:nth-child(1) .qt__card{margin:0 -72px 0 0;}
-  .qt__step:nth-child(5) .qt__card{margin:0 0 0 -72px;}
-  .qt__step:nth-child(even) .qt__card{grid-row:3;align-self:start;}
-  .qt__card::before{right:auto;left:var(--cx);top:100%;width:2px;height:40px;margin-left:-1px;
+  .qt__num{grid-row:2;grid-column:1;align-self:center;justify-self:center;margin:0;}
+  .qt__card{grid-row:1;grid-column:1;align-self:stretch;margin:0 -40px;padding:18px 20px 14px;}
+  .qt__step:nth-child(even) .qt__card{grid-row:3;}
+  .qt__card::before{right:auto;left:50%;top:100%;width:1.5px;height:38px;margin-left:-.75px;
     -webkit-mask:repeating-linear-gradient(180deg,#000 0 3px,transparent 3px 6px);mask:repeating-linear-gradient(180deg,#000 0 3px,transparent 3px 6px);}
   .qt__step:nth-child(even) .qt__card::before{top:auto;bottom:100%;}
   .qt__list{grid-template-columns:minmax(0,1fr);}
