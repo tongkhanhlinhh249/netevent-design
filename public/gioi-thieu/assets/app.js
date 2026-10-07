@@ -4,6 +4,14 @@
   const $$ = (s, r=document) => [...r.querySelectorAll(s)];
   const reduce = matchMedia('(prefers-reduced-motion: reduce)');
 
+  /* ---------- 0. Header: kính mờ ở đầu trang, cuộn xuống thì nền trắng ---------- */
+  const hd = $('#nav');
+  if (hd) {
+    const syncHd = () => hd.classList.toggle('is-scrolled', scrollY > 8);
+    syncHd();
+    addEventListener('scroll', syncHd, { passive: true });
+  }
+
   /* ---------- 1. Minigame 1: vòng quay may mắn ---------- */
   // Thứ tự giải trùng thứ tự ô màu của conic-gradient: bắt đầu từ đỉnh, theo chiều kim đồng hồ.
   const wheel = $('#mgWheel');
