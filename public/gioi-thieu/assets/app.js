@@ -98,58 +98,6 @@
   }), { rootMargin: '0px 0px -8% 0px', threshold: .08 });
   $$('.rv').forEach(el => io.observe(el));
 
-  /* ---------- 5. Thư mục tính năng: tự mở/đóng lặp lại khi đang xem, 6 thẻ bung ra; bấm để tự điều khiển ---------- */
-  // Thẻ nằm sẵn trong lưới (vị trí khi mở). Khi đóng, mỗi thẻ được dời về miệng thư mục bằng --dx/--dy,
-  // thư mục dời vào giữa khung bằng --fy. Khung giữ nguyên chiều cao khi mở/đóng để trang không bị xô.
-  // Không có JS thì thẻ vẫn hiện đủ.
-  const fd = $('#fd');
-  if (fd) {
-    const list = $('.fd__cards', fd), dock = $('.fd__dock', fd), btn = $('.fd__folder', fd), hint = $('.fd__hint', fd);
-    const cards = $$('.fd__card', fd);
-    const layout = () => {
-      const h = dock.offsetTop + dock.offsetHeight;
-      const fy = (h - dock.offsetHeight) / 2 - dock.offsetTop;
-      const mx = dock.offsetLeft + dock.offsetWidth / 2, my = dock.offsetTop + fy + btn.offsetTop + btn.offsetHeight * .2;   // miệng thư mục: mép trên tấm giấy
-      fd.style.setProperty('--open-h', h + 'px');
-      fd.style.setProperty('--closed-h', h + 'px');
-      fd.style.setProperty('--fy', fy + 'px');
-      cards.forEach(c => {
-        c.style.setProperty('--dx', mx - (list.offsetLeft + c.offsetLeft + c.offsetWidth / 2) + 'px');
-        c.style.setProperty('--dy', my - (list.offsetTop + c.offsetTop + c.offsetHeight / 2) + 'px');
-      });
-    };
-    const setFolder = open => {
-      fd.dataset.open = String(open);
-      btn.setAttribute('aria-expanded', String(open));
-      hint.textContent = open ? 'Bấm thư mục để thu gọn' : 'Bấm vào thư mục để xem 6 tính năng';
-    };
-    fd.classList.add('fd--still');                 // lần đặt trạng thái đầu: không chạy hiệu ứng
-    layout(); setFolder(false); hint.hidden = false;
-    fd.offsetHeight;
-    fd.classList.remove('fd--still');
-    // Tự chạy 2 vòng khi khung trong tầm nhìn: mở → giữ 6 giây → thu lại → mở lại rồi dừng ở trạng thái mở
-    // (giới hạn chuyển động liên tục). Rê chuột vào thì tạm dừng; người xem tự bấm thì ngừng tự chạy.
-    // Giảm chuyển động: chỉ mở một lần. Lớp fd--auto bật hiệu ứng bồng bềnh, chỉ có khi đang tự chạy.
-    let auto = true, inView = false, hover = false, timer = 0, opens = 0;
-    const stopAuto = () => { auto = false; clearTimeout(timer); timer = 0; fd.classList.remove('fd--auto'); };
-    fd.classList.add('fd--auto');
-    const OPEN_MS = 6000, CLOSED_MS = 1400;
-    const schedule = ms => { clearTimeout(timer); timer = 0; if (auto && inView && !hover) timer = setTimeout(tick, ms); };
-    const tick = () => {
-      setFolder(fd.dataset.open !== 'true');
-      if (fd.dataset.open === 'true' && (++opens >= 2 || reduce.matches)) return stopAuto();
-      schedule(fd.dataset.open === 'true' ? OPEN_MS : CLOSED_MS);
-    };
-    btn.addEventListener('click', () => { stopAuto(); setFolder(fd.dataset.open !== 'true'); });
-    fd.addEventListener('pointerenter', () => { hover = true; clearTimeout(timer); timer = 0; });
-    fd.addEventListener('pointerleave', () => { hover = false; schedule(fd.dataset.open === 'true' ? OPEN_MS / 2 : 350); });
-    new ResizeObserver(layout).observe(list);
-    new IntersectionObserver(es => {
-      inView = es.some(e => e.isIntersecting);
-      if (inView) schedule(fd.dataset.open === 'true' ? OPEN_MS : 350); else { clearTimeout(timer); timer = 0; }
-    }, { threshold: .5 }).observe(dock);
-  }
-
   /* ---------- 7. Viền sáng thẻ loại hình (phỏng theo BorderGlow của React Bits) ---------- */
   // Rê chuột gần mép: vệt sáng bám theo hướng con trỏ. Vừa rê vào: vệt sáng chạy một vòng quanh thẻ.
   const glowCards = $$('.bg-card');
