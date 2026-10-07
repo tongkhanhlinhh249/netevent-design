@@ -35,6 +35,8 @@ function staticDirIndex(prefix) {
 }
 
 export default defineConfig({
+  // Cổng do môi trường cấp (PORT) khi có, không thì 5173 như mặc định của Vite.
+  server: { port: Number(process.env.PORT) || 5173 },
   plugins: [
     staticDirIndex('/gioi-thieu'),
     figmaAssetResolver(),
