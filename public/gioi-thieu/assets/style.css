@@ -756,7 +756,7 @@ ul,ol{margin:0;padding:0;list-style:none;}
    Mặc định (mobile): trục chấm dọc bên trái, số tròn nằm trên trục, thẻ tính năng bên phải.
    ≥641px: danh sách trong thẻ chia cột.
    ≥1024px: trục ngang ở giữa, thẻ so le — bước lẻ phía trên, bước chẵn phía dưới — nối xuống số bằng đường chấm.
-   Năm thẻ cùng rộng, cùng cao (hai hàng thẻ là 1fr nên cao bằng nhau) và đều căn giữa đúng số của mình. */
+   Năm thẻ cùng rộng, cao vừa nội dung, đều căn giữa đúng số của mình; hai hàng thẻ là 1fr nên trục luôn nằm giữa. */
 .qt{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
 .qt__step{--ny:8px;position:relative;display:grid;grid-template-columns:36px minmax(0,1fr);column-gap:16px;padding-bottom:16px;}
 .qt__step:last-child{padding-bottom:0;}
@@ -799,8 +799,9 @@ ul,ol{margin:0;padding:0;list-style:none;}
   .qt__step:nth-child(5){grid-column:5;}
   .qt__step:not(:last-child)::before{display:none;}
   .qt__num{grid-row:2;grid-column:1;align-self:center;justify-self:center;margin:0;}
-  .qt__card{grid-row:1;grid-column:1;align-self:stretch;margin:0 -40px;padding:18px 20px 14px;}
-  .qt__step:nth-child(even) .qt__card{grid-row:3;}
+  /* thẻ cao vừa nội dung, bám sát trục: hàng trên dồn xuống đáy, hàng dưới dồn lên đỉnh */
+  .qt__card{grid-row:1;grid-column:1;align-self:end;margin:0 -40px;padding:18px 20px 14px;}
+  .qt__step:nth-child(even) .qt__card{grid-row:3;align-self:start;}
   .qt__card::before{right:auto;left:50%;top:100%;width:1.5px;height:38px;margin-left:-.75px;
     -webkit-mask:repeating-linear-gradient(180deg,#000 0 3px,transparent 3px 6px);mask:repeating-linear-gradient(180deg,#000 0 3px,transparent 3px 6px);}
   .qt__step:nth-child(even) .qt__card::before{top:auto;bottom:100%;}
