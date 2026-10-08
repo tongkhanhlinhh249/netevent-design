@@ -106,6 +106,32 @@
   }), { rootMargin: '0px 0px -8% 0px', threshold: .08 });
   $$('.rv').forEach(el => io.observe(el));
 
+  /* ---------- 5. Tính năng theo quy trình: chạm để mở mô tả ngắn (thiết bị cảm ứng) ---------- */
+  // Chuột dùng hover / focus (CSS). Cảm ứng không có hover: chạm một tính năng để mở mô tả ngay bên dưới,
+  // mở mục khác thì mục cũ đóng; chạm ra ngoài hoặc Esc để đóng.
+  const feats = $$('.qt__feat');
+  if (feats.length) {
+    const fine = matchMedia('(hover: hover) and (pointer: fine)');
+    const shut = keep => feats.forEach(f => {
+      if (f === keep || !f.classList.contains('is-open')) return;
+      f.classList.remove('is-open');
+      $('button', f).setAttribute('aria-expanded', 'false');
+    });
+    feats.forEach(f => {
+      const b = $('button', f);
+      b.addEventListener('click', e => {
+        if (fine.matches) return;
+        e.stopPropagation();
+        const open = !f.classList.contains('is-open');
+        shut(f);
+        f.classList.toggle('is-open', open);
+        b.setAttribute('aria-expanded', String(open));
+      });
+    });
+    document.addEventListener('click', () => shut());
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') shut(); });
+  }
+
   /* ---------- 7. Viền sáng thẻ loại hình (phỏng theo BorderGlow của React Bits) ---------- */
   // Rê chuột gần mép: vệt sáng bám theo hướng con trỏ. Vừa rê vào: vệt sáng chạy một vòng quanh thẻ.
   const glowCards = $$('.bg-card');

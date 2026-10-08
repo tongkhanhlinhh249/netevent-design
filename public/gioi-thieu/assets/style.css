@@ -800,7 +800,35 @@ ul,ol{margin:0;padding:0;list-style:none;}
   -webkit-mask:repeating-linear-gradient(90deg,#000 0 3px,transparent 3px 6px);mask:repeating-linear-gradient(90deg,#000 0 3px,transparent 3px 6px);}
 .qt__card h3{margin:0 0 8px;font-size:16px;line-height:1.35;font-weight:600;color:#141414;}
 .qt__list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);row-gap:2px;}
-.qt__list li{display:flex;align-items:center;gap:10px;min-width:0;padding:4px 0;font-size:14px;line-height:1.45;font-weight:500;color:#3a3f4a;text-wrap:pretty;}
+/* mỗi tính năng là một nút: chuột — rê / focus hiện bong bóng mô tả nổi phía dưới (không đẩy bố cục);
+   cảm ứng — chạm để mở mô tả ngay dưới tính năng, mỗi lúc một mục (JS). Mặc định mô tả ẩn nên section giữ nguyên độ dài.
+   Mô tả luôn gắn với nút qua aria-describedby nên trình đọc màn hình đọc được cả khi đang ẩn. */
+.qt__feat{position:relative;min-width:0;}
+.qt__feat > button{display:flex;align-items:center;gap:10px;width:calc(100% + 16px);margin:0 -8px;padding:4px 8px;border-radius:9px;text-align:left;
+  font-size:14px;line-height:1.45;font-weight:500;color:#3a3f4a;text-wrap:pretty;transition:background-color .15s ease;}
+.qt__feat > button:focus-visible{outline:2px solid var(--c);outline-offset:1px;}
+.qt__lbl{min-width:0;}
+.qt__chev{display:none;}
+.qt__tip{display:none;margin:0;font-size:13.5px;line-height:1.5;text-wrap:pretty;}
+@media (hover:hover) and (pointer:fine){
+  .qt__feat > button{cursor:default;}
+  .qt__feat > button:hover,.qt__feat:focus-within > button{background:color-mix(in srgb,var(--c) 7%,transparent);}
+  .qt__tip{display:block;position:absolute;left:-8px;right:-8px;top:calc(100% + 6px);z-index:5;padding:10px 12px;border-radius:10px;
+    background:#1c1f26;color:#f2f3f6;box-shadow:0 16px 32px -14px rgba(15,15,30,.5);pointer-events:none;
+    opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .15s ease,transform .15s ease,visibility 0s linear .15s;}
+  .qt__tip::before{content:'';position:absolute;left:17px;top:-4px;width:9px;height:9px;border-radius:2px;background:inherit;transform:rotate(45deg);}
+  .qt__feat:hover .qt__tip,.qt__feat:focus-within .qt__tip{opacity:1;visibility:visible;transform:none;transition-delay:0s;}
+  /* thẻ đang có bong bóng nổi lên trên thẻ / trục bên cạnh */
+  .qt__card:hover,.qt__card:focus-within{z-index:3;}
+}
+@media not all and (hover:hover) and (pointer:fine){
+  .qt__feat > button{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .qt__chev{display:grid;flex:none;margin-left:auto;color:#9aa0ab;transition:transform .2s ease;}
+  .qt__feat.is-open > button{background:color-mix(in srgb,var(--c) 7%,transparent);}
+  .qt__feat.is-open .qt__chev{transform:rotate(180deg);color:var(--c);}
+  .qt__feat.is-open .qt__tip{display:block;padding:2px 0 8px 38px;color:#5b6170;}
+}
+@media (prefers-reduced-motion:reduce){.qt__tip,.qt__chev{transition:none !important;}}
 .qt__ico{flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--c);background:color-mix(in srgb,var(--c) 8%,#ffffff);}
 @media (max-width:640px){
   #tinh-nang .ne-sec{gap:32px !important;}
