@@ -893,3 +893,41 @@ ul,ol{margin:0;padding:0;list-style:none;}
 @media (max-width:880px){.phero{padding-top:calc(48px + var(--hd-h));}}
 @media (max-width:640px){:root{--hd-h:60px;}}
 @media (prefers-reduced-motion:reduce){.hd{transition:none;}}
+
+/* ============================================================
+   TABLET (641–1023px)
+   ============================================================ */
+/* LOẠI HÌNH — bỏ 3 cột dọc, 7 thẻ xếp lưới 2 cột theo hàng (hai thẻ cùng hàng cao bằng nhau);
+   thẻ "Sự kiện tiếp theo" trải hết hàng cuối, hình bên trái — chữ bên phải. Tránh cột trái 4 thẻ / cột phải 3 thẻ để trống một mảng lớn. */
+@media (min-width:641px) and (max-width:960px){
+  .lh-grid .lh-col{display:contents;}
+  .lh-card--cta{grid-column:1 / -1;}
+  .lh-card--cta .bg-inner{flex-direction:row;}
+  .lh-card--cta .lh-vis{flex:1 1 50%;min-height:240px;}
+  .lh-card--cta .lh-txt{flex:1 1 50%;justify-content:center;padding:28px 32px;}
+}
+
+/* TÍNH NĂNG — trục dọc ở giữa, số tròn trên trục, thẻ so le trái / phải (như Design Phases).
+   Mỗi bước chiếm 2 hàng lưới, bước sau bắt đầu ở hàng thứ hai của bước trước nên thẻ hai bên đan vào nhau, section gọn.
+   Phần tử bước (li) trải cả 3 cột và chồng lên nhau — tắt nhận chuột ở li, chỉ thẻ và số nhận. */
+@media (min-width:641px) and (max-width:1023px){
+  .qt{display:grid;grid-template-columns:minmax(0,1fr) 56px minmax(0,1fr);grid-template-rows:repeat(6,auto);row-gap:16px;}
+  .qt::before{content:'';grid-column:2;grid-row:1 / -1;justify-self:center;width:1.5px;opacity:.5;
+    background:linear-gradient(180deg,transparent,#0075bc 6%,#6a3fe0 50%,#c8325f 94%,transparent);
+    -webkit-mask:repeating-linear-gradient(180deg,#000 0 3px,transparent 3px 7px);mask:repeating-linear-gradient(180deg,#000 0 3px,transparent 3px 7px);}
+  .qt__step{grid-column:1 / -1;display:grid;grid-template-columns:subgrid;grid-template-rows:subgrid;padding:0;pointer-events:none;}
+  .qt__step > *{pointer-events:auto;}
+  .qt__step:nth-child(1){grid-row:1 / span 2;}
+  .qt__step:nth-child(2){grid-row:2 / span 2;}
+  .qt__step:nth-child(3){grid-row:3 / span 2;}
+  .qt__step:nth-child(4){grid-row:4 / span 2;}
+  .qt__step:nth-child(5){grid-row:5 / span 2;}
+  .qt__step:not(:last-child)::before{display:none;}
+  .qt__num{grid-column:2;grid-row:1 / -1;justify-self:center;align-self:start;}
+  .qt__card{grid-row:1 / -1;align-self:start;}
+  .qt__step:nth-child(odd) .qt__card{grid-column:1;}
+  .qt__step:nth-child(even) .qt__card{grid-column:3;}
+  .qt__card::before{width:10px;}
+  .qt__step:nth-child(odd) .qt__card::before{right:auto;left:100%;}
+  .qt__list{grid-template-columns:minmax(0,1fr);}
+}
