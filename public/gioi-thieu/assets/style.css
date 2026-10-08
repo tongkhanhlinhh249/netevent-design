@@ -800,7 +800,7 @@ ul,ol{margin:0;padding:0;list-style:none;}
   -webkit-mask:repeating-linear-gradient(90deg,#000 0 3px,transparent 3px 6px);mask:repeating-linear-gradient(90deg,#000 0 3px,transparent 3px 6px);}
 .qt__card h3{margin:0 0 8px;font-size:16px;line-height:1.35;font-weight:600;color:#141414;}
 .qt__list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);row-gap:2px;}
-/* mỗi tính năng là một nút: chuột — rê / focus hiện bong bóng mô tả nổi phía dưới (không đẩy bố cục);
+/* mỗi tính năng là một nút: chuột — rê / focus hiện bong bóng mô tả (nền sáng ngả màu của bước) nổi phía dưới (không đẩy bố cục);
    cảm ứng — chạm để mở mô tả ngay dưới tính năng, mỗi lúc một mục (JS). Mặc định mô tả ẩn nên section giữ nguyên độ dài.
    Mô tả luôn gắn với nút qua aria-describedby nên trình đọc màn hình đọc được cả khi đang ẩn. */
 .qt__feat{position:relative;min-width:0;}
@@ -814,9 +814,11 @@ ul,ol{margin:0;padding:0;list-style:none;}
   .qt__feat > button{cursor:default;}
   .qt__feat > button:hover,.qt__feat:focus-within > button{background:color-mix(in srgb,var(--c) 7%,transparent);}
   .qt__tip{display:block;position:absolute;left:-8px;right:-8px;top:calc(100% + 6px);z-index:5;padding:10px 12px;border-radius:10px;
-    background:#1c1f26;color:#f2f3f6;box-shadow:0 16px 32px -14px rgba(15,15,30,.5);pointer-events:none;
+    background:color-mix(in srgb,var(--c) 7%,#ffffff);color:#2b2f38;border:1px solid color-mix(in srgb,var(--c) 22%,transparent);
+    box-shadow:0 16px 32px -16px rgba(40,30,120,.35);pointer-events:none;
     opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .15s ease,transform .15s ease,visibility 0s linear .15s;}
-  .qt__tip::before{content:'';position:absolute;left:17px;top:-4px;width:9px;height:9px;border-radius:2px;background:inherit;transform:rotate(45deg);}
+  .qt__tip::before{content:'';position:absolute;left:17px;top:-5px;width:9px;height:9px;border-radius:2px 0 0 0;background:inherit;
+    border:1px solid color-mix(in srgb,var(--c) 22%,transparent);border-right:0;border-bottom:0;transform:rotate(45deg);}
   .qt__feat:hover .qt__tip,.qt__feat:focus-within .qt__tip{opacity:1;visibility:visible;transform:none;transition-delay:0s;}
   /* thẻ đang có bong bóng nổi lên trên thẻ / trục bên cạnh */
   .qt__card:hover,.qt__card:focus-within{z-index:3;}
